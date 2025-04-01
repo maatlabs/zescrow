@@ -1,14 +1,31 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+pub mod assets;
+pub mod conditions;
+pub mod escrow;
+
+use scale::{Decode, Encode};
+use scale_info::TypeInfo;
+
+#[derive(Debug, Clone, Encode, Decode, TypeInfo)]
+pub struct Party {
+    pub commitment: [u8; 32],
+    pub signature: Option<[u8; 48]>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[derive(Debug, Clone, Encode, Decode, TypeInfo)]
+pub struct VerificationCtx {
+    pub current_block: u64,
+    pub current_timestamp: u64,
+    pub signatures: Vec<[u8; 48]>,
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+#[derive(thiserror::Error, Debug, Encode, Decode)]
+pub enum EscrowError {
+    #[error("Escrow state not initialized")]
+    Uninitialized,
+    #[error("Condition verification failed")]
+    ConditionFailure,
+    #[error("Invalid cryptographic proof")]
+    InvalidProof,
+    #[error("Not enough funds in escrow account")]
+    InsufficientFunds,
 }
