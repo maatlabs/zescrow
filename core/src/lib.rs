@@ -24,8 +24,8 @@ pub enum EscrowError {
     Uninitialized,
     #[error("Condition verification failed")]
     ConditionFailure,
-    #[error("Invalid cryptographic proof")]
-    InvalidProof,
+    #[error("Invalid BLS signature")]
+    InvalidSignature,
     #[error("Not enough funds in escrow account")]
     InsufficientFunds,
 }
