@@ -1,3 +1,4 @@
+use rand_core::{OsRng, TryRngCore};
 use scale::{Decode, Encode};
 use scale_info::TypeInfo;
 use sha2::{Digest, Sha256};
@@ -20,6 +21,13 @@ where
     pub created_block: u64,
 }
 
+/// Escrow state transitions:
+///
+/// ```text
+/// Initialized → Funded → Completed
+///             ↘      ↙
+///             Disputed
+/// ```
 #[derive(Debug, Clone, Copy, Encode, Decode, TypeInfo, PartialEq)]
 pub enum State {
     Initialized,
@@ -39,16 +47,32 @@ where
         parties: Vec<Party>,
         created_block: u64,
     ) -> Result<Self, EscrowError> {
+        let mut rng = OsRng;
+
+        for party in &parties {
+            party.validate()?;
+        }
+
         let mut hasher = Sha256::new();
-
         hasher.update(condition.encode());
-        hasher.update(asset.commit_amount());
+        hasher.update(asset.commit(&mut rng)?);
         hasher.update(created_block.to_le_bytes());
+        for party in &parties {
+            hasher.update(party.id_commitment);
+            if let Some(pubkey) = &party.bls_public_key {
+                hasher.update(pubkey);
+            }
+        }
 
-        let id = hasher.finalize().into();
+        // Prevent collisions in party IDs.
+        // TODO: Impl a more optimized solution.
+        let mut entropy = [0u8; 32];
+        rng.try_fill_bytes(&mut entropy)
+            .map_err(|_| EscrowError::EntropyGenerationFailed)?;
+        hasher.update(entropy);
 
         Ok(Self {
-            id,
+            id: hasher.finalize().into(),
             state: State::Initialized,
             condition,
             asset,
@@ -59,7 +83,10 @@ where
 
     pub fn fund(&mut self) -> Result<(), EscrowError> {
         if self.state != State::Initialized {
-            return Err(EscrowError::Uninitialized);
+            return Err(EscrowError::StateTransitionViolation {
+                expected: State::Initialized,
+                actual: self.state,
+            });
         }
         self.state = State::Funded;
         Ok(())
@@ -67,7 +94,10 @@ where
 
     pub fn execute(&mut self, ctx: VerificationCtx, proof: &[u8]) -> Result<State, EscrowError> {
         if self.state != State::Funded {
-            return Err(EscrowError::InsufficientFunds);
+            return Err(EscrowError::StateTransitionViolation {
+                expected: State::Funded,
+                actual: self.state,
+            });
         }
         if !self.condition.verify(&ctx) {
             return Err(EscrowError::ConditionFailure);
