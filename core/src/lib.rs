@@ -1,5 +1,6 @@
 pub mod assets;
 pub mod conditions;
+pub mod crypto;
 pub mod escrow;
 
 use bls12_381::G1Affine;
@@ -58,4 +59,8 @@ pub enum EscrowError {
     StateTransitionViolation { expected: State, actual: State },
     #[error("Failed to generate random data")]
     EntropyGenerationFailed,
+    #[error("Invalid Pedersen commitment")]
+    InvalidCommitment,
+    #[error("Invalid zero-knowledge proof")]
+    InvalidProof,
 }
