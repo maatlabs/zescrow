@@ -1,7 +1,13 @@
+/// Data representations of fungible/NFT assets
 pub mod assets;
+/// Condition data structures and
+/// deterministic verification logic
 pub mod conditions;
 pub mod crypto;
+/// Escrow business logic and verification steps
 pub mod escrow;
+/// Core data structures
+pub mod types;
 
 use bls12_381::G1Affine;
 use escrow::State;
