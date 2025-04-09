@@ -1,6 +1,7 @@
 [workspace]
+members = ["adapters", "core", "methods", "prover"]
+
 resolver = "2"
-members = ["core", "methods", "prover"]
 
 # Always optimize; building and running the guest takes much longer without optimization.
 [profile.dev]
