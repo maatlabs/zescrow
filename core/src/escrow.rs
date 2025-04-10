@@ -1,17 +1,19 @@
+//! Escrow lifecycle and state transitions.
+
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    condition::Condition,
-    error::EscrowError,
-    identity::{Asset, Party},
-};
+use crate::condition::Condition;
+use crate::error::EscrowError;
+use crate::identity::{Asset, Party};
 
-/// Escrow state transitions:
+/// Represents the current state of the escrow.
+///
+/// State transitions:
 ///
 /// ```text
 /// Initialized → Funded → Completed
 ///             ↘      ↙
-///             Disputed
+///             Disputed (Expired)
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub enum EscrowState {
@@ -21,6 +23,7 @@ pub enum EscrowState {
     Expired,
 }
 
+/// Core escrow struct encapsulating the full escrow context.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Escrow {
     pub id: [u8; 32],
@@ -34,11 +37,16 @@ pub struct Escrow {
 }
 
 impl Escrow {
-    pub fn execute(&mut self) -> Result<Self, EscrowError> {
+    /// Executes escrow verification logic and state transitions.
+    ///
+    /// # Arguments
+    /// - `current_block`: The current block height from the specified chain.
+    pub fn execute(&mut self, current_block: Option<u64>) -> Result<Self, EscrowError> {
         if self.state != EscrowState::Funded {
             return Err(EscrowError::InvalidState);
         }
-        self.condition.verify()?;
+
+        self.condition.verify(current_block)?;
         self.state = EscrowState::Completed;
 
         Ok(self.clone())
