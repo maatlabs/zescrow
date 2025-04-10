@@ -8,3 +8,6 @@ pub mod escrow;
 pub mod identity;
 
 pub mod error;
+use error::EscrowError;
+
+pub type Result<T> = std::result::Result<T, EscrowError>;

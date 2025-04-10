@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::EscrowError;
+use crate::{EscrowError, Result};
 
 /// Escrow conditions must be deterministically verifiable,
 /// representing logic that governs the release of escrowed assets.
@@ -23,7 +23,7 @@ impl Condition {
     ///
     /// # Arguments
     /// * `current_block` - Current block height (required for TimeLock)
-    pub fn verify(&self, current_block: Option<u64>) -> Result<(), EscrowError> {
+    pub fn verify(&self, current_block: Option<u64>) -> Result<()> {
         match self {
             Self::MultiSig {
                 threshold,

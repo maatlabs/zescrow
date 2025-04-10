@@ -8,8 +8,8 @@ fn main() {
     let mut escrow: Escrow = env::read();
     let current_block: u64 = env::read();
 
-    match escrow.execute(Some(current_block)) {
-        Ok(updated_escrow) => env::commit(&updated_escrow),
+    match escrow.execute(current_block) {
+        Ok(state) => env::commit(&state),
         Err(error) => env::commit(&format!("Escrow execution failed: {}", error)),
     }
 }

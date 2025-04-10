@@ -10,4 +10,7 @@ pub enum EscrowError {
     /// Triggered when escrow execution has surpassed allowed time constraints.
     #[error("Timeout expired")]
     Expired,
+    /// Occurs when a party calls for a refund while timeout is not expired.
+    #[error("Escrow not yet expired for refund")]
+    NotExpired,
 }

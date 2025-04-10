@@ -2,7 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use zescrow_core::escrow::Escrow;
+use zescrow_core::escrow::{Escrow, EscrowState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
 
 /// File containing escrow transaction details.
@@ -35,9 +35,16 @@ fn main() {
     let prover_info = prover.prove(env, ZESCROW_GUEST_ELF).unwrap();
     let receipt = prover_info.receipt;
 
-    match receipt.journal.decode::<Escrow>() {
-        Ok(_escrow) => {
-            println!("\nEscrow executed successfully!\n");
+    match receipt.journal.decode::<EscrowState>() {
+        Ok(escrow_state) => {
+            if escrow_state == EscrowState::Completed {
+                println!("\nEscrow executed successfully!\n");
+            } else {
+                println!(
+                    "\nINVALID escrow state: {:#?}. Execution failed!",
+                    escrow_state
+                );
+            }
         }
         Err(_) => {
             let err: String = receipt.journal.decode().unwrap();

@@ -3,8 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::condition::Condition;
-use crate::error::EscrowError;
 use crate::identity::{Asset, Party};
+use crate::{EscrowError, Result};
 
 /// Represents the current state of the escrow.
 ///
@@ -15,7 +15,7 @@ use crate::identity::{Asset, Party};
 ///             ↘      ↙
 ///             Disputed (Expired)
 /// ```
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum EscrowState {
     Initialized,
     Funded,
@@ -37,18 +37,31 @@ pub struct Escrow {
 }
 
 impl Escrow {
-    /// Executes escrow verification logic and state transitions.
+    /// Executes escrow verification logic and state transitions,
+    /// returns the state of execution or an error.
     ///
     /// # Arguments
     /// - `current_block`: The current block height from the specified chain.
-    pub fn execute(&mut self, current_block: Option<u64>) -> Result<Self, EscrowError> {
+    pub fn execute(&mut self, current_block: u64) -> Result<EscrowState> {
         if self.state != EscrowState::Funded {
             return Err(EscrowError::InvalidState);
         }
 
-        self.condition.verify(current_block)?;
+        self.condition.verify(Some(current_block))?;
         self.state = EscrowState::Completed;
+        Ok(self.state)
+    }
 
-        Ok(self.clone())
+    /// Refund the depositor if escrow's timeout has expired.
+    pub fn refund(&mut self, current_block: u64) -> Result<()> {
+        if self.state != EscrowState::Funded {
+            return Err(EscrowError::InvalidState);
+        }
+        if current_block <= self.expiry_block {
+            return Err(EscrowError::NotExpired);
+        }
+
+        self.state = EscrowState::Expired;
+        Ok(())
     }
 }
