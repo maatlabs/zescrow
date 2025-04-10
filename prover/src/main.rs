@@ -1,8 +1,12 @@
+use std::fs;
+use std::path::Path;
+
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use zescrow_core::condition::Condition;
-use zescrow_core::escrow::{Escrow, EscrowState};
-use zescrow_core::identity::{Asset, Party};
+use zescrow_core::escrow::Escrow;
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
+
+/// File containing escrow transaction details.
+const ESCROW_PATH: &str = "./assets/escrow.json";
 
 fn main() {
     // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
@@ -11,26 +15,9 @@ fn main() {
         .init();
 
     // An example Escrow transaction
-    // TODO: Fetch this as a JSON
-    let escrow = Escrow {
-        id: [0u8; 32],
-        asset: Asset::Fungible {
-            id: [0u8; 32],
-            amount: 100,
-        },
-        beneficiary: Party {
-            identity_hash: [1u8; 32],
-        },
-        depositor: Party {
-            identity_hash: [2u8; 32],
-        },
-        condition: Condition::TimeLock {
-            expiry_block: 1_500,
-        },
-        created_block: 1_000,
-        expiry_block: 1_500,
-        state: EscrowState::Funded,
-    };
+    let escrow_json =
+        fs::read_to_string(Path::new(ESCROW_PATH)).expect("Failed to read escrow JSON file.");
+    let escrow: Escrow = serde_json::from_str(&escrow_json).expect("Invalid escrow JSON structure");
 
     // Dummy current block height
     // TODO: Fetch this via RPC

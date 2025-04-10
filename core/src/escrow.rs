@@ -26,7 +26,7 @@ pub enum EscrowState {
 /// Core escrow struct encapsulating the full escrow context.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Escrow {
-    pub id: [u8; 32],
+    pub id: String, // Digest in hex string
     pub asset: Asset,
     pub beneficiary: Party,
     pub depositor: Party,
