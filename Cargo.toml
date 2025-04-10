@@ -1,5 +1,5 @@
 [workspace]
-members = ["adapters", "core", "methods", "prover"]
+members = ["adapters", "core", "methods", "methods/guest", "prover"]
 
 resolver = "2"
 

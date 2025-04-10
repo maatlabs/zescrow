@@ -1,13 +1,11 @@
 use risc0_zkvm::guest::env;
+use zescrow_core::escrow::Escrow;
 
 fn main() {
-    // TODO: Implement your guest code here
+    let mut escrow: Escrow = env::read();
 
-    // read the input
-    let input: u32 = env::read();
-
-    // TODO: do something with the input
-
-    // write public output to the journal
-    env::commit(&input);
+    match escrow.execute() {
+        Ok(escrow) => env::commit(&escrow),
+        Err(error) => env::commit(&format!("Escrow execution failed: {}", error)),
+    }
 }
