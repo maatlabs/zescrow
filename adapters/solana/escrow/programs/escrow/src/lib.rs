@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-declare_id!("6A9rvdALJ3JxaEVaz3AYfSoRPLdQgvzHUj5WApaEbGZR");
+declare_id!("8uMq5t5rot6EqrnmubFsVth4ccSwgrDh4SsKvSDY4GQT");
 
 /// Expiry in slots added to the current slot.
 pub const ESCROW_EXPIRY: u64 = 5000;
@@ -90,7 +90,11 @@ pub struct CreateEscrow<'info> {
     /// CHECK: The beneficiary account is stored in the escrow and
     /// validated during release.
     beneficiary: AccountInfo<'info>,
-    #[account(init, payer = depositor, space = 8 + 32 + 32 + 8 + 8)]
+    #[account(
+        init,
+        payer = depositor,
+        space = 8 + 32 + 32 + 8 + 8
+    )]
     escrow: Account<'info, EscrowAccount>,
     system_program: Program<'info, System>,
 }
@@ -101,9 +105,17 @@ pub struct ReleaseEscrow<'info> {
     #[account(mut)]
     depositor: AccountInfo<'info>,
     /// CHECK: Checked via address constraint to match escrow's beneficiary.
-    #[account(mut, address = escrow.beneficiary)]
+    #[account(
+        mut,
+        address = escrow.beneficiary
+    )]
     beneficiary: AccountInfo<'info>,
-    #[account(mut, close = depositor, has_one = depositor, has_one = beneficiary)]
+    #[account(
+        mut,
+        close = depositor,
+        has_one = depositor @ EscrowError::InvalidDepositor,
+        has_one = beneficiary @ EscrowError::InvalidBeneficiary
+    )]
     escrow: Account<'info, EscrowAccount>,
     system_program: Program<'info, System>,
 }
@@ -111,9 +123,16 @@ pub struct ReleaseEscrow<'info> {
 #[derive(Accounts)]
 pub struct RefundEscrow<'info> {
     /// CHECK: Checked via address constraint to match escrow's depositor.
-    #[account(mut, address = escrow.depositor)]
+    #[account(
+        mut,
+        address = escrow.depositor
+    )]
     depositor: AccountInfo<'info>,
-    #[account(mut, close = depositor, has_one = depositor)]
+    #[account(
+        mut,
+        close = depositor,
+        has_one = depositor @ EscrowError::InvalidDepositor
+    )]
     escrow: Account<'info, EscrowAccount>,
     system_program: Program<'info, System>,
 }
@@ -124,4 +143,8 @@ pub enum EscrowError {
     Expired,
     #[msg("Escrow has not yet expired.")]
     NotYetExpired,
+    #[msg("Invalid depositor account")]
+    InvalidDepositor,
+    #[msg("Invalid beneficiary account")]
+    InvalidBeneficiary,
 }
