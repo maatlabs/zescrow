@@ -1,4 +1,6 @@
 use anchor_lang::prelude::*;
+use anchor_lang::solana_program::program::invoke_signed;
+use anchor_lang::solana_program::system_instruction;
 use anchor_lang::system_program;
 
 declare_id!("8uMq5t5rot6EqrnmubFsVth4ccSwgrDh4SsKvSDY4GQT");
@@ -10,15 +12,17 @@ pub const ESCROW_EXPIRY: u64 = 5000;
 pub mod escrow {
     use super::*;
 
-    /// Initializes an escrow account,
-    /// transferring `amount` lamports from depositor and locking in escrow.
+    /// Initializes a PDA escrow account funded by the depositor.
     pub fn create_escrow(ctx: Context<CreateEscrow>, amount: u64) -> Result<()> {
         let escrow = &mut ctx.accounts.escrow;
+
         escrow.depositor = ctx.accounts.depositor.key();
         escrow.beneficiary = ctx.accounts.beneficiary.key();
         escrow.amount = amount;
         escrow.expiry = Clock::get()?.slot + ESCROW_EXPIRY;
+        escrow.bump = ctx.bumps.escrow;
 
+        // Transfer lamports from depositor to the escrow PDA
         system_program::transfer(
             CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
@@ -33,42 +37,62 @@ pub mod escrow {
         Ok(())
     }
 
-    /// Unlocks the escrowed funds, transferring to the beneficiary if not expired.
+    /// Releases escrow to beneficiary if not expired.
     pub fn release_escrow(ctx: Context<ReleaseEscrow>) -> Result<()> {
         let escrow = &ctx.accounts.escrow;
+
         require!(Clock::get()?.slot <= escrow.expiry, EscrowError::Expired);
 
-        system_program::transfer(
-            CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
-                system_program::Transfer {
-                    from: ctx.accounts.escrow.to_account_info(),
-                    to: ctx.accounts.beneficiary.to_account_info(),
-                },
+        // Transfer lamports from PDA to beneficiary
+        invoke_signed(
+            &system_instruction::transfer(
+                &ctx.accounts.escrow.key(),
+                &ctx.accounts.beneficiary.key(),
+                escrow.amount,
             ),
-            escrow.amount,
+            &[
+                ctx.accounts.escrow.to_account_info(),
+                ctx.accounts.beneficiary.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            &[&[
+                b"escrow",
+                ctx.accounts.depositor.key.as_ref(),
+                ctx.accounts.beneficiary.key.as_ref(),
+                &[escrow.bump],
+            ]],
         )?;
 
         Ok(())
     }
 
-    /// Unlocks escrowed funds, transferring to the depositor after expiry.
+    /// Refunds escrow to depositor if expired.
     pub fn refund_escrow(ctx: Context<RefundEscrow>) -> Result<()> {
         let escrow = &ctx.accounts.escrow;
+
         require!(
             Clock::get()?.slot > escrow.expiry,
             EscrowError::NotYetExpired
         );
 
-        system_program::transfer(
-            CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
-                system_program::Transfer {
-                    from: ctx.accounts.escrow.to_account_info(),
-                    to: ctx.accounts.depositor.to_account_info(),
-                },
+        // Transfer lamports from PDA to depositor
+        invoke_signed(
+            &system_instruction::transfer(
+                &ctx.accounts.escrow.key(),
+                &ctx.accounts.depositor.key(),
+                escrow.amount,
             ),
-            escrow.amount,
+            &[
+                ctx.accounts.escrow.to_account_info(),
+                ctx.accounts.depositor.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+            ],
+            &[&[
+                b"escrow",
+                ctx.accounts.depositor.key.as_ref(),
+                ctx.accounts.beneficiary.key.as_ref(),
+                &[escrow.bump],
+            ]],
         )?;
 
         Ok(())
@@ -77,64 +101,72 @@ pub mod escrow {
 
 #[account]
 pub struct EscrowAccount {
-    depositor: Pubkey,
-    beneficiary: Pubkey,
-    amount: u64,
-    expiry: u64,
+    pub depositor: Pubkey,
+    pub beneficiary: Pubkey,
+    pub amount: u64,
+    pub expiry: u64,
+    pub bump: u8,
 }
 
 #[derive(Accounts)]
+#[instruction(amount: u64)]
 pub struct CreateEscrow<'info> {
     #[account(mut)]
-    depositor: Signer<'info>,
-    /// CHECK: The beneficiary account is stored in the escrow and
-    /// validated during release.
-    beneficiary: AccountInfo<'info>,
+    pub depositor: Signer<'info>,
+
+    pub beneficiary: SystemAccount<'info>,
+
     #[account(
         init,
         payer = depositor,
-        space = 8 + 32 + 32 + 8 + 8
+        space = 8 + 32 + 32 + 8 + 8 + 1,
+        seeds = [b"escrow", depositor.key().as_ref(), beneficiary.key().as_ref()],
+        bump
     )]
-    escrow: Account<'info, EscrowAccount>,
-    system_program: Program<'info, System>,
+    pub escrow: Account<'info, EscrowAccount>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct ReleaseEscrow<'info> {
-    /// CHECK: The depositor account is derived from the escrow.
+    /// Used to validate PDA
+    pub depositor: SystemAccount<'info>,
+
     #[account(mut)]
-    depositor: AccountInfo<'info>,
-    /// CHECK: Checked via address constraint to match escrow's beneficiary.
-    #[account(
-        mut,
-        address = escrow.beneficiary
-    )]
-    beneficiary: AccountInfo<'info>,
+    pub beneficiary: SystemAccount<'info>,
+
     #[account(
         mut,
         close = depositor,
+        seeds = [b"escrow", depositor.key().as_ref(), beneficiary.key().as_ref()],
+        bump = escrow.bump,
         has_one = depositor @ EscrowError::InvalidDepositor,
         has_one = beneficiary @ EscrowError::InvalidBeneficiary
     )]
-    escrow: Account<'info, EscrowAccount>,
-    system_program: Program<'info, System>,
+    pub escrow: Account<'info, EscrowAccount>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
 pub struct RefundEscrow<'info> {
-    /// CHECK: Checked via address constraint to match escrow's depositor.
-    #[account(
-        mut,
-        address = escrow.depositor
-    )]
-    depositor: AccountInfo<'info>,
+    #[account(mut)]
+    pub depositor: SystemAccount<'info>,
+
+    pub beneficiary: SystemAccount<'info>,
+
     #[account(
         mut,
         close = depositor,
-        has_one = depositor @ EscrowError::InvalidDepositor
+        seeds = [b"escrow", depositor.key().as_ref(), beneficiary.key().as_ref()],
+        bump = escrow.bump,
+        has_one = depositor @ EscrowError::InvalidDepositor,
+        has_one = beneficiary @ EscrowError::InvalidBeneficiary
     )]
-    escrow: Account<'info, EscrowAccount>,
-    system_program: Program<'info, System>,
+    pub escrow: Account<'info, EscrowAccount>,
+
+    pub system_program: Program<'info, System>,
 }
 
 #[error_code]
@@ -143,8 +175,8 @@ pub enum EscrowError {
     Expired,
     #[msg("Escrow has not yet expired.")]
     NotYetExpired,
-    #[msg("Invalid depositor account")]
+    #[msg("Invalid depositor account.")]
     InvalidDepositor,
-    #[msg("Invalid beneficiary account")]
+    #[msg("Invalid beneficiary account.")]
     InvalidBeneficiary,
 }
