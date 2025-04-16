@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program::invoke_signed;
-use anchor_lang::solana_program::system_instruction;
+// use anchor_lang::solana_program::program::invoke_signed;
+// use anchor_lang::solana_program::system_instruction;
 use anchor_lang::system_program;
 
 declare_id!("8uMq5t5rot6EqrnmubFsVth4ccSwgrDh4SsKvSDY4GQT");
@@ -34,6 +34,7 @@ pub mod escrow {
             amount,
         )?;
 
+        msg!("Escrow created with amount: {} lamports", amount);
         Ok(())
     }
 
@@ -43,26 +44,29 @@ pub mod escrow {
 
         require!(Clock::get()?.slot <= escrow.expiry, EscrowError::Expired);
 
-        // Transfer lamports from PDA to beneficiary
-        invoke_signed(
-            &system_instruction::transfer(
-                &ctx.accounts.escrow.key(),
-                &ctx.accounts.beneficiary.key(),
-                escrow.amount,
-            ),
-            &[
-                ctx.accounts.escrow.to_account_info(),
-                ctx.accounts.beneficiary.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-            &[&[
-                b"escrow",
-                ctx.accounts.depositor.key.as_ref(),
-                ctx.accounts.beneficiary.key.as_ref(),
-                &[escrow.bump],
-            ]],
-        )?;
+        // // Transfer lamports from PDA to beneficiary
+        // invoke_signed(
+        //     &system_instruction::transfer(
+        //         &ctx.accounts.escrow.key(),
+        //         &ctx.accounts.beneficiary.key(),
+        //         escrow.amount,
+        //     ),
+        //     &[
+        //         ctx.accounts.escrow.to_account_info(),
+        //         ctx.accounts.beneficiary.to_account_info(),
+        //         ctx.accounts.system_program.to_account_info(),
+        //     ],
+        //     &[&[
+        //         b"escrow",
+        //         ctx.accounts.depositor.key.as_ref(),
+        //         ctx.accounts.beneficiary.key.as_ref(),
+        //         &[escrow.bump],
+        //     ]],
+        // )?;
 
+        // The `close = beneficiary` constraint handles the
+        // funds transfer
+        msg!("Releasing {} lamports to beneficiary", escrow.amount);
         Ok(())
     }
 
@@ -75,26 +79,29 @@ pub mod escrow {
             EscrowError::NotYetExpired
         );
 
-        // Transfer lamports from PDA to depositor
-        invoke_signed(
-            &system_instruction::transfer(
-                &ctx.accounts.escrow.key(),
-                &ctx.accounts.depositor.key(),
-                escrow.amount,
-            ),
-            &[
-                ctx.accounts.escrow.to_account_info(),
-                ctx.accounts.depositor.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-            ],
-            &[&[
-                b"escrow",
-                ctx.accounts.depositor.key.as_ref(),
-                ctx.accounts.beneficiary.key.as_ref(),
-                &[escrow.bump],
-            ]],
-        )?;
+        // // Transfer lamports from PDA to depositor
+        // invoke_signed(
+        //     &system_instruction::transfer(
+        //         &ctx.accounts.escrow.key(),
+        //         &ctx.accounts.depositor.key(),
+        //         escrow.amount,
+        //     ),
+        //     &[
+        //         ctx.accounts.escrow.to_account_info(),
+        //         ctx.accounts.depositor.to_account_info(),
+        //         ctx.accounts.system_program.to_account_info(),
+        //     ],
+        //     &[&[
+        //         b"escrow",
+        //         ctx.accounts.depositor.key.as_ref(),
+        //         ctx.accounts.beneficiary.key.as_ref(),
+        //         &[escrow.bump],
+        //     ]],
+        // )?;
 
+        // The `close = depositor` constraint handles the
+        // funds transfer
+        msg!("Refunding {} lamports to depositor", escrow.amount);
         Ok(())
     }
 }
