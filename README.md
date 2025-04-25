@@ -23,6 +23,11 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized generic implementation 
 2. Once confirmed, the funds are sent to the escrow component of the on-chain `adapter` (currently a Solana program or an EVM smart contract) where the funds are locked.
 3. The transaction metadata are submitted to the `prover` which executes and cryptographically attests to the validity of the escrow release logic. A receipt (i.e., ZK proof) of the computation is generated.
 4. The receipt is submitted to the verifier component of the on-chain adapter for verification, using the appropriate RISC0 verifier (e.g., `risc0-ethereum`, `risc0-solana`).
+
+    Zooming in on the proof generation flow, here's the interaction between the `prover` and the on-chain `adapters`:
+
+    ![Proof generation flow diagram](./assets/proof-gen-flow.png)
+
 5. If the receipt validates, the specified timeout is not expired, and all other escrow conditions are satisfied, the on-chain escrow adapter releases the funds to the beneficiary, else the funds remain locked until the original depositor withdraws.
 6. For a regular timeout expiration, the depositor must also explicitly trigger a withdrawal.
 

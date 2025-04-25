@@ -54,14 +54,15 @@ impl Escrow {
 
     /// Refund the depositor if escrow's timeout has expired.
     pub fn refund(&mut self, current_block: u64) -> Result<()> {
-        if self.state != EscrowState::Funded {
-            return Err(EscrowError::InvalidState);
-        }
-        if current_block <= self.expiry_block {
+        if !self.is_expired(current_block) {
             return Err(EscrowError::NotExpired);
         }
 
         self.state = EscrowState::Expired;
         Ok(())
+    }
+
+    fn is_expired(&self, current_block: u64) -> bool {
+        current_block > self.expiry_block
     }
 }
