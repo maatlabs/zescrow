@@ -3,3 +3,7 @@ Cargo.lock
 methods/guest/Cargo.lock
 target/
 test-ledger
+
+chain_config.json
+escrow_metadata.json
+escrow_params.json

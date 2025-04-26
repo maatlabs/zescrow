@@ -1,3 +1,5 @@
+pub type Result<T> = std::result::Result<T, ClientError>;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ClientError {
     #[error("Unsupported chain: {0}")]

@@ -22,6 +22,8 @@ async fn main() -> anyhow::Result<()> {
             outfile,
         } => {
             let chain = Chain::from_str(&chain)?;
+            // For reuse later when executing `Release` or `Refund` commands
+            std::env::set_var("CHAIN_CONFIG_PATH", config.to_str().unwrap());
             let config = load_escrow_input_data::<ChainConfig>(&config)?;
             let params = load_escrow_input_data::<EscrowParams>(&params)?;
 

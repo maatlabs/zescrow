@@ -8,23 +8,33 @@ use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
 
-use crate::error::ClientError;
-use crate::interface::ChainConfig;
+use crate::error::{ClientError, Result};
+use crate::interface::{ChainConfig, EscrowMetadata, EscrowParams};
+use crate::Agent;
 
+/// Escrow agent for interacting with the Ethereum network
 pub struct EthereumAgent {
+    /// Ethereum JSON-RPC provider
     pub provider: Provider<Http>,
+    /// Wallet for signing transactions
     pub wallet: LocalWallet,
+    /// On-chain escrow smart contract address
     pub contract_address: Address,
 }
 
+/// Escrow agent for interacting with the Solana network
 pub struct SolanaAgent {
+    /// JSON-RPC client of a remote Solana node
     pub client: RpcClient,
+    /// Path to a Solana keypair
+    /// for signing transactions
     pub payer: Keypair,
+    /// On-chain escrow program ID
     pub program_id: Pubkey,
 }
 
 impl EthereumAgent {
-    pub fn new(config: ChainConfig) -> Result<Self, ClientError> {
+    pub fn new(config: ChainConfig) -> Result<Self> {
         let ChainConfig::Ethereum {
             rpc_url,
             private_key,
@@ -42,8 +52,23 @@ impl EthereumAgent {
     }
 }
 
+#[async_trait::async_trait]
+impl Agent for EthereumAgent {
+    async fn create_escrow(&self, _params: &EscrowParams) -> Result<EscrowMetadata> {
+        todo!()
+    }
+
+    async fn release_escrow(&self, _metadata: &EscrowMetadata) -> Result<()> {
+        todo!()
+    }
+
+    async fn refund_escrow(&self, _metadata: &EscrowMetadata) -> Result<()> {
+        todo!()
+    }
+}
+
 impl SolanaAgent {
-    pub fn new(config: ChainConfig) -> Result<Self, ClientError> {
+    pub fn new(config: ChainConfig) -> Result<Self> {
         let ChainConfig::Solana {
             rpc_url,
             keypair_path,
@@ -59,5 +84,20 @@ impl SolanaAgent {
                 .map_err(|e| ClientError::Keypair(e.to_string()))?,
             program_id: Pubkey::from_str(&program_id)?,
         })
+    }
+}
+
+#[async_trait::async_trait]
+impl Agent for SolanaAgent {
+    async fn create_escrow(&self, _params: &EscrowParams) -> Result<EscrowMetadata> {
+        todo!()
+    }
+
+    async fn release_escrow(&self, _metadata: &EscrowMetadata) -> Result<()> {
+        todo!()
+    }
+
+    async fn refund_escrow(&self, _metadata: &EscrowMetadata) -> Result<()> {
+        todo!()
     }
 }
