@@ -1,8 +1,31 @@
+use std::fs::File;
+use std::path::PathBuf;
 use std::str::FromStr;
 
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
 use crate::error::ClientError;
+
+pub fn load_escrow_input_data<T>(path: &PathBuf) -> anyhow::Result<T>
+where
+    T: DeserializeOwned,
+{
+    let file = File::open(path)?;
+    Ok(serde_json::from_reader(file)?)
+}
+
+pub fn save_escrow_metadata<T>(path: &PathBuf, data: &T) -> anyhow::Result<()>
+where
+    T: Serialize,
+{
+    let file = File::create(path)?;
+    Ok(serde_json::to_writer_pretty(file, data)?)
+}
+
+pub fn load_chain_config(_metadata: &EscrowMetadata) -> anyhow::Result<ChainConfig> {
+    todo!()
+}
 
 /// Escrow initialization inputs.
 #[derive(Debug, Serialize, Deserialize)]
