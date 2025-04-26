@@ -11,15 +11,14 @@ use crate::{EscrowError, Result};
 /// State transitions:
 ///
 /// ```text
-/// Initialized → Funded → Completed
-///             ↘      ↙
-///             Disputed (Expired)
+/// Funded → Released
+///    ↘      ↙
+///    Expired
 /// ```
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum EscrowState {
-    Initialized,
     Funded,
-    Completed,
+    Released,
     Expired,
 }
 
@@ -48,7 +47,7 @@ impl Escrow {
         }
 
         self.condition.verify(Some(current_block))?;
-        self.state = EscrowState::Completed;
+        self.state = EscrowState::Released;
         Ok(self.state)
     }
 

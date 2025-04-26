@@ -37,7 +37,7 @@ fn main() {
 
     match receipt.journal.decode::<EscrowState>() {
         Ok(escrow_state) => {
-            if escrow_state == EscrowState::Completed {
+            if escrow_state == EscrowState::Released {
                 println!("\nEscrow executed successfully!\n");
             } else {
                 println!(
