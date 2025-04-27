@@ -6,6 +6,8 @@ use anyhow::Context;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+use crate::error::{ClientError, Result};
+
 /// Reads JSON-encoded escrow params and chain-specific configs
 /// from the given `path`.
 pub fn load_escrow_input_data<P, T>(path: P) -> anyhow::Result<T>
@@ -79,6 +81,16 @@ pub enum ChainMetadata {
     },
 }
 
+impl ChainMetadata {
+    /// Get PDA for Solana escrows
+    pub fn get_pda(&self) -> Result<&str> {
+        match self {
+            ChainMetadata::Solana { pda, .. } => Ok(pda),
+            _ => Err(ClientError::InvalidChainOperation),
+        }
+    }
+}
+
 /// Chain-specific network configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -133,8 +145,6 @@ pub struct EscrowMetadata {
     pub amount: u64,
     /// Expiration block/slot
     pub expiry: u64,
-    /// The full config used to create the escrow
-    pub config: ChainConfig,
     /// Chain-specific metadata for smart contracts/programs
     #[serde(flatten)]
     pub chain_data: ChainMetadata,

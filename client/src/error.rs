@@ -16,6 +16,10 @@ pub enum ClientError {
     UrlParse(#[from] url::ParseError),
     #[error("Address parse error")]
     AddressParse(#[from] rustc_hex::FromHexError),
+    #[error("Invalid chain operation")]
+    InvalidChainOperation,
+    #[error("RPC client error")]
+    SolanaRpcClient(#[from] solana_client::client_error::ClientError),
 }
 
 impl From<ethers::providers::ProviderError> for ClientError {

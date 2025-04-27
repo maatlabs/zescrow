@@ -3,8 +3,6 @@ use anchor_lang::system_program;
 
 declare_id!("8uMq5t5rot6EqrnmubFsVth4ccSwgrDh4SsKvSDY4GQT");
 
-/// Expiry in slots added to the current slot.
-pub const ESCROW_EXPIRY: u64 = 50;
 pub const ESCROW_PREFIX: &str = "escrow";
 
 #[program]
@@ -12,13 +10,15 @@ pub mod escrow {
     use super::*;
 
     /// Initializes a PDA escrow account funded by the depositor.
-    pub fn create_escrow(ctx: Context<CreateEscrow>, amount: u64) -> Result<()> {
+    /// The `expiry` argument refers denotes the number of slots
+    /// after which the escrow expires.
+    pub fn create_escrow(ctx: Context<CreateEscrow>, amount: u64, expiry: u64) -> Result<()> {
         let escrow = &mut ctx.accounts.escrow;
 
         escrow.depositor = ctx.accounts.depositor.key();
         escrow.beneficiary = ctx.accounts.beneficiary.key();
         escrow.amount = amount;
-        escrow.expiry = Clock::get()?.slot + ESCROW_EXPIRY;
+        escrow.expiry = Clock::get()?.slot + expiry;
         escrow.bump = ctx.bumps.escrow;
 
         // Transfer lamports from depositor to the escrow PDA

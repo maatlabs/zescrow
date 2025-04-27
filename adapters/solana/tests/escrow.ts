@@ -12,6 +12,8 @@ describe("escrow", () => {
     const program = anchor.workspace.Escrow as Program<Escrow>;
 
     const ESCROW_AMOUNT = new BN(LAMPORTS_PER_SOL);
+    const ESCROW_EXPIRY = new BN(5);
+
     const depositor = Keypair.generate();
     let beneficiary: PublicKey;
     let escrowPda: PublicKey;
@@ -32,7 +34,7 @@ describe("escrow", () => {
         );
 
         await program.methods
-            .createEscrow(ESCROW_AMOUNT)
+            .createEscrow(ESCROW_AMOUNT, ESCROW_EXPIRY)
             .accounts({
                 depositor: depositor.publicKey,
                 beneficiary: beneficiary,
@@ -77,7 +79,7 @@ describe("escrow", () => {
         );
 
         await program.methods
-            .createEscrow(ESCROW_AMOUNT)
+            .createEscrow(ESCROW_AMOUNT, ESCROW_EXPIRY)
             .accounts({
                 depositor: depositor.publicKey,
                 beneficiary: newBeneficiary,
