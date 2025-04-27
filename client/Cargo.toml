@@ -8,9 +8,12 @@ name = "zescrow-cli"
 path = "src/main.rs"
 
 [dependencies]
+anchor-lang = "0.31.1"
+anchor-client = "0.31.1"
 anyhow = "1.0.98"
 async-trait = "0.1.88"
 clap = { version = "4.5.37", features = ["derive"] }
+
 ethers = { version = "2.0.14", features = ["rustls"] }
 rustc-hex = "2.1.0"
 serde = { version = "1.0.219", features = ["derive"] }

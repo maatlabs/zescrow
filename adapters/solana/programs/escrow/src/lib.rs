@@ -5,6 +5,7 @@ declare_id!("8uMq5t5rot6EqrnmubFsVth4ccSwgrDh4SsKvSDY4GQT");
 
 /// Expiry in slots added to the current slot.
 pub const ESCROW_EXPIRY: u64 = 50;
+pub const ESCROW_PREFIX: &str = "escrow";
 
 #[program]
 pub mod escrow {
@@ -31,7 +32,6 @@ pub mod escrow {
             ),
             amount,
         )?;
-
         msg!("Escrow created with amount: {} lamports", amount);
         Ok(())
     }
@@ -85,12 +85,16 @@ pub struct CreateEscrow<'info> {
         init,
         payer = depositor,
         space = 8 + 32 + 32 + 8 + 8 + 1,
-        seeds = [b"escrow", depositor.key().as_ref(), beneficiary.key().as_ref()],
+        seeds = [ESCROW_PREFIX.as_bytes(), depositor.key().as_ref(), beneficiary.key().as_ref()],
         bump
     )]
     pub escrow: Account<'info, EscrowAccount>,
 
+    /// The built-in Solana system program.
     pub system_program: Program<'info, System>,
+
+    /// The Solana sysvar to fetch the current slot number.
+    pub clock: Sysvar<'info, Clock>,
 }
 
 #[derive(Accounts)]
@@ -104,14 +108,18 @@ pub struct ReleaseEscrow<'info> {
     #[account(
         mut,
         close = beneficiary,
-        seeds = [b"escrow", depositor.key().as_ref(), beneficiary.key().as_ref()],
+        seeds = [ESCROW_PREFIX.as_bytes(), depositor.key().as_ref(), beneficiary.key().as_ref()],
         bump = escrow.bump,
         has_one = depositor @ EscrowError::InvalidDepositor,
         has_one = beneficiary @ EscrowError::InvalidBeneficiary
     )]
     pub escrow: Account<'info, EscrowAccount>,
 
+    /// The built-in Solana system program.
     pub system_program: Program<'info, System>,
+
+    /// The Solana sysvar to fetch the current slot number.
+    pub clock: Sysvar<'info, Clock>,
 }
 
 #[derive(Accounts)]
@@ -124,14 +132,18 @@ pub struct RefundEscrow<'info> {
     #[account(
         mut,
         close = depositor,
-        seeds = [b"escrow", depositor.key().as_ref(), beneficiary.key().as_ref()],
+        seeds = [ESCROW_PREFIX.as_bytes(), depositor.key().as_ref(), beneficiary.key().as_ref()],
         bump = escrow.bump,
         has_one = depositor @ EscrowError::InvalidDepositor,
         has_one = beneficiary @ EscrowError::InvalidBeneficiary
     )]
     pub escrow: Account<'info, EscrowAccount>,
 
+    /// The built-in Solana system program.
     pub system_program: Program<'info, System>,
+
+    /// The Solana sysvar to fetch the current slot number.
+    pub clock: Sysvar<'info, Clock>,
 }
 
 #[error_code]

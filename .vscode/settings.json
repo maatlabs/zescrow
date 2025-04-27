@@ -4,8 +4,7 @@
         // "methods/Cargo.toml",
         // "methods/guest/Cargo.toml",
         // "prover/Cargo.toml",
-        "adapters/solana/escrow/Cargo.toml",
-        "adapters/solana/escrow/programs/escrow/Cargo.toml",
+        "adapters/solana/programs/escrow/Cargo.toml",
         "client/Cargo.toml"
     ],
     "rust-analyzer.check.overrideCommand": [

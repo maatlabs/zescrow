@@ -133,8 +133,6 @@ pub struct EscrowMetadata {
     pub amount: u64,
     /// Expiration block/slot
     pub expiry: u64,
-    /// Escrow transaction ID
-    pub tx_id: String,
     /// The full config used to create the escrow
     pub config: ChainConfig,
     /// Chain-specific metadata for smart contracts/programs
