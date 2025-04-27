@@ -1,69 +1,47 @@
 use std::fs::File;
-use std::path::PathBuf;
-use std::str::FromStr;
+use std::io::ErrorKind;
+use std::path::Path;
 
 use anyhow::Context;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use crate::error::ClientError;
-
-pub fn load_escrow_input_data<T>(path: &PathBuf) -> anyhow::Result<T>
+pub fn load_escrow_input_data<P, T>(path: P) -> anyhow::Result<T>
 where
+    P: AsRef<Path>,
     T: DeserializeOwned,
 {
-    let file = File::open(path)?;
-    Ok(serde_json::from_reader(file)?)
+    let path = path.as_ref();
+    let file = match File::open(path) {
+        Ok(f) => f,
+        Err(e) if e.kind() == ErrorKind::NotFound => {
+            anyhow::bail!(
+                "Input file {:?} not found. 
+                You can create one with `zescrow-cli init` or pass
+                --config/--params explicitly.",
+                path
+            );
+        }
+        Err(e) => return Err(e).context(format!("opening file {:?}", path)),
+    };
+    serde_json::from_reader(file).with_context(|| format!("parsing JSON from {:?}", path))
 }
 
-pub fn save_escrow_metadata<T>(path: &PathBuf, data: &T) -> anyhow::Result<()>
+pub fn save_escrow_metadata<P, T>(path: P, data: &T) -> anyhow::Result<()>
 where
+    P: AsRef<Path>,
     T: Serialize,
 {
-    let file = File::create(path)?;
-    Ok(serde_json::to_writer_pretty(file, data)?)
-}
+    let path = path.as_ref();
 
-pub fn load_chain_config(metadata: &EscrowMetadata) -> anyhow::Result<ChainConfig> {
-    // Get original config path from environment (set during escrow creation)
-    let config_path =
-        std::env::var("CHAIN_CONFIG_PATH").context("Missing CHAIN_CONFIG_PATH env variable")?;
-    let config = load_escrow_input_data::<ChainConfig>(&PathBuf::from(config_path))?;
-
-    match (config, &metadata.chain_data) {
-        (
-            ChainConfig::Ethereum {
-                rpc_url,
-                private_key,
-                ..
-            },
-            ChainMetadata::Ethereum {
-                contract_address,
-                block_number: _,
-            },
-        ) => Ok(ChainConfig::Ethereum {
-            rpc_url,
-            private_key,
-            contract_address: contract_address.clone(),
-        }),
-        (
-            ChainConfig::Solana {
-                rpc_url,
-                keypair_path,
-                ..
-            },
-            ChainMetadata::Solana {
-                program_id,
-                pda: _,
-                bump: _,
-            },
-        ) => Ok(ChainConfig::Solana {
-            rpc_url,
-            keypair_path,
-            program_id: program_id.clone(),
-        }),
-        _ => Err(anyhow::anyhow!("Chain config and chain metadata mismatch")),
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating directory {:?}", parent))?;
     }
+
+    let file = File::create(path).with_context(|| format!("creating file {:?}", path))?;
+    serde_json::to_writer_pretty(file, data)
+        .with_context(|| format!("serializing to JSON to {:?}", path))
 }
 
 /// Escrow input parameters
@@ -96,31 +74,22 @@ pub struct EscrowMetadata {
     pub expiry: u64,
     /// Escrow transaction ID
     pub tx_id: String,
+    /// The full config used to create the escrow
+    pub config: ChainConfig,
     /// Chain-specific metadata
+    /// returned from escrow creation
     #[serde(flatten)]
     pub chain_data: ChainMetadata,
 }
 
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Chain {
     Ethereum,
     Solana,
 }
 
-impl FromStr for Chain {
-    type Err = ClientError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "ethereum" => Ok(Self::Ethereum),
-            "solana" => Ok(Self::Solana),
-            _ => Err(ClientError::UnsupportedChain(s.into())),
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ChainMetadata {
     Ethereum {
@@ -142,7 +111,7 @@ pub enum ChainConfig {
     Ethereum {
         /// JSON-RPC endpoint URL
         rpc_url: String,
-        /// Hex-encoded private key
+        /// Private key
         /// in wallet import format (WIF)
         private_key: String,
         /// Escrow smart contract address

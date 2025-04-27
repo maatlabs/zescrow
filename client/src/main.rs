@@ -1,12 +1,14 @@
 use std::path::PathBuf;
-use std::str::FromStr;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueHint};
 use zescrow_client::interface::{
-    load_chain_config, load_escrow_input_data, save_escrow_metadata, Chain, ChainConfig,
-    EscrowMetadata, EscrowParams,
+    load_escrow_input_data, save_escrow_metadata, Chain, ChainConfig, EscrowMetadata, EscrowParams,
 };
 use zescrow_client::ZescrowClient;
+
+const DEFAULT_CHAIN_CONFIG_PATH: &str = "./chain_config.json";
+const DEFAULT_ESCROW_PARAMS_PATH: &str = "./escrow_params.json";
+const DEFAULT_ESCROW_METADATA_PATH: &str = "./escrow_metadata.json";
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -21,31 +23,28 @@ async fn main() -> anyhow::Result<()> {
             params,
             outfile,
         } => {
-            let chain = Chain::from_str(&chain)?;
-            // For reuse later when executing `Release` or `Refund` commands
-            std::env::set_var("CHAIN_CONFIG_PATH", config.to_str().unwrap());
-            let config = load_escrow_input_data::<ChainConfig>(&config)?;
-            let params = load_escrow_input_data::<EscrowParams>(&params)?;
+            let config: ChainConfig = load_escrow_input_data(&config)?;
+            let params: EscrowParams = load_escrow_input_data(&params)?;
 
-            let client = ZescrowClient::new(chain, config)?;
-            let metadata = client.create_escrow(&params).await?;
+            let client = ZescrowClient::new(chain, config.clone())?;
+            let mut metadata = client.create_escrow(&params).await?;
+            // For reuse later during `Release` or `Refund`
+            metadata.config = config;
 
             save_escrow_metadata(&outfile, &metadata)?;
             tracing::info!("Escrow created successfully");
         }
         Commands::Release { metadata } => {
-            let metadata = load_escrow_input_data::<EscrowMetadata>(&metadata)?;
-            let config = load_chain_config(&metadata)?;
+            let metadata: EscrowMetadata = load_escrow_input_data(&metadata)?;
 
-            let client = ZescrowClient::new(metadata.chain, config)?;
+            let client = ZescrowClient::new(metadata.chain, metadata.config.clone())?;
             client.release_escrow(&metadata).await?;
             tracing::info!("Escrow released successfully");
         }
         Commands::Refund { metadata } => {
-            let metadata = load_escrow_input_data::<EscrowMetadata>(&metadata)?;
-            let config = load_chain_config(&metadata)?;
+            let metadata: EscrowMetadata = load_escrow_input_data(&metadata)?;
 
-            let client = ZescrowClient::new(metadata.chain, config)?;
+            let client = ZescrowClient::new(metadata.chain, metadata.config.clone())?;
             client.refund_escrow(&metadata).await?;
             tracing::info!("Escrow refunded successfully");
         }
@@ -65,21 +64,39 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Create {
-        #[arg(short, long)]
-        chain: String,
-        #[arg(short, long)]
+        #[arg(short, long, value_enum)]
+        chain: Chain,
+
+        #[arg(short, long,
+            value_parser,
+            default_value = DEFAULT_CHAIN_CONFIG_PATH,
+            value_hint = ValueHint::FilePath)]
         config: PathBuf,
-        #[arg(short, long)]
+
+        #[arg(short, long,
+            value_parser,
+            default_value = DEFAULT_ESCROW_PARAMS_PATH,
+            value_hint = ValueHint::FilePath)]
         params: PathBuf,
-        #[arg(short, long)]
+
+        #[arg(short, long,
+            value_parser,
+            default_value = DEFAULT_ESCROW_METADATA_PATH,
+            value_hint = ValueHint::FilePath)]
         outfile: PathBuf,
     },
     Release {
-        #[arg(short, long)]
+        #[arg(short, long,
+            value_parser,
+            default_value = DEFAULT_ESCROW_METADATA_PATH,
+            value_hint = ValueHint::FilePath)]
         metadata: PathBuf,
     },
     Refund {
-        #[arg(short, long)]
+        #[arg(short, long,
+            value_parser,
+            default_value = DEFAULT_ESCROW_METADATA_PATH,
+            value_hint = ValueHint::FilePath)]
         metadata: PathBuf,
     },
 }
