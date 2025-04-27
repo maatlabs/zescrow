@@ -1,5 +1,4 @@
 use agents::{EthereumAgent, SolanaAgent};
-use async_trait::async_trait;
 use error::Result;
 use interface::{Chain, ChainConfig, EscrowMetadata, EscrowParams};
 
@@ -13,7 +12,7 @@ pub mod interface;
 /// - Creating escrow contracts/accounts
 /// - Releasing funds to beneficiaries
 /// - Refunding expired escrows
-#[async_trait]
+#[async_trait::async_trait]
 pub trait Agent: Send + Sync {
     /// Create a new escrow with specified parameters
     ///
