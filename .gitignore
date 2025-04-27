@@ -4,7 +4,4 @@ methods/guest/Cargo.lock
 target/
 test-ledger
 
-templates/
-# chain_config.json
-# escrow_metadata.json
-# escrow_params.json
+templates/escrow_metadata.json

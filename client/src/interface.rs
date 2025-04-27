@@ -6,6 +6,8 @@ use anyhow::Context;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
+/// Reads JSON-encoded escrow params and chain-specific configs
+/// from the given `path`.
 pub fn load_escrow_input_data<P, T>(path: P) -> anyhow::Result<T>
 where
     P: AsRef<Path>,
@@ -16,9 +18,9 @@ where
         Ok(f) => f,
         Err(e) if e.kind() == ErrorKind::NotFound => {
             anyhow::bail!(
-                "Input file {:?} not found. 
-                You can create one with `zescrow-cli init` or pass
-                --config/--params explicitly.",
+                "Input file {:?} not found.
+                Please run `zescrow-cli init --chain <chain>`
+                or create it manually.",
                 path
             );
         }
@@ -27,68 +29,42 @@ where
     serde_json::from_reader(file).with_context(|| format!("parsing JSON from {:?}", path))
 }
 
+/// Writes JSON-encoded `data` to the given `path`,
+/// creating parent directories as needed.
 pub fn save_escrow_metadata<P, T>(path: P, data: &T) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
     T: Serialize,
 {
     let path = path.as_ref();
-
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("creating directory {:?}", parent))?;
     }
-
     let file = File::create(path).with_context(|| format!("creating file {:?}", path))?;
     serde_json::to_writer_pretty(file, data)
         .with_context(|| format!("serializing to JSON to {:?}", path))
 }
 
-/// Escrow input parameters
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EscrowParams {
-    /// Target blockchain network
-    pub chain: Chain,
-    /// Depositor's blockchain address
-    pub depositor: String,
-    /// Beneficiary's blockchain address
-    pub beneficiary: String,
-    /// Escrow amount in native token units
-    pub amount: u64,
-    /// Expiration block/slot number
-    pub expiry: u64,
-}
-
-/// Result of escrow creation, release, or refund.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct EscrowMetadata {
-    /// Original blockchain network
-    pub chain: Chain,
-    /// Depositor's address
-    pub depositor: String,
-    /// Beneficiary's address
-    pub beneficiary: String,
-    /// Locked amount
-    pub amount: u64,
-    /// Expiration block/slot
-    pub expiry: u64,
-    /// Escrow transaction ID
-    pub tx_id: String,
-    /// The full config used to create the escrow
-    pub config: ChainConfig,
-    /// Chain-specific metadata
-    /// returned from escrow creation
-    #[serde(flatten)]
-    pub chain_data: ChainMetadata,
-}
-
+/// Target blockchains
 #[derive(Debug, Copy, Clone, Serialize, Deserialize, clap::ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum Chain {
+    // Ethereum and other EVM-compatible chains
     Ethereum,
     Solana,
 }
 
+impl AsRef<str> for Chain {
+    fn as_ref(&self) -> &str {
+        match self {
+            Chain::Ethereum => "ethereum",
+            Chain::Solana => "solana",
+        }
+    }
+}
+
+/// Chain-specific metadata for smart contracts/programs
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ChainMetadata {
@@ -126,4 +102,42 @@ pub enum ChainConfig {
         /// Program ID for escrow program
         program_id: String,
     },
+}
+
+/// Parameters for creating an escrow
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EscrowParams {
+    /// Target blockchain network
+    pub chain: Chain,
+    /// Depositor's blockchain address
+    pub depositor: String,
+    /// Beneficiary's blockchain address
+    pub beneficiary: String,
+    /// Escrow amount in native token units
+    pub amount: u64,
+    /// Expiration block/slot number
+    pub expiry: u64,
+}
+
+/// Metadata returned from escrow creation and
+/// used for release/refund commands
+#[derive(Debug, Serialize, Deserialize)]
+pub struct EscrowMetadata {
+    /// Original blockchain network
+    pub chain: Chain,
+    /// Depositor's address
+    pub depositor: String,
+    /// Beneficiary's address
+    pub beneficiary: String,
+    /// Locked amount
+    pub amount: u64,
+    /// Expiration block/slot
+    pub expiry: u64,
+    /// Escrow transaction ID
+    pub tx_id: String,
+    /// The full config used to create the escrow
+    pub config: ChainConfig,
+    /// Chain-specific metadata for smart contracts/programs
+    #[serde(flatten)]
+    pub chain_data: ChainMetadata,
 }

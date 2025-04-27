@@ -1,0 +1,7 @@
+{
+    "chain": "Which chain to use: 'solana' or 'ethereum'",
+    "depositor": "Public address or wallet/pubkey string of the depositor",
+    "beneficiary": "Public address or wallet/pubkey string of the beneficiary",
+    "amount": 100,
+    "expiry": 12345678
+}

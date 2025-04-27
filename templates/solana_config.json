@@ -1,0 +1,5 @@
+{
+    "rpc_url": "JSON-RPC endpoint for the Solana cluster",
+    "keypair_path": "Path (relative to project root or absolute) to your Solana keypair file",
+    "program_id": "The on-chain Program ID for your deployed escrow program"
+}
