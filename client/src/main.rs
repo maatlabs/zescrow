@@ -1,10 +1,9 @@
 use clap::{Parser, Subcommand};
 use zescrow_client::interface::{
-    load_escrow_input_data, save_escrow_metadata, Chain, ChainConfig, EscrowMetadata, EscrowParams,
+    load_chain_config, load_escrow_input_data, save_escrow_metadata, EscrowMetadata, EscrowParams,
 };
 use zescrow_client::ZescrowClient;
 
-const TEMPLATES_DIR: &str = "templates";
 const ESCROW_PARAMS_PATH: &str = "templates/escrow_params.json";
 const ESCROW_METADATA_PATH: &str = "templates/escrow_metadata.json";
 
@@ -39,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Create => {
             let params: EscrowParams = load_escrow_input_data(ESCROW_PARAMS_PATH)?;
-            let config = get_chain_config(params.chain)?;
+            let config = load_chain_config(params.chain)?;
 
             let client = ZescrowClient::new(params.chain, config)?;
             let metadata = client.create_escrow(&params).await?;
@@ -52,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Release => {
             let metadata: EscrowMetadata = load_escrow_input_data(ESCROW_METADATA_PATH)?;
-            let config = get_chain_config(metadata.chain)?;
+            let config = load_chain_config(metadata.chain)?;
 
             let client = ZescrowClient::new(metadata.chain, config)?;
             client.release_escrow(&metadata).await?;
@@ -60,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Refund => {
             let metadata: EscrowMetadata = load_escrow_input_data(ESCROW_METADATA_PATH)?;
-            let config = get_chain_config(metadata.chain)?;
+            let config = load_chain_config(metadata.chain)?;
 
             let client = ZescrowClient::new(metadata.chain, config)?;
             client.refund_escrow(&metadata).await?;
@@ -68,9 +67,4 @@ async fn main() -> anyhow::Result<()> {
         }
     }
     Ok(())
-}
-
-fn get_chain_config(chain: Chain) -> anyhow::Result<ChainConfig> {
-    let config_path = format!("{}/{}_config.json", TEMPLATES_DIR, chain.as_ref());
-    load_escrow_input_data(&config_path)
 }

@@ -8,6 +8,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{ClientError, Result};
 
+const TEMPLATES_DIR: &str = "templates";
+
+/// Reads chain-specific configuration given a target `chain`
+/// (e.g., ethereum, solana).
+pub fn load_chain_config(chain: Chain) -> anyhow::Result<ChainConfig> {
+    let config_path = format!("{}/{}_config.json", TEMPLATES_DIR, chain.as_ref());
+    load_escrow_input_data(&config_path)
+}
+
 /// Reads JSON-encoded escrow params and chain-specific configs
 /// from the given `path`.
 pub fn load_escrow_input_data<P, T>(path: P) -> anyhow::Result<T>
