@@ -43,8 +43,8 @@ pub mod zkescrow {
         escrow.condition = args.condition;
 
         emit!(EscrowEvent {
-            sender: escrow.sender.key(),
-            recipient: escrow.recipient.key(),
+            sender: escrow.sender,
+            recipient: escrow.recipient,
             amount: escrow.amount,
             action: EscrowState::Created
         });
@@ -84,8 +84,8 @@ pub mod zkescrow {
             .try_borrow_mut_lamports()? += escrow.amount;
 
         emit!(EscrowEvent {
-            sender: escrow.sender.key(),
-            recipient: escrow.recipient.key(),
+            sender: escrow.sender,
+            recipient: escrow.recipient,
             amount: escrow.amount,
             action: EscrowState::Finished
         });
@@ -116,8 +116,8 @@ pub mod zkescrow {
             .try_borrow_mut_lamports()? += escrow.amount;
 
         emit!(EscrowEvent {
-            sender: escrow.sender.key(),
-            recipient: escrow.recipient.key(),
+            sender: escrow.sender,
+            recipient: escrow.recipient,
             amount: escrow.amount,
             action: EscrowState::Cancelled
         });
