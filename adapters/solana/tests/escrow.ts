@@ -5,126 +5,160 @@ import { Program, BN } from "@coral-xyz/anchor";
 import { Escrow } from "../target/types/escrow";
 import { Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { assert } from "chai";
+// biome-ignore lint/style/useNodejsImportProtocol: <explanation>
+import { createHash } from "crypto";
 
 describe("escrow", () => {
     const provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
     const program = anchor.workspace.Escrow as Program<Escrow>;
 
-    const ESCROW_AMOUNT = new BN(LAMPORTS_PER_SOL);
-    const ESCROW_EXPIRY = new BN(5);
+    const PREFIX = Buffer.from("escrow");
+    const AMOUNT = new BN(LAMPORTS_PER_SOL);
 
-    const depositor = Keypair.generate();
-    let beneficiary: PublicKey;
+    function derivePda(s: PublicKey, r: PublicKey): [PublicKey, number] {
+        return PublicKey.findProgramAddressSync(
+            [PREFIX, s.toBuffer(), r.toBuffer()],
+            program.programId
+        );
+    }
+
+    let sender: Keypair;
+    let recipient: Keypair;
     let escrowPda: PublicKey;
 
-    before(async () => {
-        await airdrop(depositor.publicKey, ESCROW_AMOUNT.muln(3).toNumber());
+    beforeEach(async () => {
+        sender = Keypair.generate();
+        recipient = Keypair.generate();
+        [escrowPda] = derivePda(sender.publicKey, recipient.publicKey);
+        await airdrop(sender.publicKey, AMOUNT.mul(new BN(2)).toNumber());
     });
 
-    it("should create an escrow account", async () => {
-        beneficiary = Keypair.generate().publicKey;
-        [escrowPda] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("escrow"),
-                depositor.publicKey.toBuffer(),
-                beneficiary.toBuffer(),
-            ],
-            program.programId
-        );
-
+    it("should create and finish without condition", async () => {
         await program.methods
-            .createEscrow(ESCROW_AMOUNT, ESCROW_EXPIRY)
+            .createEscrow({
+                amount: AMOUNT,
+                finishAfter: null,
+                cancelAfter: null,
+                condition: null,
+            })
             .accounts({
-                depositor: depositor.publicKey,
-                beneficiary: beneficiary,
-                escrow: escrowPda,
+                sender: sender.publicKey,
+                recipient: recipient.publicKey,
+                escrowAccount: escrowPda,
                 systemProgram: SystemProgram.programId,
             })
-            .signers([depositor])
+            .signers([sender])
             .rpc();
 
-        const account = await program.account.escrowAccount.fetch(escrowPda);
-        assert.isTrue(account.depositor.equals(depositor.publicKey));
-        assert.isTrue(account.beneficiary.equals(beneficiary));
-        assert.isTrue(account.amount.eq(ESCROW_AMOUNT));
+        const before = await provider.connection.getBalance(recipient.publicKey);
+
+        await program.methods
+            .finishEscrow(null)
+            .accounts({
+                recipient: recipient.publicKey,
+                escrowAccount: escrowPda,
+            })
+            .signers([recipient])
+            .rpc();
+
+        const after = await provider.connection.getBalance(recipient.publicKey);
+        assert.ok(after - before >= AMOUNT.toNumber(), "recipient got funds");
+
+        try {
+            await program.account.escrow.fetch(escrowPda);
+            assert.fail("Expected escrow PDA to be closed");
+            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        } catch (err: any) {
+            assert.ok(
+                err.message.includes("Account does not exist"),
+                "escrow PDA was correctly closed"
+            );
+        }
     });
 
-    it("should release funds to beneficiary", async () => {
-        const initialBalance = new BN(await getBalance(beneficiary));
+    it("should create and cancel after expiration", async () => {
         await program.methods
-            .releaseEscrow()
+            .createEscrow({
+                amount: AMOUNT,
+                finishAfter: null,
+                cancelAfter: new BN(0),
+                condition: null,
+            })
             .accounts({
-                escrow: escrowPda,
-                beneficiary: beneficiary,
-                depositor: depositor.publicKey,
+                sender: sender.publicKey,
+                recipient: recipient.publicKey,
+                escrowAccount: escrowPda,
                 systemProgram: SystemProgram.programId,
             })
+            .signers([sender])
             .rpc();
 
-        const finalBalance = new BN(await getBalance(beneficiary));
-        const diff = finalBalance.sub(initialBalance);
-        assert.isTrue(diff.gte(ESCROW_AMOUNT), `Expected ${ESCROW_AMOUNT.toString()}, got ${diff.toString()}`);
+        const before = await provider.connection.getBalance(sender.publicKey);
+
+        await program.methods
+            .cancelEscrow()
+            .accounts({
+                sender: sender.publicKey,
+                escrowAccount: escrowPda,
+            })
+            .signers([sender])
+            .rpc();
+
+        const after = await provider.connection.getBalance(sender.publicKey);
+        assert.ok(after - before >= AMOUNT.toNumber(), "sender got refund");
+
+        try {
+            await program.account.escrow.fetch(escrowPda);
+            assert.fail("Expected escrow PDA to be closed");
+            // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+        } catch (err: any) {
+            assert.ok(
+                err.message.includes("Account does not exist"),
+                "escrow PDA was correctly closed"
+            );
+        }
     });
 
-    it("should refund depositor after expiry", async () => {
-        const newBeneficiary = Keypair.generate().publicKey;
-        const [newEscrowPda] = PublicKey.findProgramAddressSync(
-            [
-                Buffer.from("escrow"),
-                depositor.publicKey.toBuffer(),
-                newBeneficiary.toBuffer(),
-            ],
-            program.programId
-        );
+    it("should create and finish with SHA-256 condition", async () => {
+        const preimage = Buffer.from("secret");
+        const hash = createHash("sha256").update(preimage).digest();
+        const cond = Array.from(hash);
 
         await program.methods
-            .createEscrow(ESCROW_AMOUNT, ESCROW_EXPIRY)
+            .createEscrow({
+                amount: AMOUNT,
+                finishAfter: null,
+                cancelAfter: null,
+                condition: cond,
+            })
             .accounts({
-                depositor: depositor.publicKey,
-                beneficiary: newBeneficiary,
-                escrow: newEscrowPda,
+                sender: sender.publicKey,
+                recipient: recipient.publicKey,
+                escrowAccount: escrowPda,
                 systemProgram: SystemProgram.programId,
             })
-            .signers([depositor])
+            .signers([sender])
             .rpc();
 
-        const escrowState = await program.account.escrowAccount.fetch(newEscrowPda);
-        await advanceSlot(escrowState.expiry.toNumber() + 1);
+        const before = await provider.connection.getBalance(recipient.publicKey);
 
-        const initialBalance = new BN(await getBalance(depositor.publicKey));
         await program.methods
-            .refundEscrow()
+            .finishEscrow(preimage)
             .accounts({
-                escrow: newEscrowPda,
-                depositor: depositor.publicKey,
-                beneficiary: newBeneficiary,
-                systemProgram: SystemProgram.programId,
+                recipient: recipient.publicKey,
+                escrowAccount: escrowPda,
             })
+            .signers([recipient])
             .rpc();
 
-        const finalBalance = new BN(await getBalance(depositor.publicKey));
-        const diff = finalBalance.sub(initialBalance);
-        assert.isTrue(diff.gte(ESCROW_AMOUNT), `Expected ${ESCROW_AMOUNT.toString()}, got ${diff.toString()}`);
+        const after = await provider.connection.getBalance(recipient.publicKey);
+        assert.ok(after - before >= AMOUNT.toNumber(), "recipient got funds");
     });
 
     async function airdrop(pubkey: PublicKey, lamports: number) {
         const sig = await provider.connection.requestAirdrop(pubkey, lamports);
         await confirmTransaction(sig);
-    }
-
-    async function getBalance(pubkey: PublicKey): Promise<number> {
-        return provider.connection.getBalance(pubkey);
-    }
-
-    async function advanceSlot(targetSlot: number) {
-        while (true) {
-            const currentSlot = await provider.connection.getSlot();
-            if (currentSlot >= targetSlot) break;
-            const dummy = Keypair.generate();
-            const sig = await provider.connection.requestAirdrop(dummy.publicKey, 1_000_000);
-            await confirmTransaction(sig);
-        }
     }
 
     async function confirmTransaction(signature: string) {
@@ -135,3 +169,4 @@ describe("escrow", () => {
         );
     }
 });
+
