@@ -43,11 +43,11 @@ impl Agent for EthereumAgent {
         todo!()
     }
 
-    async fn release_escrow(&self, _metadata: &EscrowMetadata) -> Result<()> {
+    async fn finish_escrow(&self, _metadata: &EscrowMetadata) -> Result<()> {
         todo!()
     }
 
-    async fn refund_escrow(&self, _metadata: &EscrowMetadata) -> Result<()> {
+    async fn cancel_escrow(&self, _metadata: &EscrowMetadata) -> Result<()> {
         todo!()
     }
 }

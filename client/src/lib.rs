@@ -21,11 +21,6 @@ pub trait Agent: Send + Sync {
     ///
     /// # Returns
     /// Metadata containing chain-specific identifiers and transaction details
-    ///
-    /// # Errors
-    /// - Insufficient funds
-    /// - Invalid addresses
-    /// - Network errors
     async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata>;
 
     /// Release escrowed funds to beneficiary
@@ -36,12 +31,7 @@ pub trait Agent: Send + Sync {
     /// # Preconditions
     /// - Escrow must be in funded state
     /// - Current block/slot must be before expiry
-    ///
-    /// # Errors
-    /// - Escrow not funded/created
-    /// - Expiry reached
-    /// - Authorization failures
-    async fn release_escrow(&self, metadata: &EscrowMetadata) -> Result<()>;
+    async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()>;
 
     /// Refund escrowed funds to depositor
     ///
@@ -51,11 +41,7 @@ pub trait Agent: Send + Sync {
     /// # Preconditions
     /// - Escrow must have expired
     /// - No prior release/refund executed
-    ///
-    /// # Errors
-    /// - Early refund attempt
-    /// - State inconsistencies
-    async fn refund_escrow(&self, metadata: &EscrowMetadata) -> Result<()>;
+    async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()>;
 }
 
 /// Unified client for cross-chain escrow management
@@ -77,11 +63,11 @@ impl ZescrowClient {
         self.agent.create_escrow(params).await
     }
 
-    pub async fn release_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        self.agent.release_escrow(metadata).await
+    pub async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
+        self.agent.finish_escrow(metadata).await
     }
 
-    pub async fn refund_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        self.agent.refund_escrow(metadata).await
+    pub async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
+        self.agent.cancel_escrow(metadata).await
     }
 }

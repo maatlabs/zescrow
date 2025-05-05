@@ -5,6 +5,7 @@ use std::path::Path;
 use anyhow::Context;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+use serde_hex::{SerHexOpt, Strict};
 
 use crate::error::{ClientError, Result};
 
@@ -130,30 +131,40 @@ pub enum ChainConfig {
 pub struct EscrowParams {
     /// Target blockchain network
     pub chain: Chain,
-    /// Depositor's blockchain address
-    pub depositor: String,
-    /// Beneficiary's blockchain address
-    pub beneficiary: String,
+    /// Escrow creator's blockchain address
+    pub sender: String,
+    /// Escrow beneficiary's blockchain address
+    pub recipient: String,
     /// Escrow amount in native token units
     pub amount: u64,
-    /// Expiration block/slot number
-    pub expiry: u64,
+    /// Optional UNIX timestamp after which funds can be released
+    pub finish_after: Option<i64>,
+    /// Optional UNIX timestamp after which sender can reclaim funds
+    pub cancel_after: Option<i64>,
+    /// Optional cryptographic (e.g., SHA-256 preimage) condition
+    #[serde(with = "SerHexOpt::<Strict>")]
+    pub condition: Option<[u8; 32]>,
 }
 
 /// Metadata returned from escrow creation and
 /// used for release/refund commands
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EscrowMetadata {
-    /// Original blockchain network
+    /// Original target blockchain network
     pub chain: Chain,
-    /// Depositor's address
-    pub depositor: String,
-    /// Beneficiary's address
-    pub beneficiary: String,
-    /// Locked amount
+    /// Escrow creator's blockchain address
+    pub sender: String,
+    /// Escrow beneficiary's blockchain address
+    pub recipient: String,
+    /// Locked amount in native token units
     pub amount: u64,
-    /// Expiration block/slot
-    pub expiry: u64,
+    /// Optional UNIX timestamp after which funds can be released
+    pub finish_after: Option<i64>,
+    /// Optional UNIX timestamp after which sender can reclaim funds
+    pub cancel_after: Option<i64>,
+    /// Optional cryptographic (e.g., SHA-256 preimage) condition
+    #[serde(with = "SerHexOpt::<Strict>")]
+    pub condition: Option<[u8; 32]>,
     /// Chain-specific metadata for smart contracts/programs
     #[serde(flatten)]
     pub chain_data: ChainMetadata,

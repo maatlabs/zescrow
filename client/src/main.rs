@@ -20,13 +20,13 @@ enum Commands {
     /// Create an escrow using the templates in `templates/`
     Create,
 
-    /// Release an existing escrow to the beneficiary.
+    /// Complete/release an existing escrow to the beneficiary.
     /// Reads `templates/escrow_metadata.json`
-    Release,
+    Finish,
 
-    /// Refund an existing escrow to the depositor.
+    /// Cancel/refund an existing escrow to the depositor.
     /// Reads `templates/escrow_metadata.json`
-    Refund,
+    Cancel,
 }
 
 #[tokio::main]
@@ -49,21 +49,21 @@ async fn main() -> anyhow::Result<()> {
                 ESCROW_METADATA_PATH
             );
         }
-        Commands::Release => {
+        Commands::Finish => {
             let metadata: EscrowMetadata = load_escrow_input_data(ESCROW_METADATA_PATH)?;
             let config = load_chain_config(metadata.chain)?;
 
             let client = ZescrowClient::new(metadata.chain, config)?;
-            client.release_escrow(&metadata).await?;
-            tracing::info!("Escrow released successfully");
+            client.finish_escrow(&metadata).await?;
+            tracing::info!("Escrow completed and released successfully");
         }
-        Commands::Refund => {
+        Commands::Cancel => {
             let metadata: EscrowMetadata = load_escrow_input_data(ESCROW_METADATA_PATH)?;
             let config = load_chain_config(metadata.chain)?;
 
             let client = ZescrowClient::new(metadata.chain, config)?;
-            client.refund_escrow(&metadata).await?;
-            tracing::info!("Escrow refunded successfully");
+            client.cancel_escrow(&metadata).await?;
+            tracing::info!("Escrow cancelled and refunded successfully");
         }
     }
     Ok(())
