@@ -1,20 +1,19 @@
-/// Condition data structures and
-/// deterministic verification logic
+//! Pure, chain-agnostic escrow core library.
+//!
+//! Exposes:
+//! - `Asset` & `Party` for funds and participants
+//! - `Condition` for cryptographic release logic
+//! - `Escrow` & `EscrowState` with time locks and state transitions
+//! - `EscrowError` for all error cases
+
 pub mod condition;
-/// Escrow business logic and verification steps
+pub mod error;
 pub mod escrow;
-/// Data representations of fungible/NFT assets,
-/// and identities of parties
 pub mod identity;
 
-pub mod error;
-use error::EscrowError;
+pub use condition::Condition;
+pub use error::EscrowError;
+pub use escrow::{Escrow, EscrowState};
+pub use identity::{Asset, Party};
 
 pub type Result<T> = std::result::Result<T, EscrowError>;
-
-/// Chain-specific adapters
-#[derive(Debug)]
-pub enum Adapters {
-    Ethereum,
-    Solana,
-}

@@ -2,11 +2,13 @@ use std::fs;
 use std::path::Path;
 
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use zescrow_core::escrow::{Escrow, EscrowState};
+use zescrow_core::escrow::EscrowState;
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
 
+mod utils;
+
 /// File containing escrow transaction details.
-const ESCROW_PATH: &str = "./assets/escrow.json";
+const ESCROW_METADATA_PATH: &str = "./templates/escrow_metadata.json";
 
 fn main() {
     // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
@@ -15,9 +17,11 @@ fn main() {
         .init();
 
     // An example Escrow transaction
-    let escrow_json =
-        fs::read_to_string(Path::new(ESCROW_PATH)).expect("Failed to read escrow JSON file.");
-    let escrow: Escrow = serde_json::from_str(&escrow_json).expect("Invalid escrow JSON structure");
+    let escrow_json = fs::read_to_string(Path::new(ESCROW_METADATA_PATH))
+        .expect("Failed to read escrow metadata JSON file.");
+    let escrow_metadata: utils::EscrowMetadata =
+        serde_json::from_str(&escrow_json).expect("Invalid escrow metadata JSON structure");
+    let escrow = utils::map_escrow_metadata(escrow_metadata);
 
     // Dummy current block height
     // TODO: Fetch this via RPC

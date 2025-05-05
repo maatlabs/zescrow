@@ -1,46 +1,53 @@
 //! Escrow conditions and deterministic verification logic.
 
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::{EscrowError, Result};
 
-/// Escrow conditions must be deterministically verifiable,
-/// representing logic that governs the release of escrowed assets.
+/// Deterministic crypto conditions for release.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Condition {
-    /// Requires a minimum number (`threshold`) of valid signatures from approved signers.
+    /// Require ≥ `threshold` valid signatures from among `signers`.
     MultiSig {
         threshold: usize,
         signers: Vec<[u8; 32]>,
         signatures: Vec<[u8; 32]>,
     },
-    /// Requires execution within a certain block height (time constraint).
-    TimeLock { expiry_block: u64 },
+    /// Require a SHA-256 preimage match.
+    Preimage {
+        /// Expected SHA-256 hash
+        hash: [u8; 32],
+        /// Provided preimage bytes
+        preimage: Vec<u8>,
+    },
 }
 
 impl Condition {
-    /// Verifies if the escrow condition is met given external inputs.
-    ///
-    /// # Arguments
-    /// * `current_block` - Current block height (required for TimeLock)
-    pub fn verify(&self, current_block: Option<u64>) -> Result<()> {
+    /// Verify the condition; returns `Err(EscrowError::ConditionViolation)` on failure.
+    pub fn verify(&self) -> Result<()> {
         match self {
-            Self::MultiSig {
+            Condition::MultiSig {
                 threshold,
                 signers,
                 signatures,
             } => {
-                if signatures.len() >= *threshold && signatures.iter().all(|s| signers.contains(s))
-                {
+                let valid = signatures.len() >= *threshold
+                    && signatures.iter().all(|sig| signers.contains(sig));
+                if valid {
                     Ok(())
                 } else {
                     Err(EscrowError::ConditionViolation)
                 }
             }
-            Self::TimeLock { expiry_block } => match current_block {
-                Some(block) if block <= *expiry_block => Ok(()),
-                _ => Err(EscrowError::Expired),
-            },
+            Condition::Preimage { hash, preimage } => {
+                let computed = Sha256::digest(preimage);
+                if computed.as_slice() == hash {
+                    Ok(())
+                } else {
+                    Err(EscrowError::ConditionViolation)
+                }
+            }
         }
     }
 }

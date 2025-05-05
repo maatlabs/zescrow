@@ -1,4 +1,4 @@
-//! Escrow lifecycle and state transitions.
+//! Escrow state machine with time locks and optional crypto conditions.
 
 use serde::{Deserialize, Serialize};
 
@@ -6,15 +6,7 @@ use crate::condition::Condition;
 use crate::identity::{Asset, Party};
 use crate::{EscrowError, Result};
 
-/// Represents the current state of the escrow.
-///
-/// State transitions:
-///
-/// ```text
-/// Funded → Released
-///    ↘      ↙
-///    Expired
-/// ```
+/// Where in the lifecycle an escrow is
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
 pub enum EscrowState {
     Funded,
@@ -22,46 +14,57 @@ pub enum EscrowState {
     Expired,
 }
 
-/// Core escrow struct encapsulating the full escrow context.
+/// Full escrow context
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Escrow {
-    pub id: String, // Digest in hex string
+    /// Asset locked in escrow.
     pub asset: Asset,
-    pub beneficiary: Party,
-    pub depositor: Party,
-    pub condition: Condition,
+    /// Recipient of funds.
+    pub recipient: Party,
+    /// Who funded it.
+    pub sender: Party,
+    /// Optional cryptographic condition.
+    pub condition: Option<Condition>,
+    /// Block height when escrow was created.
     pub created_block: u64,
-    pub expiry_block: u64,
+    /// Earliest block at which `finish` is allowed.
+    pub finish_after: Option<u64>,
+    /// Earliest block at which `refund` is allowed.
+    pub cancel_after: Option<u64>,
+    /// Current state.
     pub state: EscrowState,
 }
 
 impl Escrow {
-    /// Executes escrow verification logic and state transitions,
-    /// returns the state of execution or an error.
-    ///
-    /// # Arguments
-    /// - `current_block`: The current block height from the specified chain.
+    /// Attempt to finish (release) the escrow.
+    /// Checks `finish_after` and then any crypto `condition`.
     pub fn execute(&mut self, current_block: u64) -> Result<EscrowState> {
         if self.state != EscrowState::Funded {
             return Err(EscrowError::InvalidState);
         }
-
-        self.condition.verify(Some(current_block))?;
+        if let Some(ts) = self.finish_after {
+            if current_block < ts {
+                return Err(EscrowError::NotReady);
+            }
+        }
+        if let Some(cond) = &self.condition {
+            cond.verify()?;
+        }
         self.state = EscrowState::Released;
         Ok(self.state)
     }
 
-    /// Refund the depositor if escrow's timeout has expired.
+    /// Refund the depositor after `cancel_after`.
     pub fn refund(&mut self, current_block: u64) -> Result<()> {
-        if !self.is_expired(current_block) {
-            return Err(EscrowError::NotExpired);
+        if self.state != EscrowState::Funded {
+            return Err(EscrowError::InvalidState);
         }
-
+        if let Some(ts) = self.cancel_after {
+            if current_block < ts {
+                return Err(EscrowError::NotExpired);
+            }
+        }
         self.state = EscrowState::Expired;
         Ok(())
-    }
-
-    fn is_expired(&self, current_block: u64) -> bool {
-        current_block > self.expiry_block
     }
 }

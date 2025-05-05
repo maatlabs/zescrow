@@ -1,16 +1,22 @@
-/// Escrow-related errors.
-#[derive(Debug, thiserror::Error)]
+//! Escrow-related errors
+
+use thiserror::Error;
+
+#[derive(Debug, Error)]
 pub enum EscrowError {
-    /// Occurs when the specified escrow conditions are not satisfied.
+    /// Crypto condition (multi-sig or preimage) not met.
     #[error("Condition not satisfied")]
     ConditionViolation,
-    /// Occurs upon invalid or inappropriate escrow state transitions.
+
+    /// Attempted an invalid state transition.
     #[error("Invalid state transition")]
     InvalidState,
-    /// Triggered when escrow execution has surpassed allowed time constraints.
-    #[error("Timeout expired")]
-    Expired,
-    /// Occurs when a party calls for a refund while timeout is not expired.
+
+    /// Tried to finish escrow before its `finish_after` block.
+    #[error("Escrow not yet ready to finish")]
+    NotReady,
+
+    /// Tried to refund escrow before its `cancel_after` block.
     #[error("Escrow not yet expired for refund")]
     NotExpired,
 }

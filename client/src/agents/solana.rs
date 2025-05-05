@@ -3,12 +3,13 @@ use core::str::FromStr;
 use anchor_client::solana_sdk::instruction::Instruction;
 use anchor_client::solana_sdk::system_program;
 use anchor_lang::prelude::AccountMeta;
+use anchor_lang::solana_program::clock::Clock;
 use anchor_lang::InstructionData;
 use escrow::{instruction as escrow_instruction, CreateEscrowArgs, PREFIX};
 use solana_client::rpc_client::RpcClient;
-use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
 use solana_sdk::transaction::Transaction;
+use solana_sdk::{pubkey::Pubkey, sysvar::Sysvar as _};
 
 use crate::error::{ClientError, Result};
 use crate::interface::{Chain, ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams};
@@ -86,6 +87,7 @@ impl Agent for SolanaAgent {
             finish_after: params.finish_after,
             cancel_after: params.cancel_after,
             condition: params.condition,
+            created_block: Clock::get()?.slot,
             chain_data: ChainMetadata::Solana {
                 program_id: self.program_id.to_string(),
                 pda: pda.to_string(),

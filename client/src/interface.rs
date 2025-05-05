@@ -147,7 +147,7 @@ pub struct EscrowParams {
 }
 
 /// Metadata returned from escrow creation and
-/// used for release/refund commands
+/// used for finish/cancel commands
 #[derive(Debug, Serialize, Deserialize)]
 pub struct EscrowMetadata {
     /// Original target blockchain network
@@ -165,6 +165,8 @@ pub struct EscrowMetadata {
     /// Optional cryptographic (e.g., SHA-256 preimage) condition
     #[serde(with = "SerHexOpt::<Strict>")]
     pub condition: Option<[u8; 32]>,
+    /// Block height when this escrow was created.
+    pub created_block: u64,
     /// Chain-specific metadata for smart contracts/programs
     #[serde(flatten)]
     pub chain_data: ChainMetadata,

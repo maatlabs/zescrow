@@ -20,6 +20,8 @@ pub enum ClientError {
     InvalidChainOperation,
     #[error("RPC client error")]
     SolanaRpcClient(#[from] solana_client::client_error::ClientError),
+    #[error("Anchor program error")]
+    Anchorlang(#[from] anchor_lang::prelude::ProgramError),
 }
 
 impl From<ethers::providers::ProviderError> for ClientError {

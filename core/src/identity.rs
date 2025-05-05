@@ -1,22 +1,19 @@
-//! Core types for assets and parties participating in an escrow.
+//! Core types for assets and parties.
 
 use serde::{Deserialize, Serialize};
 
-/// Represents an asset locked in escrow.
+/// A fungible or non-fungible asset in escrow.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Asset {
-    /// Fungible asset with a unique identifier (digest in hex string)
-    /// and specific amount.
+    /// Fungible: identified by `id` (e.g. token mint) and amount.
     Fungible { id: String, amount: u64 },
-    /// Non-fungible asset identified uniquely by an ID
-    /// (digest in hex string).
+    /// Non-fungible: unique `id`.
     NonFungible { id: String },
 }
 
-/// Represents a party (participant) in an escrow transaction.
+/// A party participating in escrow.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Party {
-    /// Cryptographic hash (hex string)
-    /// representing the party's identity.
+    /// Some identifier (e.g. pubkey hash, address).
     pub identity_hash: String,
 }
