@@ -16,21 +16,14 @@ fn main() {
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
         .init();
 
-    // An example Escrow transaction
     let escrow_json = fs::read_to_string(Path::new(ESCROW_METADATA_PATH))
         .expect("Failed to read escrow metadata JSON file.");
     let escrow_metadata: utils::EscrowMetadata =
-        serde_json::from_str(&escrow_json).expect("Invalid escrow metadata JSON structure");
+        serde_json::from_str(&escrow_json).expect("Invalid escrow metadata JSON");
     let escrow = utils::map_escrow_metadata(escrow_metadata);
-
-    // Dummy current block height
-    // TODO: Fetch this via RPC
-    let current_block: u64 = 1_250;
 
     let env = ExecutorEnv::builder()
         .write(&escrow)
-        .unwrap()
-        .write(&current_block)
         .unwrap()
         .build()
         .unwrap();

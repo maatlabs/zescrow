@@ -27,44 +27,22 @@ pub struct Escrow {
     pub condition: Option<Condition>,
     /// Block height when escrow was created.
     pub created_block: u64,
-    /// Earliest block at which `finish` is allowed.
-    pub finish_after: Option<u64>,
-    /// Earliest block at which `refund` is allowed.
-    pub cancel_after: Option<u64>,
     /// Current state.
     pub state: EscrowState,
 }
 
 impl Escrow {
-    /// Attempt to finish (release) the escrow.
-    /// Checks `finish_after` and then any crypto `condition`.
-    pub fn execute(&mut self, current_block: u64) -> Result<EscrowState> {
+    /// Attempts to finish (release) the escrow.
+    pub fn execute(&mut self) -> Result<EscrowState> {
         if self.state != EscrowState::Funded {
             return Err(EscrowError::InvalidState);
         }
-        if let Some(ts) = self.finish_after {
-            if current_block < ts {
-                return Err(EscrowError::NotReady);
-            }
-        }
+
         if let Some(cond) = &self.condition {
             cond.verify()?;
         }
+
         self.state = EscrowState::Released;
         Ok(self.state)
-    }
-
-    /// Refund the depositor after `cancel_after`.
-    pub fn refund(&mut self, current_block: u64) -> Result<()> {
-        if self.state != EscrowState::Funded {
-            return Err(EscrowError::InvalidState);
-        }
-        if let Some(ts) = self.cancel_after {
-            if current_block < ts {
-                return Err(EscrowError::NotExpired);
-            }
-        }
-        self.state = EscrowState::Expired;
-        Ok(())
     }
 }

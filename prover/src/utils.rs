@@ -40,8 +40,6 @@ pub fn map_escrow_metadata(meta: EscrowMetadata) -> Escrow {
         },
         condition,
         created_block: meta.created_block,
-        finish_after: meta.finish_after.map(|ts| ts as u64),
-        cancel_after: meta.cancel_after.map(|ts| ts as u64),
         state: EscrowState::Released,
     }
 }
