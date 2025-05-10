@@ -1,53 +1,63 @@
 //! Escrow conditions and deterministic verification logic.
 
+use ed25519_dalek::{Signature as Ed25519Sig, Verifier, VerifyingKey as Ed25519Pub};
+use k256::ecdsa::{
+    signature::Verifier as SecpVerify, Signature as Secp256k1Sig, VerifyingKey as Secp256k1Pub,
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 
 use crate::{EscrowError, Result};
 
-/// Deterministic crypto conditions for release.
+/// Deterministic crypto condition fingerprint.
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", content = "data")]
 pub enum Condition {
-    /// Require ≥ `threshold` valid signatures from among `signers`.
-    MultiSig {
+    /// XRPL-style hashlock: SHA-256(preimage) == hash.
+    Preimage { hash: String },
+
+    /// Ed25519 signature over a message.
+    Ed25519 {
+        public_key: String,
+        signature: String,
+        message: String,
+    },
+
+    /// Secp256k1 signature over a message.
+    Secp256k1 {
+        public_key: String,
+        signature: String,
+        message: String,
+    },
+
+    /// Threshold SHA-256: at least `threshold` of `subconditions` must hold.
+    Threshold {
         threshold: usize,
-        signers: Vec<[u8; 32]>,
-        signatures: Vec<[u8; 32]>,
+        subconditions: Vec<Condition>,
     },
-    /// Require a SHA-256 preimage match.
-    Preimage {
-        /// Expected SHA-256 hash
-        hash: [u8; 32],
-        /// Provided preimage bytes
-        preimage: Vec<u8>,
-    },
+}
+
+/// The data proving a condition.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", content = "data")]
+pub enum Fulfillment {
+    Preimage { preimage: String },
+    Ed25519 { signature: String, message: String },
+    Secp256k1 { signature: String, message: String },
+    Threshold { subfulfillments: Vec<Fulfillment> },
 }
 
 impl Condition {
     /// Verify the condition; returns `Err(EscrowError::ConditionViolation)` on failure.
     pub fn verify(&self) -> Result<()> {
-        match self {
-            Condition::MultiSig {
-                threshold,
-                signers,
-                signatures,
-            } => {
-                let valid = signatures.len() >= *threshold
-                    && signatures.iter().all(|sig| signers.contains(sig));
-                if valid {
-                    Ok(())
-                } else {
-                    Err(EscrowError::ConditionViolation)
-                }
-            }
-            Condition::Preimage { hash, preimage } => {
-                let computed = Sha256::digest(preimage);
-                if computed.as_slice() == hash {
-                    Ok(())
-                } else {
-                    Err(EscrowError::ConditionViolation)
-                }
-            }
-        }
+        todo!()
+    }
+}
+
+impl std::fmt::Display for Condition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
+        write!(f, "{}", json)
     }
 }

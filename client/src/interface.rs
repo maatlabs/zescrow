@@ -5,7 +5,6 @@ use std::path::Path;
 use anyhow::Context;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_hex::{SerHexOpt, Strict};
 
 use crate::error::{ClientError, Result};
 
@@ -142,8 +141,8 @@ pub struct EscrowParams {
     /// Optional UNIX timestamp after which sender can reclaim funds
     pub cancel_after: Option<i64>,
     /// Optional cryptographic (e.g., SHA-256 preimage) condition
-    #[serde(with = "SerHexOpt::<Strict>")]
-    pub condition: Option<[u8; 32]>,
+    #[serde(flatten)]
+    pub condition: Option<Condition>,
 }
 
 /// Metadata returned from escrow creation and
@@ -162,12 +161,50 @@ pub struct EscrowMetadata {
     pub finish_after: Option<i64>,
     /// Optional UNIX timestamp after which sender can reclaim funds
     pub cancel_after: Option<i64>,
-    /// Optional cryptographic (e.g., SHA-256 preimage) condition
-    #[serde(with = "SerHexOpt::<Strict>")]
-    pub condition: Option<[u8; 32]>,
     /// Block height when this escrow was created.
     pub created_block: u64,
+    /// Optional cryptographic (e.g., SHA-256 preimage) condition
+    #[serde(flatten)]
+    pub condition: Option<Condition>,
     /// Chain-specific metadata for smart contracts/programs
     #[serde(flatten)]
     pub chain_data: ChainMetadata,
+}
+
+/// Deterministic crypto condition fingerprint.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", rename_all = "kebab-case")]
+pub enum Condition {
+    /// XRPL-style hashlock: SHA-256(preimage) == hash.
+    Preimage { hash: String },
+
+    /// Ed25519 signature over a message.
+    Ed25519 {
+        public_key: String,
+        signature: String,
+        message: String,
+    },
+
+    /// Secp256k1 signature over a message.
+    Secp256k1 {
+        public_key: String,
+        signature: String,
+        message: String,
+    },
+
+    /// Threshold SHA-256: at least `threshold` of `subconditions` must hold.
+    Threshold {
+        threshold: usize,
+        subconditions: Vec<Condition>,
+    },
+}
+
+impl std::fmt::Display for Condition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Condition::Preimage { hash } = self {
+            return write!(f, "{}", hash);
+        }
+        let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
+        write!(f, "{}", json)
+    }
 }

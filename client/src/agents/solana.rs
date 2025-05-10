@@ -69,7 +69,7 @@ impl Agent for SolanaAgent {
                     amount: params.amount,
                     finish_after: params.finish_after,
                     cancel_after: params.cancel_after,
-                    condition: params.condition,
+                    condition: params.condition.clone().map(|c| c.to_string()),
                 },
             }),
         };
@@ -86,7 +86,7 @@ impl Agent for SolanaAgent {
             amount: params.amount,
             finish_after: params.finish_after,
             cancel_after: params.cancel_after,
-            condition: params.condition,
+            condition: params.condition.clone(),
             created_block: Clock::get()?.slot,
             chain_data: ChainMetadata::Solana {
                 program_id: self.program_id.to_string(),
@@ -107,7 +107,7 @@ impl Agent for SolanaAgent {
                 AccountMeta::new(pda, false),
             ],
             data: InstructionData::data(&escrow_instruction::FinishEscrow {
-                condition: metadata.condition.map(|c| c.to_vec()),
+                condition: metadata.condition.clone().map(|c| c.to_string()),
             }),
         };
 

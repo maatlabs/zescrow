@@ -50,7 +50,7 @@ pub mod escrow {
     }
 
     /// Finishes an escrow, enforcing time-lock and/or cryptographic condition
-    pub fn finish_escrow(ctx: Context<FinishEscrow>, condition: Option<Vec<u8>>) -> Result<()> {
+    pub fn finish_escrow(ctx: Context<FinishEscrow>, condition: Option<String>) -> Result<()> {
         let escrow = &ctx.accounts.escrow_account;
         let now = Clock::get()?.unix_timestamp;
 
@@ -60,12 +60,15 @@ pub mod escrow {
         }
 
         // Enforce crypto condition if set
-        if let Some(cond) = escrow.condition {
+        if let Some(cond) = &escrow.condition {
             let preimage = condition.ok_or(EscrowError::ConditionNotMet)?;
             let mut hasher = Sha256::new();
             hasher.update(preimage);
             let hash = hasher.finalize();
-            require!(hash.as_slice() == cond, EscrowError::ConditionNotMet);
+            require!(
+                hash.as_slice() == cond.as_bytes(),
+                EscrowError::ConditionNotMet
+            );
         }
 
         // Transfer out lamports and close PDA
@@ -136,7 +139,7 @@ pub struct Escrow {
     /// Optional UNIX timestamp after which sender can reclaim funds
     pub cancel_after: Option<i64>,
     /// Optional cryptographic (e.g., SHA-256 preimage) condition
-    pub condition: Option<[u8; 32]>,
+    pub condition: Option<String>,
 }
 
 #[derive(Accounts)]
@@ -178,7 +181,7 @@ pub struct CreateEscrowArgs {
     pub amount: u64,
     pub finish_after: Option<i64>,
     pub cancel_after: Option<i64>,
-    pub condition: Option<[u8; 32]>,
+    pub condition: Option<String>,
 }
 
 #[derive(Accounts)]
