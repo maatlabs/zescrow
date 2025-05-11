@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;
 use anchor_lang::system_program;
-use sha2::{Digest, Sha256};
 
 declare_id!("8F9ByFr24Y7mAAbUvCcZ9w3GpD16LP6f2THw3Sygy3ct");
 
@@ -50,25 +49,13 @@ pub mod escrow {
     }
 
     /// Finishes an escrow, enforcing time-lock and/or cryptographic condition
-    pub fn finish_escrow(ctx: Context<FinishEscrow>, condition: Option<String>) -> Result<()> {
+    pub fn finish_escrow(ctx: Context<FinishEscrow>) -> Result<()> {
         let escrow = &ctx.accounts.escrow_account;
         let now = Clock::get()?.unix_timestamp;
 
         // Enforce finish_after if set
         if let Some(ts) = escrow.finish_after {
             require!(now >= ts, EscrowError::NotReady);
-        }
-
-        // Enforce crypto condition if set
-        if let Some(cond) = &escrow.condition {
-            let preimage = condition.ok_or(EscrowError::ConditionNotMet)?;
-            let mut hasher = Sha256::new();
-            hasher.update(preimage);
-            let hash = hasher.finalize();
-            require!(
-                hash.as_slice() == cond.as_bytes(),
-                EscrowError::ConditionNotMet
-            );
         }
 
         // Transfer out lamports and close PDA

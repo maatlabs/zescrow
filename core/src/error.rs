@@ -5,10 +5,16 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum EscrowError {
     /// Crypto condition (multi-sig or preimage) not met.
-    #[error("Condition not satisfied")]
+    #[error("condition not satisfied")]
     ConditionViolation,
 
     /// Attempted an invalid state transition.
-    #[error("Invalid state transition")]
+    #[error("invalid state transition")]
     InvalidState,
+
+    #[error("hex decode error: {0}")]
+    Hex(#[from] hex::FromHexError),
+
+    #[error("invalid length for fixed-size array")]
+    InvalidLength,
 }

@@ -32,16 +32,14 @@ pub struct Escrow {
 }
 
 impl Escrow {
-    /// Attempts to finish (release) the escrow.
+    /// Attempts to finish (release) by verifying the predefined conditions.
     pub fn execute(&mut self) -> Result<EscrowState> {
         if self.state != EscrowState::Funded {
             return Err(EscrowError::InvalidState);
         }
-
         if let Some(cond) = &self.condition {
             cond.verify()?;
         }
-
         self.state = EscrowState::Released;
         Ok(self.state)
     }

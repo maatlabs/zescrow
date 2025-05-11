@@ -7,9 +7,10 @@ use anchor_lang::solana_program::clock::Clock;
 use anchor_lang::InstructionData;
 use escrow::{instruction as escrow_instruction, CreateEscrowArgs, PREFIX};
 use solana_client::rpc_client::RpcClient;
+use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
+use solana_sdk::sysvar::Sysvar as _;
 use solana_sdk::transaction::Transaction;
-use solana_sdk::{pubkey::Pubkey, sysvar::Sysvar as _};
 
 use crate::error::{ClientError, Result};
 use crate::interface::{Chain, ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams};
@@ -106,9 +107,7 @@ impl Agent for SolanaAgent {
                 AccountMeta::new(recipient, true),
                 AccountMeta::new(pda, false),
             ],
-            data: InstructionData::data(&escrow_instruction::FinishEscrow {
-                condition: metadata.condition.clone().map(|c| c.to_string()),
-            }),
+            data: InstructionData::data(&escrow_instruction::FinishEscrow {}),
         };
 
         let recent_hash = self.client.get_latest_blockhash()?;

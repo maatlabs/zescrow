@@ -20,7 +20,7 @@ fn main() {
         .expect("Failed to read escrow metadata JSON file.");
     let escrow_metadata: utils::EscrowMetadata =
         serde_json::from_str(&escrow_json).expect("Invalid escrow metadata JSON");
-    let escrow = utils::map_escrow_metadata(escrow_metadata);
+    let escrow = utils::to_escrow(escrow_metadata).expect("Failed to extract escrow metadata");
 
     let env = ExecutorEnv::builder()
         .write(&escrow)

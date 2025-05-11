@@ -176,7 +176,7 @@ pub struct EscrowMetadata {
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.
-    Preimage { hash: String },
+    Preimage { hash: String, preimage: String },
 
     /// Ed25519 signature over a message.
     Ed25519 {
@@ -201,9 +201,6 @@ pub enum Condition {
 
 impl std::fmt::Display for Condition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Condition::Preimage { hash } = self {
-            return write!(f, "{}", hash);
-        }
         let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
         write!(f, "{}", json)
     }

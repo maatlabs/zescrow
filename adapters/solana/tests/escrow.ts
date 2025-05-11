@@ -5,8 +5,6 @@ import { Program, BN } from "@coral-xyz/anchor";
 import { Escrow } from "../target/types/escrow";
 import { Keypair, PublicKey, SystemProgram, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { assert } from "chai";
-// biome-ignore lint/style/useNodejsImportProtocol: <explanation>
-import { createHash } from "crypto";
 
 describe("escrow", () => {
     const provider = anchor.AnchorProvider.env();
@@ -54,7 +52,7 @@ describe("escrow", () => {
         const before = await provider.connection.getBalance(recipient.publicKey);
 
         await program.methods
-            .finishEscrow(null)
+            .finishEscrow()
             .accounts({
                 recipient: recipient.publicKey,
                 escrowAccount: escrowPda,
@@ -118,42 +116,6 @@ describe("escrow", () => {
                 "escrow PDA was correctly closed"
             );
         }
-    });
-
-    it("should create and finish with SHA-256 condition", async () => {
-        const preimage = Buffer.from("secret");
-        const hash = createHash("sha256").update(preimage).digest();
-        const cond = Array.from(hash);
-
-        await program.methods
-            .createEscrow({
-                amount: AMOUNT,
-                finishAfter: null,
-                cancelAfter: null,
-                condition: cond,
-            })
-            .accounts({
-                sender: sender.publicKey,
-                recipient: recipient.publicKey,
-                escrowAccount: escrowPda,
-                systemProgram: SystemProgram.programId,
-            })
-            .signers([sender])
-            .rpc();
-
-        const before = await provider.connection.getBalance(recipient.publicKey);
-
-        await program.methods
-            .finishEscrow(preimage)
-            .accounts({
-                recipient: recipient.publicKey,
-                escrowAccount: escrowPda,
-            })
-            .signers([recipient])
-            .rpc();
-
-        const after = await provider.connection.getBalance(recipient.publicKey);
-        assert.ok(after - before >= AMOUNT.toNumber(), "recipient got funds");
     });
 
     async function airdrop(pubkey: PublicKey, lamports: number) {

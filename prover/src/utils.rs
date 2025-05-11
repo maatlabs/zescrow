@@ -1,47 +1,91 @@
+use hex::FromHex;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
-use zescrow_core::condition::Condition;
+use zescrow_core::condition::Condition as CoreCondition;
 use zescrow_core::escrow::{Escrow, EscrowState};
 use zescrow_core::identity::{Asset, Party};
+use zescrow_core::EscrowError;
 
-// TODO: 1. handle all `Condition`s
-//       2. create a proper `AssetId` with methods
-pub fn map_escrow_metadata(meta: EscrowMetadata) -> Escrow {
-    // let condition = meta.condition.map(|preimage| {
-    //     let hash: [u8; 32] = Sha256::digest(&preimage)
-    //         .as_slice()
-    //         .try_into()
-    //         .expect("hash length mismatch");
-    //     Condition::Preimage {
-    //         hash,
-    //         preimage: preimage.to_vec(),
-    //     }
-    // });
+// TODO: create a proper `AssetId` with methods
+pub fn to_escrow(data: EscrowMetadata) -> Result<Escrow, EscrowError> {
+    let condition = data.condition.map(map_conditions).transpose()?;
 
-    // // derive asset ID from chain_data for now:
-    // let asset_id = match &meta.chain_data {
-    //     ChainMetadata::Ethereum {
-    //         contract_address, ..
-    //     } => contract_address.clone(),
-    //     ChainMetadata::Solana { program_id, .. } => program_id.clone(),
-    // };
+    // derive asset ID from chain_data for now:
+    let asset_id = match &data.chain_data {
+        ChainMetadata::Ethereum {
+            contract_address, ..
+        } => contract_address.clone(),
+        ChainMetadata::Solana { program_id, .. } => program_id.clone(),
+    };
 
-    // Escrow {
-    //     asset: Asset::Fungible {
-    //         id: asset_id,
-    //         amount: meta.amount,
-    //     },
-    //     recipient: Party {
-    //         identity_hash: meta.recipient,
-    //     },
-    //     sender: Party {
-    //         identity_hash: meta.sender,
-    //     },
-    //     condition,
-    //     created_block: meta.created_block,
-    //     state: EscrowState::Released,
-    // }
-    todo!()
+    Ok(Escrow {
+        asset: Asset::Fungible {
+            id: asset_id,
+            amount: data.amount,
+        },
+        recipient: Party {
+            identity_hash: data.recipient,
+        },
+        sender: Party {
+            identity_hash: data.sender,
+        },
+        condition,
+        created_block: data.created_block,
+        state: EscrowState::Released,
+    })
+}
+
+fn map_conditions(c: Condition) -> Result<CoreCondition, EscrowError> {
+    Ok(match c {
+        Condition::Preimage { hash, preimage } => {
+            let hash_b = Vec::from_hex(&hash)?;
+            let hash: [u8; 32] = hash_b.try_into().map_err(|_| EscrowError::InvalidLength)?;
+            let preimage = Vec::from_hex(&preimage)?;
+            CoreCondition::Preimage { hash, preimage }
+        }
+        Condition::Ed25519 {
+            public_key,
+            signature,
+            message,
+        } => {
+            let public_key: [u8; 32] = Vec::from_hex(&public_key)?
+                .try_into()
+                .map_err(|_| EscrowError::InvalidLength)?;
+            let message = Vec::from_hex(&message)?;
+            let signature = Vec::from_hex(&signature)?;
+            CoreCondition::Ed25519 {
+                public_key,
+                signature,
+                message,
+            }
+        }
+        Condition::Secp256k1 {
+            public_key,
+            signature,
+            message,
+        } => {
+            let public_key = Vec::from_hex(&public_key)?;
+            let message = Vec::from_hex(&message)?;
+            let signature = Vec::from_hex(&signature)?;
+            CoreCondition::Secp256k1 {
+                public_key,
+                signature,
+                message,
+            }
+        }
+        Condition::Threshold {
+            threshold,
+            subconditions,
+        } => {
+            let subs = subconditions
+                .into_iter()
+                .map(map_conditions)
+                .collect::<Result<_, _>>()?;
+            CoreCondition::Threshold {
+                threshold,
+                subconditions: subs,
+            }
+        }
+    })
 }
 
 /// Metadata returned from escrow creation
@@ -67,6 +111,42 @@ pub struct EscrowMetadata {
     /// Chain-specific metadata for smart contracts/programs
     #[serde(flatten)]
     pub chain_data: ChainMetadata,
+}
+
+/// Types of crypto conditions that can be specified
+/// during escrow creation.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "type", rename_all = "kebab-case")]
+pub enum Condition {
+    /// XRPL-style hashlock: SHA-256(preimage) == hash.
+    Preimage { hash: String, preimage: String },
+
+    /// Ed25519 signature over a message.
+    Ed25519 {
+        public_key: String,
+        signature: String,
+        message: String,
+    },
+
+    /// Secp256k1 signature over a message.
+    Secp256k1 {
+        public_key: String,
+        signature: String,
+        message: String,
+    },
+
+    /// Threshold SHA-256: at least `threshold` of `subconditions` must hold.
+    Threshold {
+        threshold: usize,
+        subconditions: Vec<Condition>,
+    },
+}
+
+impl std::fmt::Display for Condition {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
+        write!(f, "{}", json)
+    }
 }
 
 /// Target blockchains
