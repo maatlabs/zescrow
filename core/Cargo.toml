@@ -10,5 +10,8 @@ serde_json = "1.0.140"
 thiserror = "2.0.12"
 sha2 = "0.10.9"
 subtle = "2.6.1"
-ed25519-dalek = "2.1.1"
-k256 = "0.13.4"
+ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
+k256 = { version = "0.13.4", features = ["ecdsa"] }
+
+# [dev-dependencies]
+# rand = { version = "0.9.1", features = ["os_rng"] }
