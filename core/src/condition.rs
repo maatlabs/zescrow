@@ -180,7 +180,7 @@ mod tests {
     }
 
     #[test]
-    fn threshold() {
+    fn nonzero_threshold() {
         // two trivial subconditions: one succeeds, one fails
         let hash = Sha256::digest(b"zkEscrow").into();
         let correct = Condition::Preimage {
@@ -193,17 +193,78 @@ mod tests {
         };
 
         // threshold == 1 should pass
-        let t = Condition::Threshold {
+        let cond = Condition::Threshold {
             threshold: 1,
             subconditions: vec![correct.clone(), wrong.clone()],
         };
-        assert!(t.verify().is_ok());
+        assert!(cond.verify().is_ok());
 
         // threshold == 2 should fail
-        let t = Condition::Threshold {
+        let cond = Condition::Threshold {
             threshold: 2,
             subconditions: vec![correct, wrong],
         };
-        assert_err(t.verify(), EscrowError::ConditionViolation);
+        assert_err(cond.verify(), EscrowError::ConditionViolation);
+
+        // threshold == 1 and no subconditions should fail
+        let cond = Condition::Threshold {
+            threshold: 1,
+            subconditions: vec![],
+        };
+        assert_err(cond.verify(), EscrowError::ConditionViolation);
+    }
+
+    #[test]
+    fn zero_threshold() {
+        // threshold == 0 with empty subconditions should pass
+        let cond = Condition::Threshold {
+            threshold: 0,
+            subconditions: vec![],
+        };
+        assert!(cond.verify().is_ok());
+
+        // threshold == 0 with subconditions should also pass
+        let preimage = b"zkEscrow".to_vec();
+        let hash = Sha256::digest(&preimage).into();
+        let subcond = Condition::Preimage { hash, preimage };
+        let cond = Condition::Threshold {
+            threshold: 0,
+            subconditions: vec![subcond],
+        };
+        assert!(cond.verify().is_ok());
+    }
+
+    #[test]
+    fn nested_thresholds() {
+        let preimage = b"zkEscrow".to_vec();
+        let hash = Sha256::digest(&preimage).into();
+        let leaf = Condition::Preimage { hash, preimage };
+
+        // inner threshold: need 1 of `leaf`
+        let inner = Condition::Threshold {
+            threshold: 1,
+            subconditions: vec![leaf.clone()],
+        };
+        // outer threshold: need 1 of `inner`
+        let outer = Condition::Threshold {
+            threshold: 1,
+            subconditions: vec![inner],
+        };
+        assert!(outer.verify().is_ok());
+
+        // if `leaf` wrong, `inner` fails, and so does `outer`
+        let wrong_leaf = Condition::Preimage {
+            hash,
+            preimage: b"wrong-preimage".to_vec(),
+        };
+        let inner2 = Condition::Threshold {
+            threshold: 1,
+            subconditions: vec![wrong_leaf],
+        };
+        let outer2 = Condition::Threshold {
+            threshold: 1,
+            subconditions: vec![inner2],
+        };
+        assert_err(outer2.verify(), EscrowError::ConditionViolation);
     }
 }

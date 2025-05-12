@@ -52,7 +52,7 @@ mod tests {
 
     #[test]
     fn end_to_end() {
-        // Funded -> released (no condition)
+        // funded -> released (no condition)
         let mut escrow = Escrow {
             asset: Asset::Fungible {
                 id: "test-token".to_string(),
@@ -71,10 +71,14 @@ mod tests {
         assert_eq!(escrow.execute().unwrap(), EscrowState::Released);
         assert_eq!(escrow.state, EscrowState::Released);
 
-        // Executing again should result in invalid state
+        // executing again should result in invalid state
         assert_err(escrow.execute(), EscrowError::InvalidState);
 
-        // Fund with failing condition
+        // expired escrow cannot be executed (re-released)
+        escrow.state = EscrowState::Expired;
+        assert_err(escrow.execute(), EscrowError::InvalidState);
+
+        // fund with failing condition
         let mut bad_escrow = Escrow {
             condition: Some(Condition::Preimage {
                 hash: [0u8; 32],
