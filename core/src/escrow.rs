@@ -44,3 +44,45 @@ impl Escrow {
         Ok(self.state)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::assert_err;
+
+    #[test]
+    fn end_to_end() {
+        // Funded -> released (no condition)
+        let mut escrow = Escrow {
+            asset: Asset::Fungible {
+                id: "test-token".to_string(),
+                amount: 10,
+            },
+            recipient: Party {
+                identity_hash: "bob".into(),
+            },
+            sender: Party {
+                identity_hash: "alice".into(),
+            },
+            condition: None,
+            created_block: 0,
+            state: EscrowState::Funded,
+        };
+        assert_eq!(escrow.execute().unwrap(), EscrowState::Released);
+        assert_eq!(escrow.state, EscrowState::Released);
+
+        // Executing again should result in invalid state
+        assert_err(escrow.execute(), EscrowError::InvalidState);
+
+        // Fund with failing condition
+        let mut bad_escrow = Escrow {
+            condition: Some(Condition::Preimage {
+                hash: [0u8; 32],
+                preimage: vec![10],
+            }),
+            ..escrow.clone()
+        };
+        bad_escrow.state = EscrowState::Funded;
+        assert_err(bad_escrow.execute(), EscrowError::ConditionViolation);
+    }
+}

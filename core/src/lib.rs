@@ -11,6 +11,9 @@ pub mod error;
 pub mod escrow;
 pub mod identity;
 
+#[cfg(test)]
+mod utils;
+
 pub use condition::Condition;
 pub use error::EscrowError;
 pub use escrow::{Escrow, EscrowState};

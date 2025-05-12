@@ -4,7 +4,7 @@ use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq)]
 pub enum EscrowError {
-    /// Crypto condition (multi-sig or preimage) not met.
+    /// Crypto condition (e.g., Condition::Threshold) not met.
     #[error("condition not satisfied")]
     ConditionViolation,
 
