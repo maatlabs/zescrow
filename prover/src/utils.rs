@@ -1,37 +1,35 @@
 use hex::FromHex;
 use serde::{Deserialize, Serialize};
-use zescrow_core::condition::Condition as CoreCondition;
-use zescrow_core::escrow::{Escrow, EscrowState};
-use zescrow_core::identity::{Asset, Party};
-use zescrow_core::EscrowError;
+use zescrow_core::{Condition as CoreCondition, Escrow, EscrowError};
 
 // TODO: create a proper `AssetId` with methods
 pub fn to_escrow(data: EscrowMetadata) -> Result<Escrow, EscrowError> {
-    let condition = data.condition.map(map_conditions).transpose()?;
+    let _condition = data.condition.map(map_conditions).transpose()?;
 
     // derive asset ID from chain_data for now:
-    let asset_id = match &data.chain_data {
+    let _asset_id = match &data.chain_data {
         ChainMetadata::Ethereum {
             contract_address, ..
         } => contract_address.clone(),
         ChainMetadata::Solana { program_id, .. } => program_id.clone(),
     };
 
-    Ok(Escrow {
-        asset: Asset::Fungible {
-            id: asset_id,
-            amount: data.amount,
-        },
-        recipient: Party {
-            identity_hash: data.recipient,
-        },
-        sender: Party {
-            identity_hash: data.sender,
-        },
-        condition,
-        created_block: data.created_block,
-        state: EscrowState::Released,
-    })
+    // Ok(Escrow {
+    //     asset: Asset::Fungible {
+    //         id: asset_id,
+    //         amount: data.amount,
+    //     },
+    //     recipient: Party {
+    //         identity_hash: data.recipient,
+    //     },
+    //     sender: Party {
+    //         identity_hash: data.sender,
+    //     },
+    //     condition,
+    //     created_block: data.created_block,
+    //     state: EscrowState::Released,
+    // })
+    todo!()
 }
 
 fn map_conditions(c: Condition) -> Result<CoreCondition, EscrowError> {

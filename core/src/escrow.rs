@@ -2,9 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::condition::Condition;
-use crate::identity::{Asset, Party};
-use crate::{EscrowError, Result};
+use crate::{Asset, Condition, EscrowError, Party, Result};
 
 /// Where in the lifecycle an escrow is
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -47,23 +45,25 @@ impl Escrow {
 
 #[cfg(test)]
 mod tests {
+
+    use core::str::FromStr as _;
+
     use super::*;
     use crate::utils::assert_err;
 
     #[test]
     fn end_to_end() {
+        let sender = Party::from_str("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045").unwrap();
+        let recipient = Party::from_str("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8").unwrap();
+
         // funded -> released (no condition)
         let mut escrow = Escrow {
             asset: Asset::Fungible {
                 id: "test-token".to_string(),
                 amount: 10,
             },
-            recipient: Party {
-                identity_hash: "bob".into(),
-            },
-            sender: Party {
-                identity_hash: "alice".into(),
-            },
+            recipient,
+            sender,
             condition: None,
             created_block: 0,
             state: EscrowState::Funded,

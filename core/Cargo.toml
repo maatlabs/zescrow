@@ -12,6 +12,9 @@ sha2 = "0.10.9"
 subtle = "2.6.1"
 ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
 k256 = { version = "0.13.4", features = ["ecdsa"] }
+bs58 = "0.5.1"
+base64 = "0.22.1"
+serde_bytes = "0.11.17"
 
 # [dev-dependencies]
 # rand = { version = "0.9.1", features = ["os_rng"] }
