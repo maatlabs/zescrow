@@ -2,10 +2,8 @@ use std::fs;
 use std::path::Path;
 
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use zescrow_core::escrow::EscrowState;
+use zescrow_core::{interface, EscrowMetadata, EscrowState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
-
-mod utils;
 
 /// File containing escrow transaction details.
 const ESCROW_METADATA_PATH: &str = "./templates/escrow_metadata.json";
@@ -18,9 +16,9 @@ fn main() {
 
     let escrow_json = fs::read_to_string(Path::new(ESCROW_METADATA_PATH))
         .expect("Failed to read escrow metadata JSON file.");
-    let escrow_metadata: utils::EscrowMetadata =
+    let escrow_metadata: EscrowMetadata =
         serde_json::from_str(&escrow_json).expect("Invalid escrow metadata JSON");
-    let escrow = utils::to_escrow(escrow_metadata).expect("Failed to extract escrow metadata");
+    let escrow = interface::to_escrow(escrow_metadata).expect("Failed to extract escrow metadata");
 
     let env = ExecutorEnv::builder()
         .write(&escrow)

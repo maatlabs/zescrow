@@ -3,32 +3,43 @@
 use ed25519_dalek::{Signature as Ed25519Sig, Verifier, VerifyingKey as Ed25519Pub};
 use k256::ecdsa::{Signature as Secp256k1Sig, VerifyingKey as Secp256k1Pub};
 use serde::{Deserialize, Serialize};
+use serde_with::hex::Hex;
+use serde_with::serde_as;
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
 use crate::{EscrowError, Result};
 
 /// Deterministic crypto conditions and fulfillments.
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type", content = "data")]
+#[serde(tag = "type", content = "data", rename_all = "kebab-case")]
 pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.
-    Preimage { hash: [u8; 32], preimage: Vec<u8> },
-
+    Preimage {
+        #[serde_as(as = "Hex")]
+        hash: [u8; 32],
+        #[serde_as(as = "Hex")]
+        preimage: Vec<u8>,
+    },
     /// Ed25519 signature over a message.
     Ed25519 {
+        #[serde_as(as = "Hex")]
         public_key: [u8; 32],
+        #[serde_as(as = "Hex")]
         signature: Vec<u8>,
+        #[serde_as(as = "Hex")]
         message: Vec<u8>,
     },
-
     /// Secp256k1 signature over a message.
     Secp256k1 {
+        #[serde_as(as = "Hex")]
         public_key: Vec<u8>,
+        #[serde_as(as = "Hex")]
         signature: Vec<u8>,
+        #[serde_as(as = "Hex")]
         message: Vec<u8>,
     },
-
     /// Threshold SHA-256: at least `threshold` of `subconditions` must hold.
     Threshold {
         threshold: usize,
@@ -102,7 +113,7 @@ impl std::fmt::Display for Condition {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::assert_err;
+    use crate::interface::assert_err;
 
     #[test]
     fn preimage() {

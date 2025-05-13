@@ -49,7 +49,7 @@ mod tests {
     use core::str::FromStr as _;
 
     use super::*;
-    use crate::utils::assert_err;
+    use crate::interface::assert_err;
 
     #[test]
     fn end_to_end() {
