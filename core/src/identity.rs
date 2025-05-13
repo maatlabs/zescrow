@@ -4,6 +4,7 @@ use base64::prelude::*;
 use base64::Engine;
 use serde::{Deserialize, Serialize};
 
+use crate::error::IdentityError;
 use crate::{EscrowError, Result};
 
 /// Supported encoding formats for on-chain identities.
@@ -32,9 +33,9 @@ impl ID {
 
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         Ok(match self {
-            Self::Hex(s) => hex::decode(s)?,
-            Self::Base58(s) => bs58::decode(s).into_vec()?,
-            Self::Base64(s) => BASE64_STANDARD.decode(s)?,
+            Self::Hex(s) => hex::decode(s).map_err(IdentityError::Hex)?,
+            Self::Base58(s) => bs58::decode(s).into_vec().map_err(IdentityError::Base58)?,
+            Self::Base64(s) => BASE64_STANDARD.decode(s).map_err(IdentityError::Base64)?,
             Self::Bytes(b) => b.clone(),
         })
     }
@@ -62,7 +63,7 @@ impl std::str::FromStr for ID {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         let s = s.trim();
         if s.is_empty() {
-            return Err(EscrowError::EmptyIdentity);
+            return Err(IdentityError::EmptyIdentity.into());
         }
 
         // strip optional "0x" for hex-encoded IDs
@@ -81,12 +82,12 @@ impl std::str::FromStr for ID {
             return Ok(Self::Base64(BASE64_STANDARD.encode(bytes)));
         }
 
-        Err(EscrowError::UnsupportedFormat)
+        Err(IdentityError::UnsupportedFormat.into())
     }
 }
 
 /// A party in the escrow protocol,
-/// wrapping a chain-agnostic `Identity`.
+/// wrapping a chain-agnostic `ID`.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Party {
     /// The participant's on-chain identity (address or public key)

@@ -49,19 +49,24 @@ mod tests {
     use core::str::FromStr as _;
 
     use super::*;
+    use crate::identity::ID;
     use crate::interface::assert_err;
+    use crate::Chain;
 
     #[test]
     fn end_to_end() {
         let sender = Party::from_str("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045").unwrap();
         let recipient = Party::from_str("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8").unwrap();
+        let asset = Asset::Token {
+            chain: Chain::Ethereum,
+            contract: ID::from_str("0xdeadbeef").unwrap(),
+            amount: 10,
+            decimals: 18,
+        };
 
         // funded -> released (no condition)
         let mut escrow = Escrow {
-            asset: Asset::Fungible {
-                id: "test-token".to_string(),
-                amount: 10,
-            },
+            asset,
             recipient,
             sender,
             condition: None,
