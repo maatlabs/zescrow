@@ -3,9 +3,10 @@ use std::convert::TryFrom;
 use ethers::providers::{Http, Provider};
 use ethers::signers::LocalWallet;
 use ethers::types::Address;
+use zescrow_core::{EscrowMetadata, EscrowParams};
 
 use crate::error::{ClientError, Result};
-use crate::interface::{ChainConfig, EscrowMetadata, EscrowParams};
+use crate::utils::ChainConfig;
 use crate::Agent;
 
 /// Escrow agent for interacting with the Ethereum network

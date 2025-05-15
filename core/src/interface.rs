@@ -20,6 +20,9 @@ pub enum EscrowState {
 /// Parameters for **creating** an escrow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowParams {
+    /// Target blockchain network
+    pub chain: Chain,
+
     /// Exactly which asset to lock (native, token, NFT, pool-share, etc).
     #[serde(flatten)]
     pub asset: Asset,
@@ -44,6 +47,9 @@ pub struct EscrowParams {
 /// Metadata **returned** from on-chain escrow creation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowMetadata {
+    /// Target blockchain network
+    pub chain: Chain,
+
     /// Exactly which asset got locked.
     #[serde(flatten)]
     pub asset: Asset,
@@ -57,9 +63,6 @@ pub struct EscrowMetadata {
     /// The specified cryptographic condition (if any).
     #[serde(default, flatten)]
     pub condition: Option<Condition>,
-
-    /// The block height (or number) when this escrow was created on-chain.
-    pub created_block: u64,
 
     /// Chain-specific accounts/programs to finish or cancel with.
     #[serde(flatten)]
@@ -126,14 +129,14 @@ impl std::str::FromStr for Chain {
 pub enum ChainMetadata {
     Ethereum {
         /// The escrow smart-contract address.
-        contract_address: Party,
+        contract_address: String,
     },
 
     Solana {
         /// Escrow program’s ID.
-        program_id: Party,
+        program_id: String,
         /// The program-derived address for this escrow account.
-        pda: Party,
+        pda: String,
         /// The bump seed used to derive the PDA.
         bump: u8,
     },

@@ -134,6 +134,32 @@ impl Asset {
         Ok(format!("{}.{}", whole, rem_str))
     }
 
+    /// Returns the underlying raw quantity for this asset:
+    /// - `Native`, `Token`, `MultiToken`: the `amount` field.
+    /// - `PoolShare`: the `share` field.
+    /// - `Nft`: implicitly `1`.
+    pub fn amount(&self) -> u128 {
+        match self {
+            Asset::Native { amount, .. }
+            | Asset::Token { amount, .. }
+            | Asset::MultiToken { amount, .. } => *amount,
+
+            Asset::PoolShare { share, .. } => *share,
+
+            Asset::Nft { .. } => 1u128,
+        }
+    }
+
+    /// Converts the raw amount/share into a `u64`, returning an error
+    /// if it does not fit in 64 bits.
+    ///
+    /// This is useful for chains like Solana, where all token amounts
+    /// are`u64`.
+    pub fn amount_u64(&self) -> Result<u64> {
+        let amt = self.amount();
+        Ok(amt.try_into().map_err(|_| AssetError::AmountOverflow)?)
+    }
+
     /// Checks if asset is a native coin.
     pub fn is_native(&self) -> bool {
         matches!(self, Self::Native { .. })

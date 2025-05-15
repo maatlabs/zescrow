@@ -1,10 +1,11 @@
 use agents::{EthereumAgent, SolanaAgent};
 use error::Result;
-use interface::{Chain, ChainConfig, EscrowMetadata, EscrowParams};
+use utils::ChainConfig;
+use zescrow_core::{Chain, EscrowMetadata, EscrowParams};
 
 pub mod agents;
 pub mod error;
-pub mod interface;
+pub mod utils;
 
 /// Core interface for blockchain-specific escrow operations.
 ///

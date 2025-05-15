@@ -22,6 +22,8 @@ pub enum ClientError {
     SolanaRpcClient(#[from] solana_client::client_error::ClientError),
     #[error("Anchor program error")]
     Anchorlang(#[from] anchor_lang::prelude::ProgramError),
+    #[error("Error while trying to retrieve program-derived address: {0}")]
+    GetPda(String),
 }
 
 impl From<ethers::providers::ProviderError> for ClientError {

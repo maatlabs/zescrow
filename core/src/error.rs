@@ -74,6 +74,9 @@ pub enum AssetError {
     #[error("amount must be non-zero")]
     ZeroAmount,
 
+    #[error("error casting amount from u128 to u64")]
+    AmountOverflow,
+
     #[error("share must be non-zero and <= total supply (share={0}, total={1})")]
     InvalidShare(u128, u128),
 
