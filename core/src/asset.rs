@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{AssetError, IdentityError};
 use crate::identity::ID;
-use crate::interface::format_amount;
 use crate::{Chain, EscrowError, Result};
 
 /// All the "kinds" of assets we might escrow on any chain.
@@ -82,7 +81,7 @@ impl Asset {
 
         match self {
             Self::Native { chain, amount } => {
-                let s = format_amount(amount, &18)?;
+                let s = Self::format_amount(amount, &18)?;
                 Ok(format!("{} {}", s, chain.as_ref()))
             }
             Self::Token {
@@ -91,7 +90,7 @@ impl Asset {
                 decimals,
                 ..
             } => {
-                let s = format_amount(amount, decimals)?;
+                let s = Self::format_amount(amount, decimals)?;
                 Ok(format!("{} @{}", s, contract))
             }
             Self::Nft {
@@ -115,6 +114,24 @@ impl Asset {
                 Ok(format!("{:.4}% of {}", pct, pool))
             }
         }
+    }
+
+    // Format smallest-unit integer into a fixed-width decimal.
+    fn format_amount(amount: &u128, decimals: &u8) -> Result<String> {
+        let (amount, decimals) = (*amount, *decimals);
+        // TODO: check for differences in cross-chain implementations
+        const MAX_DECIMALS: u8 = 38;
+
+        if decimals > MAX_DECIMALS {
+            return Err(AssetError::InvalidDecimals(decimals).into());
+        }
+        let ten_pow = 10u128
+            .checked_pow(decimals as u32)
+            .ok_or(AssetError::FormatOverflow(amount, decimals))?;
+        let whole = amount / ten_pow;
+        let rem = amount % ten_pow;
+        let rem_str = format!("{:0>width$}", rem, width = decimals as usize);
+        Ok(format!("{}.{}", whole, rem_str))
     }
 
     /// Checks if asset is a native coin.

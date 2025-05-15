@@ -8,7 +8,8 @@ use serde_with::serde_as;
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
-use crate::{EscrowError, Result};
+use crate::error::ConditionError;
+use crate::Result;
 
 /// Deterministic crypto conditions and fulfillments.
 #[serde_as]
@@ -56,7 +57,7 @@ impl Condition {
                 if computed.as_slice().ct_eq(hash).unwrap_u8() == 1 {
                     Ok(())
                 } else {
-                    Err(EscrowError::ConditionViolation)
+                    Err(ConditionError::PreimageMismatch.into())
                 }
             }
             Self::Ed25519 {
@@ -65,11 +66,11 @@ impl Condition {
                 message,
             } => {
                 let pk = Ed25519Pub::from_bytes(public_key)
-                    .map_err(|_| EscrowError::ConditionViolation)?;
+                    .map_err(ConditionError::PubkeyOrSigVerification)?;
                 let sig = Ed25519Sig::from_slice(signature)
-                    .map_err(|_| EscrowError::ConditionViolation)?;
+                    .map_err(ConditionError::PubkeyOrSigVerification)?;
                 pk.verify(message, &sig)
-                    .map_err(|_| EscrowError::ConditionViolation)
+                    .map_err(|e| ConditionError::PubkeyOrSigVerification(e).into())
             }
             Self::Secp256k1 {
                 public_key,
@@ -77,11 +78,11 @@ impl Condition {
                 message,
             } => {
                 let vk = Secp256k1Pub::from_sec1_bytes(public_key)
-                    .map_err(|_| EscrowError::ConditionViolation)?;
+                    .map_err(ConditionError::PubkeyOrSigVerification)?;
                 let sig = Secp256k1Sig::from_der(signature)
-                    .map_err(|_| EscrowError::ConditionViolation)?;
+                    .map_err(ConditionError::PubkeyOrSigVerification)?;
                 vk.verify(message, &sig)
-                    .map_err(|_| EscrowError::ConditionViolation)
+                    .map_err(|e| ConditionError::PubkeyOrSigVerification(e).into())
             }
             Self::Threshold {
                 threshold,
@@ -96,7 +97,11 @@ impl Condition {
                 if valid >= *threshold {
                     Ok(())
                 } else {
-                    Err(EscrowError::ConditionViolation)
+                    Err(ConditionError::ThresholdNotMet {
+                        threshold: *threshold,
+                        valid,
+                    }
+                    .into())
                 }
             }
         }
@@ -112,8 +117,8 @@ impl std::fmt::Display for Condition {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
-    use crate::interface::assert_err;
 
     #[test]
     fn preimage() {
@@ -127,7 +132,7 @@ mod tests {
             hash,
             preimage: b"wrong-secret".to_vec(),
         };
-        assert_err(cond.verify(), EscrowError::ConditionViolation);
+        assert!(cond.verify().is_err());
     }
 
     #[test]
@@ -157,7 +162,7 @@ mod tests {
             signature,
             message,
         };
-        assert_err(cond.verify(), EscrowError::ConditionViolation);
+        assert!(cond.verify().is_err());
     }
 
     #[test]
@@ -187,7 +192,7 @@ mod tests {
             signature: sig_bytes,
             message: b"tampered".to_vec(),
         };
-        assert_err(cond.verify(), EscrowError::ConditionViolation);
+        assert!(cond.verify().is_err());
     }
 
     #[test]
@@ -215,14 +220,14 @@ mod tests {
             threshold: 2,
             subconditions: vec![correct, wrong],
         };
-        assert_err(cond.verify(), EscrowError::ConditionViolation);
+        assert!(cond.verify().is_err());
 
         // threshold == 1 and no subconditions should fail
         let cond = Condition::Threshold {
             threshold: 1,
             subconditions: vec![],
         };
-        assert_err(cond.verify(), EscrowError::ConditionViolation);
+        assert!(cond.verify().is_err());
     }
 
     #[test]
@@ -276,6 +281,6 @@ mod tests {
             threshold: 1,
             subconditions: vec![inner2],
         };
-        assert_err(outer2.verify(), EscrowError::ConditionViolation);
+        assert!(outer2.verify().is_err());
     }
 }

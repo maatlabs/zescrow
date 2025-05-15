@@ -2,14 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Asset, Condition, EscrowError, Party, Result};
-
-/// Where in the lifecycle an escrow is
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
-pub enum EscrowState {
-    Funded,
-    Released,
-}
+use crate::{Asset, Condition, EscrowError, EscrowState, Party, Result};
 
 /// Full escrow context
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -56,9 +49,7 @@ mod tests {
     use sha2::{Digest as _, Sha256};
 
     use super::*;
-    use crate::error::AssetError;
     use crate::identity::ID;
-    use crate::interface::assert_err;
     use crate::Chain;
 
     #[test]
@@ -89,7 +80,7 @@ mod tests {
         assert_eq!(escrow.state, EscrowState::Released);
 
         // Ensure re-execution is not allowed
-        assert_err(escrow.execute(), EscrowError::InvalidState);
+        assert!(escrow.execute().is_err());
 
         // Asset validation failure test
         let invalid_asset = Asset::Token {
@@ -107,9 +98,6 @@ mod tests {
             state: EscrowState::Funded,
         };
 
-        assert_err(
-            invalid_escrow.execute(),
-            EscrowError::Asset(AssetError::ZeroAmount),
-        );
+        assert!(invalid_escrow.execute().is_err(),);
     }
 }

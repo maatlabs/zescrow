@@ -10,8 +10,8 @@ pub mod interface;
 pub use asset::Asset;
 pub use condition::Condition;
 pub use error::EscrowError;
-pub use escrow::{Escrow, EscrowState};
+pub use escrow::Escrow;
 pub use identity::Party;
-pub use interface::{Chain, ChainMetadata, EscrowMetadata};
+pub use interface::{Chain, ChainMetadata, EscrowMetadata, EscrowState};
 
 pub type Result<T> = std::result::Result<T, EscrowError>;

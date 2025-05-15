@@ -1,16 +1,11 @@
 use thiserror::Error;
 
 /// Escrow-related errors.
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum EscrowError {
     /// Condition verification failed.
     #[error("condition error: {0}")]
     Condition(#[from] ConditionError),
-
-    /// Legacy catch-all when a condition simply isn’t satisfied.
-    // TODO: Deprecate this once all `verify` calls return `ConditionError`
-    #[error("condition not satisfied")]
-    ConditionViolation,
 
     /// Attempted an invalid state transition.
     #[error("invalid state transition")]
@@ -31,24 +26,23 @@ pub enum EscrowError {
     /// Integer parsing error.
     #[error("parse int error: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
+
+    /// Attempted a chain-specific operation and failed.
+    #[error("invalid chain operation: {0}")]
+    InvalidChainOp(String),
 }
 
 /// Errors that can occur during cryptographic condition verification.
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum ConditionError {
     /// SHA-256(preimage) did not match the stored digest.
     #[error("preimage hash mismatch")]
     PreimageMismatch,
 
-    /// Ed25519 public key or signature was malformed,
+    /// Ed25519/Secp256k1 public key or signature was malformed,
     /// or verification failed.
-    #[error("Ed25519 pubkey or signature verification failed")]
-    Ed25519Verification,
-
-    /// Secp256k1 public key or signature was malformed,
-    /// or verification failed.
-    #[error("Secp256k1 pubkey or signature verification failed")]
-    Secp256k1Verification,
+    #[error("Pubkey or signature error: {0}")]
+    PubkeyOrSigVerification(#[from] ed25519_dalek::SignatureError),
 
     /// Fewer than `threshold` subconditions passed verification.
     #[error("threshold condition not met: {valid} of {threshold} valid")]
@@ -56,7 +50,7 @@ pub enum ConditionError {
 }
 
 /// Errors that might occur while parsing into an `ID`.
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum IdentityError {
     #[error("invalid hex: {0}")]
     Hex(#[from] hex::FromHexError),
@@ -75,7 +69,7 @@ pub enum IdentityError {
 }
 
 /// Errors when parsing or working with `Asset`.
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error)]
 pub enum AssetError {
     #[error("amount must be non-zero")]
     ZeroAmount,
