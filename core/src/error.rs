@@ -71,6 +71,9 @@ pub enum IdentityError {
 /// Errors when parsing or working with `Asset`.
 #[derive(Debug, Error)]
 pub enum AssetError {
+    #[error("could not parse asset: {0}")]
+    Parsing(String),
+
     #[error("amount must be non-zero")]
     ZeroAmount,
 

@@ -37,9 +37,10 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Create => {
             let params: EscrowParams = load_escrow_input_data(ESCROW_PARAMS_PATH)?;
-            let config = load_chain_config(params.chain)?;
+            let chain = params.asset.chain();
+            let config = load_chain_config(chain)?;
 
-            let client = ZescrowClient::new(params.chain, config)?;
+            let client = ZescrowClient::new(chain, &config)?;
             let metadata = client.create_escrow(&params).await?;
 
             save_escrow_metadata(ESCROW_METADATA_PATH, &metadata)?;
@@ -50,17 +51,19 @@ async fn main() -> anyhow::Result<()> {
         }
         Commands::Finish => {
             let metadata: EscrowMetadata = load_escrow_input_data(ESCROW_METADATA_PATH)?;
-            let config = load_chain_config(metadata.chain)?;
+            let chain = metadata.asset.chain();
+            let config = load_chain_config(chain)?;
 
-            let client = ZescrowClient::new(metadata.chain, config)?;
+            let client = ZescrowClient::new(chain, &config)?;
             client.finish_escrow(&metadata).await?;
             tracing::info!("Escrow completed and released successfully");
         }
         Commands::Cancel => {
             let metadata: EscrowMetadata = load_escrow_input_data(ESCROW_METADATA_PATH)?;
-            let config = load_chain_config(metadata.chain)?;
+            let chain = metadata.asset.chain();
+            let config = load_chain_config(chain)?;
 
-            let client = ZescrowClient::new(metadata.chain, config)?;
+            let client = ZescrowClient::new(chain, &config)?;
             client.cancel_escrow(&metadata).await?;
             tracing::info!("Escrow cancelled and refunded successfully");
         }

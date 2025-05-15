@@ -52,7 +52,7 @@ pub struct ZescrowClient {
 }
 
 impl ZescrowClient {
-    pub fn new(chain: Chain, config: ChainConfig) -> Result<Self> {
+    pub fn new(chain: &Chain, config: &ChainConfig) -> Result<Self> {
         let agent: Box<dyn Agent> = match chain {
             Chain::Ethereum => Box::new(EthereumAgent::new(config)?),
             Chain::Solana => Box::new(SolanaAgent::new(config)?),

@@ -27,7 +27,7 @@ pub struct SolanaAgent {
 }
 
 impl SolanaAgent {
-    pub fn new(config: ChainConfig) -> Result<Self> {
+    pub fn new(config: &ChainConfig) -> Result<Self> {
         let ChainConfig::Solana {
             rpc_url,
             keypair_path,
@@ -39,9 +39,9 @@ impl SolanaAgent {
 
         Ok(Self {
             client: RpcClient::new(rpc_url),
-            signer: read_keypair_file(&keypair_path)
+            signer: read_keypair_file(keypair_path)
                 .map_err(|e| ClientError::Keypair(e.to_string()))?,
-            program_id: Pubkey::from_str(&program_id)?,
+            program_id: Pubkey::from_str(program_id)?,
         })
     }
 }
@@ -83,7 +83,6 @@ impl Agent for SolanaAgent {
         self.client.send_and_confirm_transaction(&tx)?;
 
         let EscrowParams {
-            chain,
             asset,
             sender,
             recipient,
@@ -92,7 +91,6 @@ impl Agent for SolanaAgent {
         } = params.clone();
 
         Ok(EscrowMetadata {
-            chain,
             asset,
             sender,
             recipient,

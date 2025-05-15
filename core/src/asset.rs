@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
 
-use crate::error::{AssetError, IdentityError};
+use crate::error::AssetError;
 use crate::identity::ID;
 use crate::{Chain, EscrowError, Result};
 
 /// All the "kinds" of assets we might escrow on any chain.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "asset_type", rename_all = "snake_case")]
+#[serde(tag = "asset_type", content = "asset_data", rename_all = "snake_case")]
 pub enum Asset {
     /// Native coin of a chain (e.g., ETH, SOL).
     Native {
@@ -222,78 +222,25 @@ impl std::fmt::Display for Asset {
     }
 }
 
-// TODO: Proper handling of Asset construction from JSON
 impl std::str::FromStr for Asset {
     type Err = EscrowError;
 
+    /// Parses an `Asset` from its JSON representation.
+    ///
+    /// Expects a JSON object matching the `Asset` enum’s
+    /// `asset_type`/`asset_data` tagging, e.g.:
+    /// ```json
+    /// {
+    ///   "asset_type": "token",
+    ///   "asset_data": {
+    ///     "chain": "ethereum",
+    ///     "contract": "0xdeadbeef…",
+    ///     "amount": 1000,
+    ///     "decimals": 18
+    ///   }
+    /// }
+    /// ```
     fn from_str(s: &str) -> Result<Self> {
-        let parts = s.split(':').collect::<Vec<_>>();
-        match parts.as_slice() {
-            ["native", chain, amount] => {
-                let amount = amount.parse()?;
-                let chain = chain.parse()?;
-
-                Ok(Self::Native { chain, amount })
-            }
-
-            ["token", chain, contract, amount, decimals] => {
-                let contract =
-                    ID::from_str(contract).map_err(|_| IdentityError::UnsupportedFormat)?;
-                let amount = amount.parse()?;
-                let decimals = decimals.parse()?;
-                let chain = chain.parse()?;
-
-                Ok(Self::Token {
-                    chain,
-                    contract,
-                    amount,
-                    decimals,
-                })
-            }
-
-            ["nft", chain, contract, token_id] => {
-                let contract =
-                    ID::from_str(contract).map_err(|_| IdentityError::UnsupportedFormat)?;
-                let chain = chain.parse()?;
-
-                Ok(Self::Nft {
-                    chain,
-                    contract,
-                    token_id: token_id.to_string(),
-                })
-            }
-
-            ["multi", chain, contract, token_id, amount] => {
-                let contract =
-                    ID::from_str(contract).map_err(|_| IdentityError::UnsupportedFormat)?;
-                let amount = amount.parse()?;
-                let chain = chain.parse()?;
-
-                Ok(Self::MultiToken {
-                    chain,
-                    contract,
-                    token_id: token_id.to_string(),
-                    amount,
-                })
-            }
-
-            ["pool", chain, pool, share, total_supply, decimals] => {
-                let pool = ID::from_str(pool).map_err(|_| IdentityError::UnsupportedFormat)?;
-                let share = share.parse()?;
-                let total_supply = total_supply.parse()?;
-                let chain = chain.parse().map_err(|_| AssetError::UnsupportedFormat)?;
-                let decimals = decimals.parse()?;
-
-                Ok(Self::PoolShare {
-                    chain,
-                    pool,
-                    share,
-                    total_supply,
-                    decimals,
-                })
-            }
-
-            _ => Err(AssetError::UnsupportedFormat.into()),
-        }
+        serde_json::from_str::<Self>(s).map_err(|e| AssetError::Parsing(e.to_string()).into())
     }
 }

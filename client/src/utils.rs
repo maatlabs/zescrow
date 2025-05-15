@@ -11,7 +11,7 @@ const TEMPLATES_DIR: &str = "templates";
 
 /// Reads chain-specific configuration given a target `chain`
 /// (e.g., ethereum, solana).
-pub fn load_chain_config(chain: Chain) -> anyhow::Result<ChainConfig> {
+pub fn load_chain_config(chain: &Chain) -> anyhow::Result<ChainConfig> {
     let config_path = format!("{}/{}_config.json", TEMPLATES_DIR, chain.as_ref());
     load_escrow_input_data(&config_path)
 }
@@ -28,9 +28,8 @@ where
         Ok(f) => f,
         Err(e) if e.kind() == ErrorKind::NotFound => {
             anyhow::bail!(
-                "Input file {:?} not found.
-                Please run `zescrow-cli init --chain <chain>`
-                or create it manually.",
+                "Chain config file {:?} not found.
+                Please create a <CHAIN>_config.json in /templates",
                 path
             );
         }

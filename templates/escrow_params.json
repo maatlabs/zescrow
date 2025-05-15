@@ -1,9 +1,18 @@
 {
-    "chain": "Which chain to use: 'solana' or 'ethereum'",
-    "sender": "Public address or wallet/pubkey string of the depositor",
-    "recipient": "Public address or wallet/pubkey string of the beneficiary",
-    "amount": 100,
-    "finish_after": 1714905600,
-    "cancel_after": null,
-    "condition": "Cryptographic hash of escrow conditions"
+    "asset_type": "token",
+    "asset_data": {
+        "chain": "ethereum",
+        "contract": "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        "amount": 1000,
+        "decimals": 18
+    },
+    "sender": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
+    "recipient": "0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8",
+    "condition_type": "preimage",
+    "condition_data": {
+        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "preimage": "secret"
+    },
+    "finish_after": 1700000000,
+    "cancel_after": null
 }

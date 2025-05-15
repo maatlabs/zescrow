@@ -20,9 +20,6 @@ pub enum EscrowState {
 /// Parameters for **creating** an escrow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowParams {
-    /// Target blockchain network
-    pub chain: Chain,
-
     /// Exactly which asset to lock (native, token, NFT, pool-share, etc).
     #[serde(flatten)]
     pub asset: Asset,
@@ -47,9 +44,6 @@ pub struct EscrowParams {
 /// Metadata **returned** from on-chain escrow creation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowMetadata {
-    /// Target blockchain network
-    pub chain: Chain,
-
     /// Exactly which asset got locked.
     #[serde(flatten)]
     pub asset: Asset,

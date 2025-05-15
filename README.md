@@ -31,6 +31,18 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized generic implementation 
 5. If the receipt validates, the specified timeout is not expired, and all other escrow conditions are satisfied, the on-chain escrow adapter releases the funds to the beneficiary, else the funds remain locked until the original depositor withdraws.
 6. For a regular timeout expiration, the depositor must also explicitly trigger a withdrawal.
 
+## Usage
+
+### Prerequisites
+
+1. Edit the `<CHAIN>_config.json` file in [/templates](/templates/), where `<CHAIN>` refers to an appropriate/supported blockchain network.
+
+2. Then edit the [/templates/escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow.
+
+You may check the definitions of [`Asset`](/core/src/asset.rs) and [`Condition`](/core/src/condition.rs) to get an idea of the kinds of supported assets and conditions. The main [EscrowParams](/core/src/interface.rs) struct provides the full context for what's expected.
+
+### End-to-End
+
 ## Contributing
 
 Thank you for considering contributing to this project! All contributions large and small are actively accepted.

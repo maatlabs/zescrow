@@ -20,7 +20,7 @@ pub struct EthereumAgent {
 }
 
 impl EthereumAgent {
-    pub fn new(config: ChainConfig) -> Result<Self> {
+    pub fn new(config: &ChainConfig) -> Result<Self> {
         let ChainConfig::Ethereum {
             rpc_url,
             private_key,
