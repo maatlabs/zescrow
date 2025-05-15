@@ -32,7 +32,6 @@ pub fn to_escrow(data: EscrowMetadata) -> Result<Escrow> {
         recipient,
         sender,
         condition: data.condition,
-        created_block: data.created_block,
         state: EscrowState::Released,
     })
 }

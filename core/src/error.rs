@@ -3,7 +3,12 @@ use thiserror::Error;
 /// Escrow-related errors.
 #[derive(Debug, Error, PartialEq)]
 pub enum EscrowError {
-    /// Crypto condition (e.g., Condition::Threshold) not met.
+    /// Condition verification failed.
+    #[error("condition error: {0}")]
+    Condition(#[from] ConditionError),
+
+    /// Legacy catch-all when a condition simply isn’t satisfied.
+    // TODO: Deprecate this once all `verify` calls return `ConditionError`
     #[error("condition not satisfied")]
     ConditionViolation,
 
@@ -11,17 +16,43 @@ pub enum EscrowError {
     #[error("invalid state transition")]
     InvalidState,
 
+    /// Identity parsing or validation error.
     #[error("identity error: {0}")]
-    Identity(IdentityError),
+    Identity(#[from] IdentityError),
 
-    #[error("asset parsing error: {0}")]
-    Asset(AssetError),
+    /// Asset parsing or validation error.
+    #[error("asset error: {0}")]
+    Asset(#[from] AssetError),
 
+    /// Unsupported chain identifier.
     #[error("unsupported chain")]
     UnsupportedChain,
 
+    /// Integer parsing error.
     #[error("parse int error: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
+}
+
+/// Errors that can occur during cryptographic condition verification.
+#[derive(Debug, Error, PartialEq)]
+pub enum ConditionError {
+    /// SHA-256(preimage) did not match the stored digest.
+    #[error("preimage hash mismatch")]
+    PreimageMismatch,
+
+    /// Ed25519 public key or signature was malformed,
+    /// or verification failed.
+    #[error("Ed25519 pubkey or signature verification failed")]
+    Ed25519Verification,
+
+    /// Secp256k1 public key or signature was malformed,
+    /// or verification failed.
+    #[error("Secp256k1 pubkey or signature verification failed")]
+    Secp256k1Verification,
+
+    /// Fewer than `threshold` subconditions passed verification.
+    #[error("threshold condition not met: {valid} of {threshold} valid")]
+    ThresholdNotMet { threshold: usize, valid: usize },
 }
 
 /// Errors that might occur while parsing into an `ID`.
@@ -63,16 +94,4 @@ pub enum AssetError {
 
     #[error("parse int error: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
-}
-
-impl From<IdentityError> for EscrowError {
-    fn from(value: IdentityError) -> Self {
-        Self::Identity(value)
-    }
-}
-
-impl From<AssetError> for EscrowError {
-    fn from(value: AssetError) -> Self {
-        Self::Asset(value)
-    }
 }

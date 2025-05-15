@@ -49,6 +49,7 @@ pub enum Asset {
 
 impl Asset {
     /// Validate by enforcing zero-amount and share invariants.
+    // TODO: Add more robust checks.
     pub fn validate(&self) -> Result<()> {
         match self {
             Self::Native { amount, .. }
@@ -178,6 +179,7 @@ impl std::fmt::Display for Asset {
     }
 }
 
+// TODO: Proper handling of Asset construction from JSON
 impl std::str::FromStr for Asset {
     type Err = EscrowError;
 

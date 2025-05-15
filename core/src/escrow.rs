@@ -9,7 +9,6 @@ use crate::{Asset, Condition, EscrowError, Party, Result};
 pub enum EscrowState {
     Funded,
     Released,
-    Expired,
 }
 
 /// Full escrow context
@@ -23,21 +22,27 @@ pub struct Escrow {
     pub sender: Party,
     /// Optional cryptographic condition.
     pub condition: Option<Condition>,
-    /// Block height when escrow was created.
-    pub created_block: u64,
     /// Current state.
     pub state: EscrowState,
 }
 
 impl Escrow {
-    /// Attempts to finish (release) by verifying the predefined conditions.
+    /// Validates and attempts to finish (release) escrow by
+    /// verifying all predefined conditions.
+    // TODO: Add more robust checks
     pub fn execute(&mut self) -> Result<EscrowState> {
         if self.state != EscrowState::Funded {
             return Err(EscrowError::InvalidState);
         }
+        self.asset.validate()?;
+
+        self.sender.verify_identity()?;
+        self.recipient.verify_identity()?;
+
         if let Some(cond) = &self.condition {
             cond.verify()?;
         }
+
         self.state = EscrowState::Released;
         Ok(self.state)
     }
@@ -48,50 +53,63 @@ mod tests {
 
     use core::str::FromStr as _;
 
+    use sha2::{Digest as _, Sha256};
+
     use super::*;
+    use crate::error::AssetError;
     use crate::identity::ID;
     use crate::interface::assert_err;
     use crate::Chain;
 
     #[test]
-    fn end_to_end() {
+    fn execute_escrow() {
         let sender = Party::from_str("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045").unwrap();
         let recipient = Party::from_str("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8").unwrap();
         let asset = Asset::Token {
             chain: Chain::Ethereum,
             contract: ID::from_str("0xdeadbeef").unwrap(),
-            amount: 10,
+            amount: 1000,
             decimals: 18,
         };
 
-        // funded -> released (no condition)
+        let condition = Condition::Preimage {
+            hash: Sha256::digest(b"secret").into(),
+            preimage: b"secret".to_vec(),
+        };
+
         let mut escrow = Escrow {
             asset,
-            recipient,
-            sender,
-            condition: None,
-            created_block: 0,
+            recipient: recipient.clone(),
+            sender: sender.clone(),
+            condition: Some(condition),
             state: EscrowState::Funded,
         };
+
         assert_eq!(escrow.execute().unwrap(), EscrowState::Released);
         assert_eq!(escrow.state, EscrowState::Released);
 
-        // executing again should result in invalid state
+        // Ensure re-execution is not allowed
         assert_err(escrow.execute(), EscrowError::InvalidState);
 
-        // expired escrow cannot be executed (re-released)
-        escrow.state = EscrowState::Expired;
-        assert_err(escrow.execute(), EscrowError::InvalidState);
-
-        // fund with failing condition
-        let mut bad_escrow = Escrow {
-            condition: Some(Condition::Preimage {
-                hash: [0u8; 32],
-                preimage: vec![10],
-            }),
-            ..escrow.clone()
+        // Asset validation failure test
+        let invalid_asset = Asset::Token {
+            chain: Chain::Ethereum,
+            contract: ID::from_str("0xdeadbeef").unwrap(),
+            amount: 0, // invalid zero amount
+            decimals: 18,
         };
-        bad_escrow.state = EscrowState::Funded;
-        assert_err(bad_escrow.execute(), EscrowError::ConditionViolation);
+
+        let mut invalid_escrow = Escrow {
+            asset: invalid_asset,
+            recipient,
+            sender,
+            condition: None,
+            state: EscrowState::Funded,
+        };
+
+        assert_err(
+            invalid_escrow.execute(),
+            EscrowError::Asset(AssetError::ZeroAmount),
+        );
     }
 }

@@ -1,10 +1,4 @@
 //! Pure, chain-agnostic escrow core library.
-//!
-//! Exposes:
-//! - `Asset` & `Party` for funds and participants
-//! - `Condition` for cryptographic release logic
-//! - `Escrow` & `EscrowState` with time locks and state transitions
-//! - `EscrowError` for all error cases
 
 pub mod asset;
 pub mod condition;
