@@ -1,8 +1,15 @@
 node_modules
+# adapters/ethereum/cache
+cache
+# adapters/ethereum/artifacts
+artifacts
+
 .DS_Store
+
 Cargo.lock
 methods/guest/Cargo.lock
 target/
+
 test-ledger
 
 templates/escrow_metadata.json
