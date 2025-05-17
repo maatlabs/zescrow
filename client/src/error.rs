@@ -18,12 +18,18 @@ pub enum ClientError {
     AddressParse(#[from] rustc_hex::FromHexError),
     #[error("Invalid chain operation")]
     InvalidChainOperation,
-    #[error("RPC client error")]
-    SolanaRpcClient(#[from] solana_client::client_error::ClientError),
+    #[error("Solana RPC client error")]
+    SolanaRpcClient(#[from] Box<solana_client::client_error::ClientError>),
     #[error("Anchor program error")]
     Anchorlang(#[from] anchor_lang::prelude::ProgramError),
     #[error("Error while trying to retrieve program-derived address: {0}")]
     GetPda(String),
+}
+
+impl From<solana_client::client_error::ClientError> for ClientError {
+    fn from(value: solana_client::client_error::ClientError) -> Self {
+        Self::SolanaRpcClient(Box::new(value))
+    }
 }
 
 impl From<ethers::providers::ProviderError> for ClientError {

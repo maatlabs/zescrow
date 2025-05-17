@@ -1,8 +1,10 @@
-node_modules
-# adapters/ethereum/cache
+# Node dependencies
+node_modules/
+
+# Hardhat build files
 cache
-# adapters/ethereum/artifacts
-artifacts
+artifacts/
+artifacts/build-info/ 
 
 .DS_Store
 
