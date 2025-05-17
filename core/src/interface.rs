@@ -1,12 +1,65 @@
 //! Core types for JSON (de)serialization of escrow parameters and metadata.
-//!
-//! These types power two files at runtime:
-//! - `escrow_params.json`: input to the CLI `client` for creating an escrow.
-//! - `escrow_metadata.json`: output from the CLI after on-chain creation.
 
+use std::fs::File;
+use std::io::ErrorKind;
+use std::path::Path;
+
+use anyhow::Context;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use crate::{Asset, Condition, Escrow, EscrowError, Party, Result};
+use crate::{Asset, EscrowError, Party, Result};
+
+const TEMPLATES_DIR: &str = "templates";
+pub const ESCROW_PARAMS_PATH: &str = "templates/escrow_params.json";
+pub const ESCROW_METADATA_PATH: &str = "templates/escrow_metadata.json";
+pub const ESCROW_CONDITIONS_PATH: &str = "templates/escrow_conditions.json";
+
+/// Reads chain-specific configuration given a target `chain`
+/// (e.g., ethereum, solana).
+pub fn load_chain_config(chain: &Chain) -> anyhow::Result<ChainConfig> {
+    let config_path = format!("{}/{}_config.json", TEMPLATES_DIR, chain.as_ref());
+    load_escrow_input_data(&config_path)
+}
+
+/// Reads JSON-encoded escrow params and chain-specific configs
+/// from the given `path`.
+pub fn load_escrow_input_data<P, T>(path: P) -> anyhow::Result<T>
+where
+    P: AsRef<Path>,
+    T: DeserializeOwned,
+{
+    let path = path.as_ref();
+    let file = match File::open(path) {
+        Ok(f) => f,
+        Err(e) if e.kind() == ErrorKind::NotFound => {
+            anyhow::bail!(
+                "Chain config file {:?} not found.
+                Please create a <CHAIN>_config.json in /templates",
+                path
+            );
+        }
+        Err(e) => return Err(e).context(format!("opening file {:?}", path)),
+    };
+    serde_json::from_reader(file).with_context(|| format!("parsing JSON from {:?}", path))
+}
+
+/// Writes JSON-encoded `data` to the given `path`,
+/// creating parent directories as needed.
+pub fn save_escrow_metadata<P, T>(path: P, data: &T) -> anyhow::Result<()>
+where
+    P: AsRef<Path>,
+    T: Serialize,
+{
+    let path = path.as_ref();
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating directory {:?}", parent))?;
+    }
+    let file = File::create(path).with_context(|| format!("creating file {:?}", path))?;
+    serde_json::to_writer_pretty(file, data)
+        .with_context(|| format!("serializing to JSON to {:?}", path))
+}
 
 /// Where in the lifecycle an escrow is.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
@@ -30,15 +83,14 @@ pub struct EscrowParams {
     /// Who will receive the funds once conditions pass.
     pub recipient: Party,
 
-    /// Optional cryptographic condition (hashlock, signature, threshold).
-    #[serde(default, flatten)]
-    pub condition: Option<Condition>,
-
     /// Optional UNIX timestamp (seconds since epoch) after which `execute` is allowed.
     pub finish_after: Option<i64>,
 
     /// Optional UNIX timestamp (seconds since epoch) after which `cancel` is allowed.
     pub cancel_after: Option<i64>,
+
+    /// Specify whether this escrow is subject to any cryptographic conditions.
+    pub has_conditions: bool,
 }
 
 /// Metadata **returned** from on-chain escrow creation.
@@ -54,9 +106,8 @@ pub struct EscrowMetadata {
     /// The beneficiary party.
     pub recipient: Party,
 
-    /// The specified cryptographic condition (if any).
-    #[serde(default, flatten)]
-    pub condition: Option<Condition>,
+    /// Denotes whether this escrow is subject to any cryptographic conditions.
+    pub has_conditions: bool,
 
     /// Chain-specific accounts/programs to finish or cancel with.
     #[serde(flatten)]
@@ -64,26 +115,6 @@ pub struct EscrowMetadata {
 
     /// Where in the lifecycle an escrow is.
     pub state: EscrowState,
-}
-
-impl EscrowMetadata {
-    pub fn to_escrow(self) -> Escrow {
-        let Self {
-            asset,
-            sender,
-            recipient,
-            condition,
-            state,
-            ..
-        } = self;
-        Escrow {
-            asset,
-            recipient,
-            sender,
-            condition,
-            state,
-        }
-    }
 }
 
 /// Supported blockchain networks.
@@ -146,4 +177,29 @@ impl ChainMetadata {
             )),
         }
     }
+}
+
+/// Chain-specific network configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum ChainConfig {
+    /// Ethereum network configuration
+    Ethereum {
+        /// JSON-RPC endpoint URL
+        rpc_url: String,
+        /// Private key
+        /// in wallet import format (WIF)
+        private_key: String,
+        /// Escrow smart contract address
+        contract_address: String,
+    },
+    /// Solana network configuration
+    Solana {
+        /// JSON-RPC endpoint URL
+        rpc_url: String,
+        /// Path to payer keypair file
+        keypair_path: String,
+        /// Program ID for escrow program
+        program_id: String,
+    },
 }

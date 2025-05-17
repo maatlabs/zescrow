@@ -9,10 +9,10 @@ use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
 use solana_sdk::transaction::Transaction;
+use zescrow_core::interface::ChainConfig;
 use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, EscrowState};
 
 use crate::error::{ClientError, Result};
-use crate::utils::ChainConfig;
 use crate::Agent;
 
 /// Escrow agent for interacting with the Solana network
@@ -72,7 +72,6 @@ impl Agent for SolanaAgent {
                         .map_err(|e| ClientError::BlockchainError(e.to_string()))?,
                     finish_after: params.finish_after,
                     cancel_after: params.cancel_after,
-                    condition: params.condition.clone().map(|c| c.to_string()),
                 },
             }),
         };
@@ -86,7 +85,7 @@ impl Agent for SolanaAgent {
             asset,
             sender,
             recipient,
-            condition,
+            has_conditions,
             ..
         } = params.clone();
 
@@ -94,7 +93,7 @@ impl Agent for SolanaAgent {
             asset,
             sender,
             recipient,
-            condition,
+            has_conditions,
             chain_data: ChainMetadata::Solana {
                 program_id: self.program_id.to_string(),
                 pda: pda.to_string(),

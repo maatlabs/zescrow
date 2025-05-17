@@ -36,7 +36,6 @@ pub mod escrow {
         escrow.amount = args.amount;
         escrow.finish_after = args.finish_after;
         escrow.cancel_after = args.cancel_after;
-        escrow.condition = args.condition;
 
         emit!(EscrowEvent {
             sender: escrow.sender,
@@ -125,8 +124,6 @@ pub struct Escrow {
     pub finish_after: Option<i64>,
     /// Optional UNIX timestamp after which sender can reclaim funds
     pub cancel_after: Option<i64>,
-    /// Optional cryptographic (e.g., SHA-256 preimage) condition
-    pub condition: Option<String>,
 }
 
 #[derive(Accounts)]
@@ -141,6 +138,9 @@ pub struct CreateEscrow<'info> {
     /// CHECK: we enforce correctness via PDA seeds
     pub recipient: UncheckedAccount<'info>,
 
+    // TODO:
+    //  + 1   // Option tag for condition
+    //  + 32  // condition
     #[account(
         init,
         seeds = [PREFIX.as_bytes(), sender.key().as_ref(), recipient.key().as_ref()],
@@ -154,8 +154,6 @@ pub struct CreateEscrow<'info> {
              + 8   // finish_after
              + 1   // Option tag for cancel_after
              + 8   // cancel_after
-             + 1   // Option tag for condition
-             + 32  // condition
     )]
     pub escrow_account: Account<'info, Escrow>,
 
@@ -168,7 +166,6 @@ pub struct CreateEscrowArgs {
     pub amount: u64,
     pub finish_after: Option<i64>,
     pub cancel_after: Option<i64>,
-    pub condition: Option<String>,
 }
 
 #[derive(Accounts)]

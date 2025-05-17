@@ -1,12 +1,7 @@
-use std::fs;
-use std::path::Path;
-
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use zescrow_core::{EscrowMetadata, EscrowState};
+use zescrow_core::interface::ESCROW_METADATA_PATH;
+use zescrow_core::{Escrow, EscrowMetadata, EscrowState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
-
-/// File containing escrow transaction details.
-const ESCROW_METADATA_PATH: &str = "./templates/escrow_metadata.json";
 
 fn main() {
     // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
@@ -14,11 +9,11 @@ fn main() {
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
         .init();
 
-    let escrow_json = fs::read_to_string(Path::new(ESCROW_METADATA_PATH))
+    let metadata = std::fs::read_to_string(ESCROW_METADATA_PATH)
         .expect("Failed to read escrow metadata JSON file.");
     let escrow_metadata: EscrowMetadata =
-        serde_json::from_str(&escrow_json).expect("Invalid escrow metadata JSON");
-    let escrow = escrow_metadata.to_escrow();
+        serde_json::from_str(&metadata).expect("Invalid escrow metadata JSON");
+    let escrow = Escrow::from_metadata(escrow_metadata);
 
     let env = ExecutorEnv::builder()
         .write(&escrow)

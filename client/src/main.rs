@@ -1,10 +1,10 @@
 use clap::{Parser, Subcommand};
-use zescrow_client::utils::{load_chain_config, load_escrow_input_data, save_escrow_metadata};
 use zescrow_client::ZescrowClient;
+use zescrow_core::interface::{
+    load_chain_config, load_escrow_input_data, save_escrow_metadata, ESCROW_METADATA_PATH,
+    ESCROW_PARAMS_PATH,
+};
 use zescrow_core::{EscrowMetadata, EscrowParams};
-
-const ESCROW_PARAMS_PATH: &str = "templates/escrow_params.json";
-const ESCROW_METADATA_PATH: &str = "templates/escrow_metadata.json";
 
 #[derive(Parser)]
 #[command(name = "zescrow-cli")]

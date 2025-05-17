@@ -1,6 +1,6 @@
 {
     "asset_type": "token",
-    "asset_data": {
+    "data": {
         "chain": "ethereum",
         "contract": "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
         "amount": 1000,
@@ -8,11 +8,7 @@
     },
     "sender": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
     "recipient": "0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8",
-    "condition_type": "preimage",
-    "condition_data": {
-        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "preimage": "secret"
-    },
     "finish_after": 1700000000,
-    "cancel_after": null
+    "cancel_after": null,
+    "has_conditions": true
 }

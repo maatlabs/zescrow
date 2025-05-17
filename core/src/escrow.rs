@@ -2,7 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Asset, Condition, EscrowError, EscrowState, Party, Result};
+use crate::interface::ESCROW_CONDITIONS_PATH;
+use crate::{Asset, Condition, EscrowError, EscrowMetadata, EscrowState, Party, Result};
 
 /// Full escrow context
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -38,6 +39,35 @@ impl Escrow {
 
         self.state = EscrowState::Released;
         Ok(self.state)
+    }
+
+    pub fn from_metadata(metadata: EscrowMetadata) -> Self {
+        let EscrowMetadata {
+            asset,
+            sender,
+            recipient,
+            state,
+            has_conditions,
+            ..
+        } = metadata;
+
+        let condition = if has_conditions {
+            let conditions = std::fs::read_to_string(ESCROW_CONDITIONS_PATH)
+                .expect("Failed to read escrow conditions JSON file.");
+            let escrow_conditions: Condition =
+                serde_json::from_str(&conditions).expect("Invalid escrow conditions JSON");
+            Some(escrow_conditions)
+        } else {
+            None
+        };
+
+        Self {
+            asset,
+            recipient,
+            sender,
+            condition,
+            state,
+        }
     }
 }
 

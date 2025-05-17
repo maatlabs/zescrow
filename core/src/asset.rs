@@ -6,7 +6,7 @@ use crate::{Chain, EscrowError, Result};
 
 /// All the "kinds" of assets we might escrow on any chain.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-#[serde(tag = "asset_type", content = "asset_data", rename_all = "snake_case")]
+#[serde(tag = "asset_type", content = "data", rename_all = "snake_case")]
 pub enum Asset {
     /// Native coin of a chain (e.g., ETH, SOL).
     Native {
