@@ -1,7 +1,31 @@
 {
-    "condition_type": "preimage",
-    "data": {
-        "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "preimage": "secret"
+    "condition": "threshold",
+    "fulfillment": {
+        "threshold": 2,
+        "subconditions": [
+            {
+                "condition": "preimage",
+                "fulfillment": {
+                    "hash": "…",
+                    "preimage": "…"
+                }
+            },
+            {
+                "condition": "ed25519",
+                "fulfillment": {
+                    "public_key": "…",
+                    "signature": "…",
+                    "message": "…"
+                }
+            },
+            {
+                "condition": "secp256k1",
+                "fulfillment": {
+                    "public_key": "…",
+                    "signature": "…",
+                    "message": "…"
+                }
+            }
+        ]
     }
 }

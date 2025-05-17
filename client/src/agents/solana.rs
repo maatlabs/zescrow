@@ -82,6 +82,7 @@ impl Agent for SolanaAgent {
         self.client.send_and_confirm_transaction(&tx)?;
 
         let EscrowParams {
+            chain_config,
             asset,
             sender,
             recipient,
@@ -90,6 +91,7 @@ impl Agent for SolanaAgent {
         } = params.clone();
 
         Ok(EscrowMetadata {
+            chain_config,
             asset,
             sender,
             recipient,

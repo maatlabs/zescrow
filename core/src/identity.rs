@@ -20,6 +20,17 @@ pub struct Party {
     pub identity: ID,
 }
 
+/// Supported encoding formats for on-chain identities.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "encoding", content = "value", rename_all = "lowercase")]
+pub enum ID {
+    Hex(String),
+    Base58(String),
+    Base64(String),
+    #[serde(with = "serde_bytes")]
+    Bytes(Vec<u8>),
+}
+
 impl Party {
     /// Parses a `Party` from a string-encoded identity.
     ///
@@ -67,17 +78,6 @@ impl std::str::FromStr for Party {
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         Self::new(s)
     }
-}
-
-/// Supported encoding formats for on-chain identities.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase", tag = "encoding", content = "value")]
-pub enum ID {
-    Hex(String),
-    Base58(String),
-    Base64(String),
-    #[serde(with = "serde_bytes")]
-    Bytes(Vec<u8>),
 }
 
 impl ID {

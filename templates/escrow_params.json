@@ -1,14 +1,28 @@
 {
-    "asset_type": "token",
-    "data": {
-        "chain": "ethereum",
-        "contract": "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-        "amount": 1000,
-        "decimals": 18
+    "network": "ethereum",
+    "chain_config": {
+        "rpc_url": "https://mainnet.infura.io/v3/<PROJECT-ID>",
+        "private_key": "YOUR-PRIVATE-KEY-WIF",
+        "contract_address": "0xYourEscrowContractAddress"
     },
-    "sender": "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045",
-    "recipient": "0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8",
+    "asset_type": "native",
+    "asset": {
+        "chain": "ethereum",
+        "amount": 1000000000000000000
+    },
+    "sender": {
+        "identity": {
+            "encoding": "hex",
+            "value": "0xSenderAddress"
+        }
+    },
+    "recipient": {
+        "identity": {
+            "encoding": "hex",
+            "value": "0xRecipientAddress"
+        }
+    },
     "finish_after": 1700000000,
-    "cancel_after": null,
-    "has_conditions": true
+    "cancel_after": 1700003600,
+    "has_conditions": false
 }

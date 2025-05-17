@@ -14,7 +14,7 @@ use crate::Result;
 /// Deterministic crypto conditions and fulfillments.
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "condition_type", content = "data", rename_all = "lowercase")]
+#[serde(tag = "condition", content = "fulfillment", rename_all = "lowercase")]
 pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.
     Preimage {

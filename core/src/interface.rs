@@ -1,7 +1,6 @@
 //! Core types for JSON (de)serialization of escrow parameters and metadata.
 
 use std::fs::File;
-use std::io::ErrorKind;
 use std::path::Path;
 
 use anyhow::Context;
@@ -10,52 +9,31 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Asset, EscrowError, Party, Result};
 
-const TEMPLATES_DIR: &str = "templates";
-pub const ESCROW_PARAMS_PATH: &str = "templates/escrow_params.json";
+pub const ESCROW_PARAMS_FILE: &str = include_str!("../../templates/escrow_params.json");
+pub const ESCROW_CONDITIONS_FILE: &str = include_str!("../../templates/escrow_conditions.json");
+
 pub const ESCROW_METADATA_PATH: &str = "templates/escrow_metadata.json";
-pub const ESCROW_CONDITIONS_PATH: &str = "templates/escrow_conditions.json";
 
-/// Reads chain-specific configuration given a target `chain`
-/// (e.g., ethereum, solana).
-pub fn load_chain_config(chain: &Chain) -> anyhow::Result<ChainConfig> {
-    let config_path = format!("{}/{}_config.json", TEMPLATES_DIR, chain.as_ref());
-    load_escrow_input_data(&config_path)
-}
-
-/// Reads JSON-encoded escrow params and chain-specific configs
-/// from the given `path`.
-pub fn load_escrow_input_data<P, T>(path: P) -> anyhow::Result<T>
+/// Reads JSON-encoded escrow params, metadata, and
+/// chain-specific configs from the given `path`.
+pub fn load_escrow_data<P, T>(path: P) -> anyhow::Result<T>
 where
     P: AsRef<Path>,
     T: DeserializeOwned,
 {
     let path = path.as_ref();
-    let file = match File::open(path) {
-        Ok(f) => f,
-        Err(e) if e.kind() == ErrorKind::NotFound => {
-            anyhow::bail!(
-                "Chain config file {:?} not found.
-                Please create a <CHAIN>_config.json in /templates",
-                path
-            );
-        }
-        Err(e) => return Err(e).context(format!("opening file {:?}", path)),
-    };
-    serde_json::from_reader(file).with_context(|| format!("parsing JSON from {:?}", path))
+    let file = std::fs::read_to_string(path)
+        .with_context(|| format!("loading escrow data: {:?}", path))?;
+    serde_json::from_str(&file).with_context(|| format!("parsing JSON from {:?}", path))
 }
 
-/// Writes JSON-encoded `data` to the given `path`,
-/// creating parent directories as needed.
-pub fn save_escrow_metadata<P, T>(path: P, data: &T) -> anyhow::Result<()>
+/// Writes JSON-encoded `data` to the given `path`.
+pub fn save_escrow_data<P, T>(path: P, data: &T) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
     T: Serialize,
 {
     let path = path.as_ref();
-    if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .with_context(|| format!("creating directory {:?}", parent))?;
-    }
     let file = File::create(path).with_context(|| format!("creating file {:?}", path))?;
     serde_json::to_writer_pretty(file, data)
         .with_context(|| format!("serializing to JSON to {:?}", path))
@@ -73,6 +51,10 @@ pub enum EscrowState {
 /// Parameters for **creating** an escrow.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowParams {
+    /// Chain-specific configuration.
+    #[serde(flatten)]
+    pub chain_config: ChainConfig,
+
     /// Exactly which asset to lock (native, token, NFT, pool-share, etc).
     #[serde(flatten)]
     pub asset: Asset,
@@ -96,6 +78,10 @@ pub struct EscrowParams {
 /// Metadata **returned** from on-chain escrow creation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowMetadata {
+    /// Chain-specific configuration.
+    #[serde(flatten)]
+    pub chain_config: ChainConfig,
+
     /// Exactly which asset got locked.
     #[serde(flatten)]
     pub asset: Asset,
@@ -115,37 +101,6 @@ pub struct EscrowMetadata {
 
     /// Where in the lifecycle an escrow is.
     pub state: EscrowState,
-}
-
-/// Supported blockchain networks.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum Chain {
-    // Ethereum and other EVM-compatible chains
-    Ethereum,
-    /// Solana
-    Solana,
-}
-
-impl AsRef<str> for Chain {
-    fn as_ref(&self) -> &str {
-        match self {
-            Chain::Ethereum => "ethereum",
-            Chain::Solana => "solana",
-        }
-    }
-}
-
-impl std::str::FromStr for Chain {
-    type Err = EscrowError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "ethereum" | "eth" => Ok(Self::Ethereum),
-            "solana" | "sol" => Ok(Self::Solana),
-            _ => Err(EscrowError::UnsupportedChain),
-        }
-    }
 }
 
 /// Chain-specific on-chain escrow metadata.
@@ -181,7 +136,7 @@ impl ChainMetadata {
 
 /// Chain-specific network configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "network", content = "chain_config")]
 pub enum ChainConfig {
     /// Ethereum network configuration
     Ethereum {
@@ -202,4 +157,44 @@ pub enum ChainConfig {
         /// Program ID for escrow program
         program_id: String,
     },
+}
+
+impl ChainConfig {
+    pub fn chain_id(&self) -> Chain {
+        match self {
+            Self::Ethereum { .. } => Chain::Ethereum,
+            Self::Solana { .. } => Chain::Solana,
+        }
+    }
+}
+
+/// Supported blockchain networks.
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Chain {
+    // Ethereum and other EVM-compatible chains
+    Ethereum,
+    /// Solana
+    Solana,
+}
+
+impl AsRef<str> for Chain {
+    fn as_ref(&self) -> &str {
+        match self {
+            Chain::Ethereum => "ethereum",
+            Chain::Solana => "solana",
+        }
+    }
+}
+
+impl std::str::FromStr for Chain {
+    type Err = EscrowError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "ethereum" | "eth" => Ok(Self::Ethereum),
+            "solana" | "sol" => Ok(Self::Solana),
+            _ => Err(EscrowError::UnsupportedChain),
+        }
+    }
 }

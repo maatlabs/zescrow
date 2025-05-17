@@ -23,13 +23,17 @@ pub enum EscrowError {
     #[error("unsupported chain")]
     UnsupportedChain,
 
-    /// Integer parsing error.
-    #[error("parse int error: {0}")]
-    ParseInt(#[from] std::num::ParseIntError),
-
     /// Attempted a chain-specific operation and failed.
     #[error("invalid chain operation: {0}")]
     InvalidChainOp(String),
+
+    /// JSON (de)serialization errors.
+    #[error("serde_json (de)serialization error")]
+    SerdeJson(#[from] serde_json::Error),
+
+    /// I/O errors.
+    #[error("I/O error")]
+    IoError(#[from] std::io::Error),
 }
 
 /// Errors that can occur during cryptographic condition verification.

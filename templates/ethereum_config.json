@@ -1,5 +1,0 @@
-{
-    "rpc_url": "HTTP(S) URL of your Ethereum node or RPC provider",
-    "private_key": "Your wallet import format (WIF) private key",
-    "contract_address": "The escrow smart contract address"
-}
