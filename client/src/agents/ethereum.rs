@@ -111,7 +111,7 @@ impl Agent for EthereumAgent {
             recipient: params.recipient.clone(),
             has_conditions,
             chain_data: ChainMetadata::Ethereum {
-                contract_address: escrow_addr.to_string(),
+                escrow_address: escrow_addr.to_string(),
             },
             state: EscrowState::Funded,
         })

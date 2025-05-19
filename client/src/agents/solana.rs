@@ -12,7 +12,7 @@ use solana_sdk::transaction::Transaction;
 use zescrow_core::interface::ChainConfig;
 use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, EscrowState};
 
-use crate::error::{ClientError, Result};
+use crate::error::{AgentError, ClientError, Result};
 use crate::Agent;
 
 /// Escrow agent for interacting with the Solana network
@@ -23,7 +23,7 @@ pub struct SolanaAgent {
     // for signing transactions
     signer: Keypair,
     // On-chain escrow program ID
-    program_id: Pubkey,
+    escrow_program_id: Pubkey,
 }
 
 impl SolanaAgent {
@@ -31,7 +31,8 @@ impl SolanaAgent {
         let ChainConfig::Solana {
             rpc_url,
             keypair_path,
-            program_id,
+            escrow_program_id,
+            ..
         } = config
         else {
             return Err(ClientError::ConfigMismatch);
@@ -41,7 +42,7 @@ impl SolanaAgent {
             client: RpcClient::new(rpc_url),
             signer: read_keypair_file(keypair_path)
                 .map_err(|e| ClientError::Keypair(e.to_string()))?,
-            program_id: Pubkey::from_str(program_id)?,
+            escrow_program_id: Pubkey::from_str(escrow_program_id)?,
         })
     }
 }
@@ -53,11 +54,11 @@ impl Agent for SolanaAgent {
         let recipient = Pubkey::from_str(&params.recipient.to_string())?;
         let (pda, bump) = Pubkey::find_program_address(
             &[PREFIX.as_bytes(), sender.as_ref(), recipient.as_ref()],
-            &self.program_id,
+            &self.escrow_program_id,
         );
 
         let ix = Instruction {
-            program_id: self.program_id,
+            program_id: self.escrow_program_id,
             accounts: vec![
                 AccountMeta::new(sender, true),
                 AccountMeta::new_readonly(recipient, false),
@@ -98,7 +99,7 @@ impl Agent for SolanaAgent {
             recipient,
             has_conditions,
             chain_data: ChainMetadata::Solana {
-                program_id: self.program_id.to_string(),
+                escrow_program_id: self.escrow_program_id.to_string(),
                 pda: pda.to_string(),
                 bump,
             },
@@ -118,11 +119,18 @@ impl Agent for SolanaAgent {
         // ZK proof generation
         let proof: Vec<u8> = vec![];
 
+        let verifier_program = metadata
+            .chain_config
+            .sol_verifier_program()
+            .map_err(|e| AgentError::Solana(e.to_string()))?;
+        let verifier_program = Pubkey::from_str(&verifier_program)?;
+
         let ix = Instruction {
-            program_id: self.program_id,
+            program_id: self.escrow_program_id,
             accounts: vec![
                 AccountMeta::new(recipient, true),
                 AccountMeta::new(pda, false),
+                AccountMeta::new(verifier_program, false),
             ],
             data: InstructionData::data(&escrow_instruction::FinishEscrow {
                 args: FinishEscrowArgs { proof },
@@ -149,7 +157,7 @@ impl Agent for SolanaAgent {
         let pda = Pubkey::from_str(&pda)?;
 
         let ix = Instruction {
-            program_id: self.program_id,
+            program_id: self.escrow_program_id,
             accounts: vec![AccountMeta::new(sender, true), AccountMeta::new(pda, false)],
             data: InstructionData::data(&escrow_instruction::CancelEscrow {}),
         };

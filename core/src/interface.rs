@@ -96,11 +96,11 @@ pub struct EscrowMetadata {
 pub enum ChainMetadata {
     Ethereum {
         /// The escrow smart-contract address.
-        contract_address: String,
+        escrow_address: String,
     },
     Solana {
         /// Escrow program’s ID.
-        program_id: String,
+        escrow_program_id: String,
         /// The program-derived address for this escrow account.
         pda: String,
         /// The bump seed used to derive the PDA.
@@ -122,9 +122,7 @@ impl ChainMetadata {
     /// Get address of deployed escrow contract.
     pub fn get_eth_contract_address(&self) -> Result<String> {
         match self {
-            Self::Ethereum {
-                contract_address, ..
-            } => Ok(contract_address.to_string()),
+            Self::Ethereum { escrow_address, .. } => Ok(escrow_address.to_string()),
             _ => Err(EscrowError::InvalidChainOp("Not applicable".to_string())),
         }
     }
@@ -151,8 +149,10 @@ pub enum ChainConfig {
         rpc_url: String,
         /// Path to payer keypair file
         keypair_path: String,
-        /// Program ID for escrow program
-        program_id: String,
+        /// On-chain escrow program ID
+        escrow_program_id: String,
+        /// On-chain ZK verifier program ID
+        verifier_program_id: String,
     },
 }
 
@@ -169,6 +169,16 @@ impl ChainConfig {
             Self::Ethereum {
                 verifier_address, ..
             } => Ok(verifier_address.clone()),
+            _ => Err(EscrowError::InvalidChainOp("Not applicable".to_string())),
+        }
+    }
+
+    pub fn sol_verifier_program(&self) -> Result<String> {
+        match self {
+            Self::Solana {
+                verifier_program_id,
+                ..
+            } => Ok(verifier_program_id.clone()),
             _ => Err(EscrowError::InvalidChainOp("Not applicable".to_string())),
         }
     }
