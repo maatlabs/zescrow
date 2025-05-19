@@ -96,14 +96,12 @@ impl Asset {
             Self::Nft {
                 contract, token_id, ..
             } => Ok(format!("NFT {}@{}", token_id, contract)),
-
             Self::MultiToken {
                 amount,
                 token_id,
                 contract,
                 ..
             } => Ok(format!("{}x{}@{}", amount, token_id, contract)),
-
             Self::PoolShare {
                 share,
                 total_supply,
@@ -145,7 +143,6 @@ impl Asset {
             | Asset::MultiToken { amount, .. } => *amount,
 
             Asset::PoolShare { share, .. } => *share,
-
             Asset::Nft { .. } => 1u128,
         }
     }
@@ -189,7 +186,6 @@ impl std::fmt::Display for Asset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Native { amount, chain } => write!(f, "Native[{}:{}]", chain.as_ref(), amount),
-
             Self::Token {
                 amount,
                 contract,
@@ -200,18 +196,15 @@ impl std::fmt::Display for Asset {
                 "Token[{} units of {} ({} decimals)]",
                 amount, contract, decimals
             ),
-
             Self::Nft {
                 contract, token_id, ..
             } => write!(f, "NFT[{}#{}]", contract, token_id),
-
             Self::MultiToken {
                 amount,
                 token_id,
                 contract,
                 ..
             } => write!(f, "MultiToken[{}x{} at {}]", amount, token_id, contract),
-
             Self::PoolShare {
                 pool,
                 share,

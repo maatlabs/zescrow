@@ -11,7 +11,6 @@ use crate::{Asset, EscrowError, Party, Result};
 
 pub const ESCROW_PARAMS_FILE: &str = include_str!("../../templates/escrow_params.json");
 pub const ESCROW_CONDITIONS_FILE: &str = include_str!("../../templates/escrow_conditions.json");
-
 pub const ESCROW_METADATA_PATH: &str = "templates/escrow_metadata.json";
 
 /// Reads JSON-encoded escrow params, metadata, and
@@ -54,23 +53,17 @@ pub struct EscrowParams {
     /// Chain-specific configuration.
     #[serde(flatten)]
     pub chain_config: ChainConfig,
-
     /// Exactly which asset to lock (native, token, NFT, pool-share, etc).
     #[serde(flatten)]
     pub asset: Asset,
-
     /// Who’s funding the escrow.
     pub sender: Party,
-
     /// Who will receive the funds once conditions pass.
     pub recipient: Party,
-
     /// Optional UNIX timestamp (seconds since epoch) after which `execute` is allowed.
     pub finish_after: Option<i64>,
-
     /// Optional UNIX timestamp (seconds since epoch) after which `cancel` is allowed.
     pub cancel_after: Option<i64>,
-
     /// Specify whether this escrow is subject to any cryptographic conditions.
     pub has_conditions: bool,
 }
@@ -81,24 +74,18 @@ pub struct EscrowMetadata {
     /// Chain-specific configuration.
     #[serde(flatten)]
     pub chain_config: ChainConfig,
-
     /// Exactly which asset got locked.
     #[serde(flatten)]
     pub asset: Asset,
-
     /// The funding party.
     pub sender: Party,
-
     /// The beneficiary party.
     pub recipient: Party,
-
     /// Denotes whether this escrow is subject to any cryptographic conditions.
     pub has_conditions: bool,
-
     /// Chain-specific accounts/programs to finish or cancel with.
     #[serde(flatten)]
     pub chain_data: ChainMetadata,
-
     /// Where in the lifecycle an escrow is.
     pub state: EscrowState,
 }
@@ -111,7 +98,6 @@ pub enum ChainMetadata {
         /// The escrow smart-contract address.
         contract_address: String,
     },
-
     Solana {
         /// Escrow program’s ID.
         program_id: String,
@@ -142,8 +128,7 @@ pub enum ChainConfig {
     Ethereum {
         /// JSON-RPC endpoint URL
         rpc_url: String,
-        /// Private key
-        /// in wallet import format (WIF)
+        /// Private key in wallet import format (WIF)
         private_key: String,
         /// Escrow smart contract address
         contract_address: String,

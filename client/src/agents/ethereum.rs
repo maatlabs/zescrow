@@ -1,13 +1,20 @@
-use std::convert::TryFrom;
+use std::{convert::TryFrom, sync::Arc};
 
-use ethers::providers::{Http, Provider};
-use ethers::signers::LocalWallet;
 use ethers::types::Address;
+use ethers::{
+    abi::Abi,
+    middleware::SignerMiddleware,
+    providers::{Http, Provider},
+};
+use ethers::{contract::Contract, signers::LocalWallet};
 use zescrow_core::interface::ChainConfig;
 use zescrow_core::{EscrowMetadata, EscrowParams};
 
 use crate::error::{ClientError, Result};
 use crate::Agent;
+
+const ESCROW_ABI_JSON: &str =
+    include_str!("../../../adapters/ethereum/artifacts/contracts/Escrow.sol/Escrow.json");
 
 /// Escrow agent for interacting with the Ethereum network
 pub struct EthereumAgent {

@@ -56,14 +56,12 @@ impl Escrow {
             return Err(EscrowError::InvalidState);
         }
         self.asset.validate()?;
-
         self.sender.verify_identity()?;
         self.recipient.verify_identity()?;
 
         if let Some(cond) = &self.condition {
             cond.verify()?;
         }
-
         self.state = EscrowState::Released;
         Ok(self.state)
     }

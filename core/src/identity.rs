@@ -142,7 +142,6 @@ impl std::str::FromStr for ID {
         if s.is_empty() {
             return Err(IdentityError::EmptyIdentity.into());
         }
-
         // strip optional "0x" for hex-encoded IDs
         let raw = s.strip_prefix("0x").unwrap_or(s);
 

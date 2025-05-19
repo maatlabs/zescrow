@@ -17,11 +17,9 @@ struct Cli {
 enum Commands {
     /// Create an escrow using the templates in `templates/`
     Create,
-
     /// Complete/release an existing escrow to the beneficiary.
     /// Reads `templates/escrow_metadata.json`
     Finish,
-
     /// Cancel/refund an existing escrow to the depositor.
     /// Reads `templates/escrow_metadata.json`
     Cancel,
