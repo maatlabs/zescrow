@@ -45,16 +45,19 @@ contract Escrow is ReentrancyGuard {
         bool _hasConditions,
         address _verifier
     ) payable {
-        require(msg.value > 0, "Must deposit non-zero amount in escrow");
-
         sender = msg.sender;
         recipient = _recipient;
-        amount = msg.value;
         finishAfter = _finishAfter;
         cancelAfter = _cancelAfter;
         hasConditions = _hasConditions;
         verifier = _verifier;
+    }
 
+    /// @notice Fund this escrow after deployment
+    function deposit() external payable {
+        require(amount == 0, "Already funded");
+        require(msg.value > 0, "Must send ETH");
+        amount = msg.value;
         emit Created(sender, recipient, amount, hasConditions);
     }
 

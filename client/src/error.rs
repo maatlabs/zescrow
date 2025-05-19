@@ -1,6 +1,8 @@
+use thiserror::Error;
+
 pub type Result<T> = std::result::Result<T, ClientError>;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(Error, Debug)]
 pub enum ClientError {
     #[error("Unsupported chain: {0}")]
     UnsupportedChain(String),
@@ -24,6 +26,16 @@ pub enum ClientError {
     Anchorlang(#[from] anchor_lang::prelude::ProgramError),
     #[error("Error while trying to retrieve program-derived address: {0}")]
     GetPda(String),
+    #[error("Chain agent error: {0}")]
+    AgentError(#[from] AgentError),
+}
+
+#[derive(Error, Debug)]
+pub enum AgentError {
+    #[error("Ethereum agent: {0}")]
+    Ethereum(String),
+    #[error("Solana agent: {0}")]
+    Solana(String),
 }
 
 impl From<solana_client::client_error::ClientError> for ClientError {

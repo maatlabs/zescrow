@@ -118,6 +118,16 @@ impl ChainMetadata {
             )),
         }
     }
+
+    /// Get address of deployed escrow contract.
+    pub fn get_eth_contract_address(&self) -> Result<String> {
+        match self {
+            Self::Ethereum {
+                contract_address, ..
+            } => Ok(contract_address.to_string()),
+            _ => Err(EscrowError::InvalidChainOp("Not applicable".to_string())),
+        }
+    }
 }
 
 /// Chain-specific network configuration.
@@ -131,7 +141,9 @@ pub enum ChainConfig {
         /// Private key in wallet import format (WIF)
         private_key: String,
         /// Escrow smart contract address
-        contract_address: String,
+        escrow_address: String,
+        /// On-chain ZK verifier contract address
+        verifier_address: String,
     },
     /// Solana network configuration
     Solana {
@@ -149,6 +161,15 @@ impl ChainConfig {
         match self {
             Self::Ethereum { .. } => Chain::Ethereum,
             Self::Solana { .. } => Chain::Solana,
+        }
+    }
+
+    pub fn eth_verifier_contract(&self) -> Result<String> {
+        match self {
+            Self::Ethereum {
+                verifier_address, ..
+            } => Ok(verifier_address.clone()),
+            _ => Err(EscrowError::InvalidChainOp("Not applicable".to_string())),
         }
     }
 }

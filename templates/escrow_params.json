@@ -3,7 +3,8 @@
     "chain_config": {
         "rpc_url": "https://mainnet.infura.io/v3/<PROJECT-ID>",
         "private_key": "YOUR-PRIVATE-KEY-WIF",
-        "contract_address": "0xYourEscrowContractAddress"
+        "escrow_address": "0xYourEscrowContractAddress",
+        "verifier_address": "0xYourOnchainVerifierContractAddress"
     },
     "asset_type": "native",
     "asset": {
