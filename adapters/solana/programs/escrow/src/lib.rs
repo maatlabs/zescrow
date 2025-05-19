@@ -50,8 +50,8 @@ pub mod escrow {
             require!(!args.proof.is_empty(), EscrowError::ConditionNotMet);
             // TODO
             // CPI into the on-chain RISC Zero verifier program
-        } else {
-            require!(now >= escrow.finish_after.unwrap(), EscrowError::NotReady);
+        } else if let Some(ts) = escrow.finish_after {
+            require!(now >= ts, EscrowError::NotReady);
         }
 
         // Transfer out lamports and close PDA

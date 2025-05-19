@@ -14,9 +14,9 @@ describe("escrow", () => {
     const PREFIX = Buffer.from("escrow");
     const AMOUNT = new BN(LAMPORTS_PER_SOL);
 
-    function derivePda(s: PublicKey, r: PublicKey): [PublicKey, number] {
+    function derivePda(sender: PublicKey, recipient: PublicKey): [PublicKey, number] {
         return PublicKey.findProgramAddressSync(
-            [PREFIX, s.toBuffer(), r.toBuffer()],
+            [PREFIX, sender.toBuffer(), recipient.toBuffer()],
             program.programId
         );
     }
@@ -33,12 +33,13 @@ describe("escrow", () => {
     });
 
     it("should create and finish without condition", async () => {
+        // 1) Create escrow with no ZK‐condition
         await program.methods
             .createEscrow({
                 amount: AMOUNT,
                 finishAfter: null,
                 cancelAfter: null,
-                condition: null,
+                hasConditions: false,
             })
             .accounts({
                 sender: sender.publicKey,
@@ -49,20 +50,21 @@ describe("escrow", () => {
             .signers([sender])
             .rpc();
 
+        // 2) Capture recipient balance, then finishEscrow (proof is ignored when hasConditions==false)
         const before = await provider.connection.getBalance(recipient.publicKey);
-
         await program.methods
-            .finishEscrow()
+            .finishEscrow({ proof: Buffer.alloc(0) })
             .accounts({
                 recipient: recipient.publicKey,
                 escrowAccount: escrowPda,
+                verifierProgram: program.programId
             })
             .signers([recipient])
             .rpc();
-
         const after = await provider.connection.getBalance(recipient.publicKey);
         assert.ok(after - before >= AMOUNT.toNumber(), "recipient got funds");
 
+        // 3) PDA must be closed
         try {
             await program.account.escrow.fetch(escrowPda);
             assert.fail("Expected escrow PDA to be closed");
@@ -76,12 +78,13 @@ describe("escrow", () => {
     });
 
     it("should create and cancel after expiration", async () => {
+        // 1) Create escrow with immediate cancelAfter
         await program.methods
             .createEscrow({
                 amount: AMOUNT,
                 finishAfter: null,
                 cancelAfter: new BN(0),
-                condition: null,
+                hasConditions: false,
             })
             .accounts({
                 sender: sender.publicKey,
@@ -92,8 +95,8 @@ describe("escrow", () => {
             .signers([sender])
             .rpc();
 
+        // 2) Capture sender balance, then cancelEscrow
         const before = await provider.connection.getBalance(sender.publicKey);
-
         await program.methods
             .cancelEscrow()
             .accounts({
@@ -102,10 +105,10 @@ describe("escrow", () => {
             })
             .signers([sender])
             .rpc();
-
         const after = await provider.connection.getBalance(sender.publicKey);
         assert.ok(after - before >= AMOUNT.toNumber(), "sender got refund");
 
+        // 3) PDA must be closed
         try {
             await program.account.escrow.fetch(escrowPda);
             assert.fail("Expected escrow PDA to be closed");
@@ -118,6 +121,7 @@ describe("escrow", () => {
         }
     });
 
+    // Helpers
     async function airdrop(pubkey: PublicKey, lamports: number) {
         const sig = await provider.connection.requestAirdrop(pubkey, lamports);
         await confirmTransaction(sig);
