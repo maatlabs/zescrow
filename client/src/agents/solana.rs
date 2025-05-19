@@ -4,7 +4,7 @@ use anchor_client::solana_sdk::instruction::Instruction;
 use anchor_client::solana_sdk::system_program;
 use anchor_lang::prelude::AccountMeta;
 use anchor_lang::InstructionData;
-use escrow::{instruction as escrow_instruction, CreateEscrowArgs, PREFIX};
+use escrow::{instruction as escrow_instruction, CreateEscrowArgs, FinishEscrowArgs, PREFIX};
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
@@ -72,6 +72,7 @@ impl Agent for SolanaAgent {
                         .map_err(|e| ClientError::BlockchainError(e.to_string()))?,
                     finish_after: params.finish_after,
                     cancel_after: params.cancel_after,
+                    has_conditions: params.has_conditions,
                 },
             }),
         };
@@ -113,13 +114,19 @@ impl Agent for SolanaAgent {
             .map_err(|e| ClientError::GetPda(e.to_string()))?;
         let pda = Pubkey::from_str(&pda)?;
 
+        // TODO
+        // ZK proof generation
+        let proof: Vec<u8> = vec![];
+
         let ix = Instruction {
             program_id: self.program_id,
             accounts: vec![
                 AccountMeta::new(recipient, true),
                 AccountMeta::new(pda, false),
             ],
-            data: InstructionData::data(&escrow_instruction::FinishEscrow {}),
+            data: InstructionData::data(&escrow_instruction::FinishEscrow {
+                args: FinishEscrowArgs { proof },
+            }),
         };
 
         let recent_hash = self.client.get_latest_blockhash()?;

@@ -4,30 +4,24 @@ use anchor_lang::system_program;
 
 declare_id!("8F9ByFr24Y7mAAbUvCcZ9w3GpD16LP6f2THw3Sygy3ct");
 
-/// Program prefix for seed generation
+/// Program-derived address seed prefix
 pub const PREFIX: &str = "escrow";
 
 #[program]
 pub mod escrow {
     use super::*;
 
-    /// Creates a new escrow, initializing a PDA and transferring lamports
+    /// Creates a new escrow, initializing a PDA and transferring lamports.
     pub fn create_escrow(ctx: Context<CreateEscrow>, args: CreateEscrowArgs) -> Result<()> {
-        let system_program_info = ctx.accounts.system_program.to_account_info().clone();
-        let sender_info = ctx.accounts.sender.to_account_info().clone();
-        let escrow_info = ctx.accounts.escrow_account.to_account_info().clone();
-
-        // Transfer lamports from sender to the escrow PDA
-        system_program::transfer(
-            CpiContext::new(
-                system_program_info,
-                system_program::Transfer {
-                    from: sender_info,
-                    to: escrow_info,
-                },
-            ),
-            args.amount,
-        )?;
+        // fund PDA
+        let cpi_ctx = CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            system_program::Transfer {
+                from: ctx.accounts.sender.to_account_info(),
+                to: ctx.accounts.escrow_account.to_account_info(),
+            },
+        );
+        system_program::transfer(cpi_ctx, args.amount)?;
 
         let escrow = &mut ctx.accounts.escrow_account;
 
@@ -36,6 +30,7 @@ pub mod escrow {
         escrow.amount = args.amount;
         escrow.finish_after = args.finish_after;
         escrow.cancel_after = args.cancel_after;
+        escrow.has_conditions = args.has_conditions;
 
         emit!(EscrowEvent {
             sender: escrow.sender,
@@ -43,18 +38,20 @@ pub mod escrow {
             amount: escrow.amount,
             action: EscrowState::Created
         });
-
         Ok(())
     }
 
-    /// Finishes an escrow, enforcing time-lock and/or cryptographic condition
-    pub fn finish_escrow(ctx: Context<FinishEscrow>) -> Result<()> {
+    /// Finishes an escrow, enforcing time-lock and/or cryptographic condition.
+    pub fn finish_escrow(ctx: Context<FinishEscrow>, args: FinishEscrowArgs) -> Result<()> {
         let escrow = &ctx.accounts.escrow_account;
         let now = Clock::get()?.unix_timestamp;
 
-        // Enforce finish_after if set
-        if let Some(ts) = escrow.finish_after {
-            require!(now >= ts, EscrowError::NotReady);
+        if escrow.has_conditions {
+            require!(!args.proof.is_empty(), EscrowError::ConditionNotMet);
+            // TODO
+            // CPI into the on-chain RISC Zero verifier program
+        } else {
+            require!(now >= escrow.finish_after.unwrap(), EscrowError::NotReady);
         }
 
         // Transfer out lamports and close PDA
@@ -75,11 +72,10 @@ pub mod escrow {
             amount: escrow.amount,
             action: EscrowState::Finished
         });
-
         Ok(())
     }
 
-    /// Cancels an escrow after expiration, returning funds to sender
+    /// Cancels an escrow after expiration, returning funds to sender.
     pub fn cancel_escrow(ctx: Context<CancelEscrow>) -> Result<()> {
         let escrow = &ctx.accounts.escrow_account;
         let now = Clock::get()?.unix_timestamp;
@@ -107,7 +103,6 @@ pub mod escrow {
             amount: escrow.amount,
             action: EscrowState::Cancelled
         });
-
         Ok(())
     }
 }
@@ -124,23 +119,20 @@ pub struct Escrow {
     pub finish_after: Option<i64>,
     /// Optional UNIX timestamp after which sender can reclaim funds
     pub cancel_after: Option<i64>,
+    /// Whether this escrow is subject to any cryptographic conditions
+    pub has_conditions: bool,
 }
 
 #[derive(Accounts)]
-#[instruction(amount: u64)]
+#[instruction(args: CreateEscrowArgs)]
 pub struct CreateEscrow<'info> {
     /// Sender funding the escrow
     #[account(mut)]
     pub sender: Signer<'info>,
-
     /// Recipient of the escrow.
     ///
     /// CHECK: we enforce correctness via PDA seeds
     pub recipient: UncheckedAccount<'info>,
-
-    // TODO:
-    //  + 1   // Option tag for condition
-    //  + 32  // condition
     #[account(
         init,
         seeds = [PREFIX.as_bytes(), sender.key().as_ref(), recipient.key().as_ref()],
@@ -154,9 +146,9 @@ pub struct CreateEscrow<'info> {
              + 8   // finish_after
              + 1   // Option tag for cancel_after
              + 8   // cancel_after
+             + 1   // has_conditions
     )]
     pub escrow_account: Account<'info, Escrow>,
-
     /// System program for lamport transfers
     pub system_program: Program<'info, System>,
 }
@@ -166,6 +158,7 @@ pub struct CreateEscrowArgs {
     pub amount: u64,
     pub finish_after: Option<i64>,
     pub cancel_after: Option<i64>,
+    pub has_conditions: bool,
 }
 
 #[derive(Accounts)]
@@ -173,7 +166,6 @@ pub struct FinishEscrow<'info> {
     /// Recipient claiming the funds
     #[account(mut)]
     pub recipient: Signer<'info>,
-
     /// PDA holding the escrow, closed to recipient on success
     #[account(
         mut,
@@ -182,6 +174,13 @@ pub struct FinishEscrow<'info> {
         close = recipient
     )]
     pub escrow_account: Account<'info, Escrow>,
+    /// CHECK: on-chain RISC Zero verifier program
+    pub verifier_program: UncheckedAccount<'info>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct FinishEscrowArgs {
+    pub proof: Vec<u8>,
 }
 
 #[derive(Accounts)]
@@ -189,7 +188,6 @@ pub struct CancelEscrow<'info> {
     /// Original initializer reclaiming funds
     #[account(mut)]
     pub sender: Signer<'info>,
-
     /// PDA holding the escrow, closed back to sender
     #[account(
         mut,
@@ -219,10 +217,10 @@ pub enum EscrowState {
 
 #[error_code]
 pub enum EscrowError {
-    #[msg("Escrow not yet ready to finish.")]
+    #[msg("Too early to finish.")]
     NotReady,
-    #[msg("Provided fulfillment does not match the condition.")]
+    #[msg("Proof verification failed.")]
     ConditionNotMet,
-    #[msg("Escrow has not yet expired for cancellation.")]
+    #[msg("Too early to cancel.")]
     NotExpired,
 }
