@@ -4,8 +4,8 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-/// @dev Interface to RISC Zero on-chain verifier.
-interface IRisc0Verifier {
+/// @dev Interface to the on-chain verifier contract.
+interface IVerifier {
     /// @notice Return true iff `proof` verifies.
     function verify(bytes calldata proof) external view returns (bool);
 }
@@ -15,13 +15,25 @@ interface IRisc0Verifier {
 contract Escrow is ReentrancyGuard {
     using Address for address payable;
 
+    /// @notice The party who funded the escrow
     address public immutable sender;
+
+    /// @notice The party to receive funds on successful completion
     address public immutable recipient;
+
+    /// @notice Earliest timestamp when escrow can be finished
     uint256 public immutable finishAfter;
+
+    /// @notice Earliest timestamp when escrow can be cancelled
     uint256 public immutable cancelAfter;
+
+    /// @notice Whether this escrow requires an on-chain proof verifcation
     bool public immutable hasConditions;
+
+    /// @notice Address of the on-chain verifier contract (if `hasConditions`)
     address public immutable verifier;
 
+    /// @notice Remaining amount locked in escrow
     uint256 public amount;
 
     event Created(
@@ -37,7 +49,7 @@ contract Escrow is ReentrancyGuard {
     /// @param _finishAfter UNIX timestamp after which release is allowed (if no ZK conditions)
     /// @param _cancelAfter UNIX timestamp after which refund is allowed
     /// @param _hasConditions If true, must submit a proof instead of waiting for `_finishAfter`
-    /// @param _verifier Address of the deployed RISC Zero on‐chain verifier contract
+    /// @param _verifier Address of the verifier contract
     constructor(
         address _recipient,
         uint256 _finishAfter,
@@ -45,33 +57,42 @@ contract Escrow is ReentrancyGuard {
         bool _hasConditions,
         address _verifier
     ) payable {
+        require(_recipient != address(0), "Zescrow: invalid recipient");
+        require(
+            _finishAfter > block.timestamp,
+            "Zescrow: finishAfter must be future"
+        );
+        require(
+            _cancelAfter > _finishAfter,
+            "Zescrow: cancelAfter must follow finishAfter"
+        );
+        if (_hasConditions) {
+            require(_verifier != address(0), "Zescrow: verifier required");
+        }
+
         sender = msg.sender;
         recipient = _recipient;
         finishAfter = _finishAfter;
         cancelAfter = _cancelAfter;
         hasConditions = _hasConditions;
         verifier = _verifier;
-    }
-
-    /// @notice Fund this escrow after deployment
-    function deposit() external payable {
-        require(amount == 0, "Already funded");
-        require(msg.value > 0, "Must send ETH");
         amount = msg.value;
+
         emit Created(sender, recipient, amount, hasConditions);
     }
 
-    /// @notice Release funds to beneficiary if time-lock passed and/or ZK conditions met
-    /// @param proof The RISC Zero proof bytes (empty if `hasConditions == false`)
+    /// @notice Release escrowed funds to recipient if time-lock passed and/or ZK conditions met
+    /// @param proof The ZK proof data (empty if `hasConditions == false`)
     function finishEscrow(bytes calldata proof) external nonReentrant {
+        require(block.timestamp >= finishAfter, "Zescrow: too early to finish");
+        require(amount > 0, "Zescrow: nothing to release");
+
         if (hasConditions) {
-            require(proof.length > 0, "Proof required");
+            require(proof.length > 0, "Zescrow: proof required");
             require(
-                IRisc0Verifier(verifier).verify(proof),
-                "Proof verification failed"
+                IVerifier(verifier).verify(proof),
+                "Zescrow: proof verification failed"
             );
-        } else {
-            require(block.timestamp >= finishAfter, "Too early to finish");
         }
 
         uint256 payout = amount;
@@ -80,10 +101,10 @@ contract Escrow is ReentrancyGuard {
         payable(recipient).sendValue(payout);
     }
 
-    /// @notice Refund the `sender` after `cancelAfter`
+    /// @notice Cancel the escrow and refund the `sender` after `cancelAfter`
     function cancelEscrow() external nonReentrant {
-        require(msg.sender == sender, "Only sender can cancel");
-        require(block.timestamp >= cancelAfter, "Too early to cancel");
+        require(msg.sender == sender, "Zescrow: only sender can cancel");
+        require(block.timestamp >= cancelAfter, "Zescrow: too early to cancel");
 
         uint256 refund = amount;
         amount = 0;

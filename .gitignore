@@ -1,8 +1,11 @@
 # Node dependencies
 node_modules/
 
+# TypeChain generated types
+typechain-types/
+
 # Hardhat build files
-cache
+cache/
 artifacts/
 artifacts/build-info/ 
 
@@ -12,6 +15,8 @@ Cargo.lock
 methods/guest/Cargo.lock
 target/
 
+# Solana test validator logs
 test-ledger
 
+# Output of escrow creation via the `client`
 templates/escrow_metadata.json

@@ -1,18 +1,10 @@
-import type { HardhatUserConfig } from "hardhat/config";
-import "@nomicfoundation/hardhat-toolbox";
-import "@typechain/hardhat";
+require("@nomicfoundation/hardhat-toolbox");
+require("@typechain/hardhat");
 
-const config: HardhatUserConfig = {
-    solidity: {
-        version: "0.8.28"
-    },
+module.exports = {
+    solidity: "0.8.28",
     typechain: {
         outDir: "typechain-types",
-        target: "ethers-v5",
-        alwaysGenerateOverloads: false,
-        externalArtifacts: ["externalArtifacts/*.json"],
-        dontOverrideCompile: false,
-    }
+        target: "ethers-v6",
+    },
 };
-
-export default config;
