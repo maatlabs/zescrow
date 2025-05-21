@@ -43,8 +43,6 @@ where
 pub enum EscrowState {
     Funded,
     Released,
-    Expired,
-    Canceled,
 }
 
 /// Parameters for **creating** an escrow.
@@ -138,8 +136,8 @@ pub enum ChainConfig {
         rpc_url: String,
         /// Private key in wallet import format (WIF)
         private_key: String,
-        /// Escrow smart contract address
-        escrow_address: String,
+        /// Address of the `EscrowFactory` smart contract
+        escrow_factory_address: String,
         /// On-chain ZK verifier contract address
         verifier_address: String,
     },
@@ -161,6 +159,16 @@ impl ChainConfig {
         match self {
             Self::Ethereum { .. } => Chain::Ethereum,
             Self::Solana { .. } => Chain::Solana,
+        }
+    }
+
+    pub fn eth_escrow_factory_contract(&self) -> Result<String> {
+        match self {
+            Self::Ethereum {
+                escrow_factory_address,
+                ..
+            } => Ok(escrow_factory_address.clone()),
+            _ => Err(EscrowError::InvalidChainOp("Not applicable".to_string())),
         }
     }
 

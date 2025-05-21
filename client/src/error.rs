@@ -28,6 +28,10 @@ pub enum ClientError {
     GetPda(String),
     #[error("Chain agent error: {0}")]
     AgentError(#[from] AgentError),
+    #[error("Transaction dropped")]
+    TxDropped,
+    #[error("Missing on-chain escrow event")]
+    MissingEvent(String),
 }
 
 #[derive(Error, Debug)]
