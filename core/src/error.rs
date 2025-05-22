@@ -66,14 +66,12 @@ pub enum AssetError {
     Parsing(String),
     #[error("amount must be non-zero")]
     ZeroAmount,
-    #[error("error casting amount from u128 to u64")]
-    AmountOverflow,
     #[error("share must be non-zero and <= total supply (share={0}, total={1})")]
-    InvalidShare(u128, u128),
+    InvalidShare(u64, u64),
     #[error("invalid decimals: {0}")]
     InvalidDecimals(u8),
     #[error("human formatting overflow: amount={0}, decimals={1}")]
-    FormatOverflow(u128, u8),
+    FormatOverflow(u64, u8),
     #[error("unsupported asset string format")]
     UnsupportedFormat,
     #[error("parse int error: {0}")]

@@ -1,4 +1,5 @@
 use core::str::FromStr;
+use std::path::PathBuf;
 
 use anchor_client::solana_sdk::instruction::Instruction;
 use anchor_client::solana_sdk::system_program;
@@ -8,6 +9,7 @@ use escrow::{instruction as escrow_instruction, CreateEscrowArgs, FinishEscrowAr
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
+use solana_sdk::signer::Signer;
 use solana_sdk::transaction::Transaction;
 use zescrow_core::interface::ChainConfig;
 use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, EscrowState};
@@ -19,18 +21,19 @@ use crate::Agent;
 pub struct SolanaAgent {
     // JSON-RPC client of a remote Solana node
     client: RpcClient,
-    // Path to a Solana keypair
-    // for signing transactions
-    signer: Keypair,
+    // Escrow creator keypair
+    sender_keypair: Keypair,
+    // Escrow beneficiary keypair
+    recipient_keypair: Option<Keypair>,
     // On-chain escrow program ID
     escrow_program_id: Pubkey,
 }
 
 impl SolanaAgent {
-    pub fn new(config: &ChainConfig) -> Result<Self> {
+    pub fn new(config: &ChainConfig, recipient_keypair_path: Option<PathBuf>) -> Result<Self> {
         let ChainConfig::Solana {
             rpc_url,
-            keypair_path,
+            sender_keypair_path,
             escrow_program_id,
             ..
         } = config
@@ -38,10 +41,21 @@ impl SolanaAgent {
             return Err(ClientError::ConfigMismatch);
         };
 
+        let sender_keypair = read_keypair_file(sender_keypair_path)
+            .map_err(|e| ClientError::Keypair(e.to_string()))?;
+        let recipient_keypair = match recipient_keypair_path {
+            Some(path) => {
+                let kp =
+                    read_keypair_file(&path).map_err(|e| ClientError::Keypair(e.to_string()))?;
+                Some(kp)
+            }
+            None => None,
+        };
+
         Ok(Self {
             client: RpcClient::new(rpc_url),
-            signer: read_keypair_file(keypair_path)
-                .map_err(|e| ClientError::Keypair(e.to_string()))?,
+            sender_keypair,
+            recipient_keypair,
             escrow_program_id: Pubkey::from_str(escrow_program_id)?,
         })
     }
@@ -51,6 +65,11 @@ impl SolanaAgent {
 impl Agent for SolanaAgent {
     async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata> {
         let sender = Pubkey::from_str(&params.sender.to_string())?;
+        if sender != self.sender_keypair.pubkey() {
+            return Err(ClientError::Keypair(
+                "Sender keypair-pubkey mismatch".to_string(),
+            ));
+        }
         let recipient = Pubkey::from_str(&params.recipient.to_string())?;
         let (pda, bump) = Pubkey::find_program_address(
             &[PREFIX.as_bytes(), sender.as_ref(), recipient.as_ref()],
@@ -67,10 +86,7 @@ impl Agent for SolanaAgent {
             ],
             data: InstructionData::data(&escrow_instruction::CreateEscrow {
                 args: CreateEscrowArgs {
-                    amount: params
-                        .asset
-                        .amount_u64()
-                        .map_err(|e| ClientError::BlockchainError(e.to_string()))?,
+                    amount: params.asset.amount(),
                     finish_after: params.finish_after,
                     cancel_after: params.cancel_after,
                     has_conditions: params.has_conditions,
@@ -79,8 +95,12 @@ impl Agent for SolanaAgent {
         };
 
         let recent_hash = self.client.get_latest_blockhash()?;
-        let tx =
-            Transaction::new_signed_with_payer(&[ix], Some(&sender), &[&self.signer], recent_hash);
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&sender),
+            &[&self.sender_keypair],
+            recent_hash,
+        );
         self.client.send_and_confirm_transaction(&tx)?;
 
         let EscrowParams {
@@ -109,6 +129,15 @@ impl Agent for SolanaAgent {
 
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let recipient = Pubkey::from_str(&metadata.recipient.to_string())?;
+        let recipient_keypair = self
+            .recipient_keypair
+            .as_ref()
+            .ok_or_else(|| ClientError::Keypair("Recipient keypair not provided".to_string()))?;
+        if recipient != recipient_keypair.pubkey() {
+            return Err(ClientError::Keypair(
+                "Recipient keypair-pubkey mismatch".to_string(),
+            ));
+        }
         let pda = metadata
             .chain_data
             .get_pda()
@@ -141,7 +170,7 @@ impl Agent for SolanaAgent {
         let tx = Transaction::new_signed_with_payer(
             &[ix],
             Some(&recipient),
-            &[&self.signer],
+            &[recipient_keypair],
             recent_hash,
         );
         self.client.send_and_confirm_transaction(&tx)?;
@@ -163,8 +192,12 @@ impl Agent for SolanaAgent {
         };
 
         let recent_hash = self.client.get_latest_blockhash()?;
-        let tx =
-            Transaction::new_signed_with_payer(&[ix], Some(&sender), &[&self.signer], recent_hash);
+        let tx = Transaction::new_signed_with_payer(
+            &[ix],
+            Some(&sender),
+            &[&self.sender_keypair],
+            recent_hash,
+        );
         self.client.send_and_confirm_transaction(&tx)?;
         Ok(())
     }

@@ -1,29 +1,29 @@
 {
-    "network": "ethereum",
+    "network": "solana",
     "chain_config": {
-        "rpc_url": "https://mainnet.infura.io/v3/<PROJECT-ID>",
-        "private_key": "YOUR-PRIVATE-KEY-WIF",
-        "escrow_factory_address": "0xYourEscrowFactoryContractAddress",
-        "verifier_address": "0xYourOnchainVerifierContractAddress"
+        "rpc_url": "http://localhost:8899",
+        "sender_keypair_path": "absolute/path/to/.config/solana/id.json",
+        "escrow_program_id": "Dsnc4jex64xsyxJ1uqTG6YhoVFnJVH3S24oW3ztxskAo",
+        "verifier_program_id": "Dsnc4jex64xsyxJ1uqTG6YhoVFnJVH3S24oW3ztxskAo"
     },
     "asset_type": "native",
     "asset": {
-        "chain": "ethereum",
-        "amount": 1000000000000000000
+        "chain": "solana",
+        "amount": 100
     },
     "sender": {
         "identity": {
-            "encoding": "hex",
-            "value": "0xSenderAddress"
+            "encoding": "base58",
+            "value": "Gst1wbLHB24p9A3AzHjjZRM9usQTaebsZ4GX7zKDRZVh"
         }
     },
     "recipient": {
         "identity": {
-            "encoding": "hex",
-            "value": "0xRecipientAddress"
+            "encoding": "base58",
+            "value": "8nS1XTWaaDWb2j9jHLkuKq6P44jF5h1JL6GwT9iHi8at"
         }
     },
-    "finish_after": 1700000000,
-    "cancel_after": 1700003600,
+    "finish_after": 1000,
+    "cancel_after": 1200,
     "has_conditions": false
 }

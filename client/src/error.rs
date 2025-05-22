@@ -8,7 +8,7 @@ pub enum ClientError {
     UnsupportedChain(String),
     #[error("Chain configuration mismatch")]
     ConfigMismatch,
-    #[error("Keypair error: {0}")]
+    #[error("Solana keypair: {0}")]
     Keypair(String),
     #[error("Blockchain error: {0}")]
     BlockchainError(String),

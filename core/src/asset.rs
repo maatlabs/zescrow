@@ -12,13 +12,13 @@ pub enum Asset {
     Native {
         chain: Chain,
         /// Amount in the smallest unit (e.g., wei, lamports).
-        amount: u128,
+        amount: u64,
     },
     /// Contract/program-based fungible token (e.g., ERC-20, SPL).
     Token {
         chain: Chain,
         contract: ID,
-        amount: u128,
+        amount: u64,
         /// Number of decimals.
         decimals: u8,
     },
@@ -33,15 +33,15 @@ pub enum Asset {
         chain: Chain,
         contract: ID,
         token_id: String,
-        amount: u128,
+        amount: u64,
     },
     /// Liquidity-pool share, staking derivative, etc.
     PoolShare {
         chain: Chain,
         pool: ID,
-        share: u128,
+        share: u64,
         /// Total supply of pool tokens.
-        total_supply: u128,
+        total_supply: u64,
         decimals: u8,
     },
 }
@@ -115,7 +115,7 @@ impl Asset {
     }
 
     // Format smallest-unit integer into a fixed-width decimal.
-    fn format_amount(amount: &u128, decimals: &u8) -> Result<String> {
+    fn format_amount(amount: &u64, decimals: &u8) -> Result<String> {
         let (amount, decimals) = (*amount, *decimals);
         // TODO: check for differences in cross-chain implementations
         const MAX_DECIMALS: u8 = 38;
@@ -123,7 +123,7 @@ impl Asset {
         if decimals > MAX_DECIMALS {
             return Err(AssetError::InvalidDecimals(decimals).into());
         }
-        let ten_pow = 10u128
+        let ten_pow = 10u64
             .checked_pow(decimals as u32)
             .ok_or(AssetError::FormatOverflow(amount, decimals))?;
         let whole = amount / ten_pow;
@@ -136,25 +136,15 @@ impl Asset {
     /// - `Native`, `Token`, `MultiToken`: the `amount` field.
     /// - `PoolShare`: the `share` field.
     /// - `Nft`: implicitly `1`.
-    pub fn amount(&self) -> u128 {
+    pub fn amount(&self) -> u64 {
         match self {
             Asset::Native { amount, .. }
             | Asset::Token { amount, .. }
             | Asset::MultiToken { amount, .. } => *amount,
 
             Asset::PoolShare { share, .. } => *share,
-            Asset::Nft { .. } => 1u128,
+            Asset::Nft { .. } => 1u64,
         }
-    }
-
-    /// Converts the raw amount/share into a `u64`, returning an error
-    /// if it does not fit in 64 bits.
-    ///
-    /// This is useful for chains like Solana, where all token amounts
-    /// are`u64`.
-    pub fn amount_u64(&self) -> Result<u64> {
-        let amt = self.amount();
-        Ok(amt.try_into().map_err(|_| AssetError::AmountOverflow)?)
     }
 
     /// Checks if asset is a native coin.

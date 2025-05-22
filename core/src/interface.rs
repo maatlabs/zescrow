@@ -9,9 +9,18 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Asset, EscrowError, Party, Result};
 
-pub const ESCROW_PARAMS_FILE: &str = include_str!("../../templates/escrow_params.json");
-pub const ESCROW_CONDITIONS_FILE: &str = include_str!("../../templates/escrow_conditions.json");
-pub const ESCROW_METADATA_PATH: &str = "templates/escrow_metadata.json";
+pub const ESCROW_PARAMS_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../templates/escrow_params.json"
+);
+pub const ESCROW_METADATA_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../templates/escrow_metadata.json"
+);
+pub const ESCROW_CONDITIONS_PATH: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../templates/escrow_conditions.json"
+);
 
 /// Reads JSON-encoded escrow params, metadata, and
 /// chain-specific configs from the given `path`.
@@ -128,7 +137,7 @@ impl ChainMetadata {
 
 /// Chain-specific network configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "network", content = "chain_config")]
+#[serde(tag = "network", content = "chain_config", rename_all = "snake_case")]
 pub enum ChainConfig {
     /// Ethereum network configuration
     Ethereum {
@@ -146,7 +155,7 @@ pub enum ChainConfig {
         /// JSON-RPC endpoint URL
         rpc_url: String,
         /// Path to payer keypair file
-        keypair_path: String,
+        sender_keypair_path: String,
         /// On-chain escrow program ID
         escrow_program_id: String,
         /// On-chain ZK verifier program ID

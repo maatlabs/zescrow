@@ -67,14 +67,14 @@ impl Party {
 
 impl std::fmt::Display for Party {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "Party({})", self.identity)
+        write!(f, "{}", self.identity)
     }
 }
 
 impl std::str::FromStr for Party {
     type Err = EscrowError;
 
-    /// Parses a `Party` from a string, alias for [`Party::new`].
+    /// Parses an instance of `Self` from a string, alias for [`Self::new`].
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         Self::new(s)
     }

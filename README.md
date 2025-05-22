@@ -1,6 +1,6 @@
 # Zescrow
 
-Zescrow (for zero-knowledge escrow) is a trust-minimized generic implementation of an escrow program.
+Execute and verify escrow transactions in zero-knowledge.
 
 ## Goals
 
@@ -35,11 +35,11 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized generic implementation 
 
 ### Prerequisite
 
-1. Compile and deploy an on-chain Zescrow `adapter` (e.g., Solana `escrow` + `verifier`). Take note of the program IDs.
+1. Build and deploy an on-chain Zescrow `adapter` (e.g., Solana `escrow` + `verifier`). Take note of the program IDs.
 
 2. Edit the [`templates/escrow_params.json`](/templates/escrow_params.json) file to specify the parameters of your escrow.
 
-When in doubt, please check the definitions of [`Asset`](/core/src/asset.rs) and [`Condition`](/core/src/condition.rs) to get an idea of the kinds of supported assets and conditions. The main [EscrowParams](/core/src/interface.rs) struct provides the full context for what's expected.
+When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
 
 ### End-to-End
 

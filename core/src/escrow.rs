@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::interface::ESCROW_CONDITIONS_FILE;
+use crate::interface::ESCROW_CONDITIONS_PATH;
 use crate::{Asset, Condition, EscrowError, EscrowMetadata, EscrowState, Party, Result};
 
 /// Full escrow context
@@ -32,7 +32,7 @@ impl Escrow {
         } = metadata;
 
         let condition = if has_conditions {
-            let c = std::fs::read_to_string(ESCROW_CONDITIONS_FILE)?;
+            let c = std::fs::read_to_string(ESCROW_CONDITIONS_PATH)?;
             let c: Condition = serde_json::from_str(&c)?;
             Some(c)
         } else {

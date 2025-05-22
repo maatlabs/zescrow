@@ -11,6 +11,7 @@ artifacts/build-info/
 
 .DS_Store
 
+# Output from Cargo
 Cargo.lock
 methods/guest/Cargo.lock
 target/
@@ -18,5 +19,6 @@ target/
 # Solana test validator logs
 test-ledger
 
-# Output of escrow creation via the `client`
+# Output of escrow workflow via the `client`
 templates/escrow_metadata.json
+templates/test_keypair.json
