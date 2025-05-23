@@ -28,8 +28,8 @@ contract EscrowFactory {
 
     /// @notice Create a new escrow instance
     /// @param recipient Address to receive funds upon successful completion
-    /// @param finishAfter Timestamp after which escrow can be finished
-    /// @param cancelAfter Timestamp after which escrow can be cancelled
+    /// @param finishAfter Block number after which escrow can be finished
+    /// @param cancelAfter Block number after which escrow can be cancelled
     /// @param hasConditions True if a zero-knowledge proof is required
     /// @param verifier Address of the `IVerifier` for proof verification
     /// @return escrowAddress Address of the newly minted escrow contract
@@ -43,7 +43,7 @@ contract EscrowFactory {
         require(recipient != address(0), "Zescrow factory: invalid recipient");
         require(msg.value > 0, "Zescrow factory: must fund escrow");
         require(
-            finishAfter > block.timestamp,
+            finishAfter > block.number,
             "Zescrow factory: finishAfter must be future"
         );
         require(

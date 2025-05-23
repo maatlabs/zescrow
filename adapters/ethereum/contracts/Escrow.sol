@@ -21,10 +21,10 @@ contract Escrow is ReentrancyGuard {
     /// @notice The party to receive funds on successful completion
     address public immutable recipient;
 
-    /// @notice Earliest timestamp when escrow can be finished
+    /// @notice Earliest **block number** when escrow can be finished
     uint256 public immutable finishAfter;
 
-    /// @notice Earliest timestamp when escrow can be cancelled
+    /// @notice Earliest **block number** when escrow can be cancelled
     uint256 public immutable cancelAfter;
 
     /// @notice Whether this escrow requires an on-chain proof verifcation
@@ -46,8 +46,8 @@ contract Escrow is ReentrancyGuard {
     event Cancelled(address indexed sender, uint256 amount);
 
     /// @param _recipient Intended beneficiary of escrowed funds
-    /// @param _finishAfter UNIX timestamp after which release is allowed (if no ZK conditions)
-    /// @param _cancelAfter UNIX timestamp after which refund is allowed
+    /// @param _finishAfter Block number after which release is allowed (if no ZK conditions)
+    /// @param _cancelAfter Block number after which refund is allowed
     /// @param _hasConditions If true, must submit a proof instead of waiting for `_finishAfter`
     /// @param _verifier Address of the verifier contract
     constructor(
@@ -59,12 +59,12 @@ contract Escrow is ReentrancyGuard {
     ) payable {
         require(_recipient != address(0), "Zescrow: invalid recipient");
         require(
-            _finishAfter > block.timestamp,
-            "Zescrow: finishAfter must be future"
+            _finishAfter > block.number,
+            "Zescrow: finishAfter block must be future"
         );
         require(
             _cancelAfter > _finishAfter,
-            "Zescrow: cancelAfter must follow finishAfter"
+            "Zescrow: cancelAfter block must follow finishAfter block"
         );
         if (_hasConditions) {
             require(_verifier != address(0), "Zescrow: verifier required");
@@ -81,10 +81,11 @@ contract Escrow is ReentrancyGuard {
         emit Created(sender, recipient, amount, hasConditions);
     }
 
-    /// @notice Release escrowed funds to recipient if time-lock passed and/or ZK conditions met
+    /// @notice Release escrowed funds to recipient if block number is reachead
+    /// and/or ZK conditions met
     /// @param proof The ZK proof data (empty if `hasConditions == false`)
     function finishEscrow(bytes calldata proof) external nonReentrant {
-        require(block.timestamp >= finishAfter, "Zescrow: too early to finish");
+        require(block.number >= finishAfter, "Zescrow: too early to finish");
         require(amount > 0, "Zescrow: nothing to release");
 
         if (hasConditions) {
@@ -104,7 +105,7 @@ contract Escrow is ReentrancyGuard {
     /// @notice Cancel the escrow and refund the `sender` after `cancelAfter`
     function cancelEscrow() external nonReentrant {
         require(msg.sender == sender, "Zescrow: only sender can cancel");
-        require(block.timestamp >= cancelAfter, "Zescrow: too early to cancel");
+        require(block.number >= cancelAfter, "Zescrow: too early to cancel");
 
         uint256 refund = amount;
         amount = 0;
