@@ -44,14 +44,14 @@ pub mod escrow {
     /// Finishes an escrow, enforcing time-lock and/or cryptographic condition.
     pub fn finish_escrow(ctx: Context<FinishEscrow>, args: FinishEscrowArgs) -> Result<()> {
         let escrow = &ctx.accounts.escrow_account;
-        let now = Clock::get()?.unix_timestamp;
+        let current_slot = Clock::get()?.slot;
 
         if escrow.has_conditions {
             require!(!args.proof.is_empty(), EscrowError::ConditionNotMet);
             // TODO
-            // CPI into the on-chain RISC Zero verifier program
-        } else if let Some(ts) = escrow.finish_after {
-            require!(now >= ts, EscrowError::NotReady);
+            // CPI into the on-chain verifier program
+        } else if let Some(finish_after) = escrow.finish_after {
+            require!(current_slot >= finish_after, EscrowError::NotReady);
         }
 
         // Transfer out lamports and close PDA
@@ -78,11 +78,13 @@ pub mod escrow {
     /// Cancels an escrow after expiration, returning funds to sender.
     pub fn cancel_escrow(ctx: Context<CancelEscrow>) -> Result<()> {
         let escrow = &ctx.accounts.escrow_account;
-        let now = Clock::get()?.unix_timestamp;
+        let current_slot = Clock::get()?.slot;
 
         // Must be past cancel_after to reclaim
         require!(
-            escrow.cancel_after.is_some_and(|ts| now >= ts),
+            escrow
+                .cancel_after
+                .is_some_and(|cancel_after| current_slot >= cancel_after),
             EscrowError::NotExpired
         );
 
@@ -115,10 +117,10 @@ pub struct Escrow {
     pub recipient: Pubkey,
     /// Amount of lamports locked
     pub amount: u64,
-    /// Optional UNIX timestamp after which funds can be released
-    pub finish_after: Option<i64>,
-    /// Optional UNIX timestamp after which sender can reclaim funds
-    pub cancel_after: Option<i64>,
+    /// Optional slot after which funds can be released
+    pub finish_after: Option<u64>,
+    /// Optional slot after which sender can reclaim funds
+    pub cancel_after: Option<u64>,
     /// Whether this escrow is subject to any cryptographic conditions
     pub has_conditions: bool,
 }
@@ -156,8 +158,8 @@ pub struct CreateEscrow<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateEscrowArgs {
     pub amount: u64,
-    pub finish_after: Option<i64>,
-    pub cancel_after: Option<i64>,
+    pub finish_after: Option<u64>,
+    pub cancel_after: Option<u64>,
     pub has_conditions: bool,
 }
 

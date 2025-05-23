@@ -67,10 +67,10 @@ pub struct EscrowParams {
     pub sender: Party,
     /// Who will receive the funds once conditions pass.
     pub recipient: Party,
-    /// Optional UNIX timestamp (seconds since epoch) after which `execute` is allowed.
-    pub finish_after: Option<i64>,
-    /// Optional UNIX timestamp (seconds since epoch) after which `cancel` is allowed.
-    pub cancel_after: Option<i64>,
+    /// Optional block height or slot after which `execute` is allowed.
+    pub finish_after: Option<u64>,
+    /// Optional block height or slot after which `cancel` is allowed.
+    pub cancel_after: Option<u64>,
     /// Specify whether this escrow is subject to any cryptographic conditions.
     pub has_conditions: bool,
 }
