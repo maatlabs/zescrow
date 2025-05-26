@@ -19,7 +19,6 @@ solana-test-validator
 4. In a separate terminal, build the Solana adapter (i.e., `escrow` + `verifier` programs):
 
 ```sh
-# solana adapters
 cd adapters/solana
 anchor build
 ```
@@ -61,6 +60,8 @@ cd templates
 
 9. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
 
+If `has_conditions == true` as specified in your `escrow_params.json`, then ensure the conditions and their fulfillment (i.e., the witness data) are specified in the [escrow_conditions.json](/templates/escrow_conditions.json) file.
+
 10. Create an escrow transaction:
 
 ```sh
@@ -68,19 +69,19 @@ cd client
 cargo run --release -- create
 ```
 
-11. To release an escrow that `has_conditions == false` specified in the `escrow_params.json`, execute:
+11. To release an escrow with `has_conditions == false` execute:
 
 ```sh
-cargo run --release -- finish --recipient_keypair_path <PATH>
+cargo run --release -- finish --recipient-keypair-path <PATH>
 ```
 
 For example, using the `test_keypair.json` created earlier, the above command will be:
 
 ```sh
-cargo run --release -- finish --recipient_keypair_path ../templates/test_keypair.json
+cargo run --release -- finish --recipient-keypair-path ../templates/test_keypair.json
 ```
 
-12. To release an escrow that `has_conditions`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
+12. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
 
 ```sh
 # project root

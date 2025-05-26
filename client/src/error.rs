@@ -32,6 +32,8 @@ pub enum ClientError {
     TxDropped,
     #[error("Missing on-chain escrow event")]
     MissingEvent(String),
+    #[error("Zescrow core: {0}")]
+    ZescrowCore(String),
 }
 
 #[derive(Error, Debug)]
@@ -63,5 +65,11 @@ impl From<ethers::signers::WalletError> for ClientError {
 impl From<solana_sdk::pubkey::ParsePubkeyError> for ClientError {
     fn from(value: solana_sdk::pubkey::ParsePubkeyError) -> Self {
         Self::BlockchainError(value.to_string())
+    }
+}
+
+impl From<zescrow_core::error::EscrowError> for ClientError {
+    fn from(value: zescrow_core::error::EscrowError) -> Self {
+        Self::ZescrowCore(value.to_string())
     }
 }

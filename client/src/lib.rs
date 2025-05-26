@@ -1,12 +1,14 @@
 use std::path::PathBuf;
 
-use agents::{EthereumAgent, SolanaAgent};
 use error::Result;
+pub use ethereum_agent::EthereumAgent;
+pub use solana_agent::SolanaAgent;
 use zescrow_core::interface::ChainConfig;
 use zescrow_core::{Chain, EscrowMetadata, EscrowParams};
 
-pub mod agents;
 pub mod error;
+pub mod ethereum_agent;
+pub mod solana_agent;
 
 /// Core interface for blockchain-specific escrow operations.
 ///

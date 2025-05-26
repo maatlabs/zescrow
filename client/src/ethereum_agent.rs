@@ -16,7 +16,7 @@ use crate::Agent;
 
 /// Factory ABI for encoding/decoding calls and events
 const ESCROW_FACTORY_JSON: &str = include_str!(
-    "../../../adapters/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
+    "../../adapters/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
 );
 
 /// ABI for the `EscrowCreated` event
@@ -84,23 +84,17 @@ impl Agent for EthereumAgent {
             .to_string();
         let abi = serde_json::from_str::<Abi>(&abi_json)
             .map_err(|e| ClientError::Serialization(e.to_string()))?;
-        let factory_addr_str = params
-            .chain_config
-            .eth_escrow_factory_contract()
-            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+        let factory_addr_str = params.chain_config.eth_escrow_factory_contract()?;
         let factory_addr = Address::from_str(&factory_addr_str)?;
 
         let factory = Contract::new(factory_addr, abi.clone(), client.clone());
 
         // Escrow params
         let recipient = Address::from_str(&params.recipient.to_string())?;
-        let finish_after = params.finish_after.unwrap_or_default() as u64;
-        let cancel_after = params.cancel_after.unwrap_or_default() as u64;
+        let finish_after = params.finish_after.unwrap_or_default();
+        let cancel_after = params.cancel_after.unwrap_or_default();
         let has_conditions = params.has_conditions;
-        let verifier_addr = params
-            .chain_config
-            .eth_verifier_contract()
-            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+        let verifier_addr = params.chain_config.eth_verifier_contract()?;
         let verifier = Address::from_str(&verifier_addr)?;
         let amount = U256::from(params.asset.amount());
 
@@ -173,17 +167,11 @@ impl Agent for EthereumAgent {
         let abi = serde_json::from_str::<Abi>(&abi_json)
             .map_err(|e| ClientError::Serialization(e.to_string()))?;
 
-        let factory_addr_str = metadata
-            .chain_config
-            .eth_escrow_factory_contract()
-            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+        let factory_addr_str = metadata.chain_config.eth_escrow_factory_contract()?;
         let factory_addr = Address::from_str(&factory_addr_str)?;
         let factory = Contract::new(factory_addr, abi, client);
 
-        let escrow_addr = metadata
-            .chain_data
-            .get_eth_contract_address()
-            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+        let escrow_addr = metadata.chain_data.get_eth_contract_address()?;
         let escrow_addr = Address::from_str(&escrow_addr)?;
 
         // TODO: set up RISC Zero prover API call
@@ -216,17 +204,11 @@ impl Agent for EthereumAgent {
         let abi = serde_json::from_str::<Abi>(&abi_json)
             .map_err(|e| ClientError::Serialization(e.to_string()))?;
 
-        let factory_addr_str = metadata
-            .chain_config
-            .eth_escrow_factory_contract()
-            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+        let factory_addr_str = metadata.chain_config.eth_escrow_factory_contract()?;
         let factory_addr = Address::from_str(&factory_addr_str)?;
         let factory = Contract::new(factory_addr, abi, client);
 
-        let escrow_addr = metadata
-            .chain_data
-            .get_eth_contract_address()
-            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+        let escrow_addr = metadata.chain_data.get_eth_contract_address()?;
         let escrow_addr = Address::from_str(&escrow_addr)?;
 
         factory
