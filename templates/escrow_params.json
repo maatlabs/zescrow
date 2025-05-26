@@ -2,9 +2,9 @@
     "network": "solana",
     "chain_config": {
         "rpc_url": "http://localhost:8899",
-        "sender_keypair_path": "absolute/path/to/.config/solana/id.json",
-        "escrow_program_id": "Dsnc4jex64xsyxJ1uqTG6YhoVFnJVH3S24oW3ztxskAo",
-        "verifier_program_id": "Dsnc4jex64xsyxJ1uqTG6YhoVFnJVH3S24oW3ztxskAo"
+        "sender_keypair_path": "absolute/path/to/your/own/.config/solana/id.json",
+        "escrow_program_id": "escrow_program_id",
+        "verifier_program_id": "verifier_program_id"
     },
     "asset_type": "native",
     "asset": {
@@ -14,13 +14,13 @@
     "sender": {
         "identity": {
             "encoding": "base58",
-            "value": "Gst1wbLHB24p9A3AzHjjZRM9usQTaebsZ4GX7zKDRZVh"
+            "value": "sender-address"
         }
     },
     "recipient": {
         "identity": {
             "encoding": "base58",
-            "value": "8nS1XTWaaDWb2j9jHLkuKq6P44jF5h1JL6GwT9iHi8at"
+            "value": "recipient-address"
         }
     },
     "finish_after": 1000,

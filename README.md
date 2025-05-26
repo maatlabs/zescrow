@@ -1,12 +1,12 @@
 # Zescrow
 
-Execute and verify escrow transactions in zero-knowledge.
+Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic, generic implementation of an escrow program using the RISC Zero zkVM as the zero-knowledge prover.
 
 ## Goals
 
 1. **Privacy-Preserving** - Reveal only necessary transaction details to counterparties  
 2. **Chain-Agnostic** - Deploy same escrow logic across L1s/L2s via lightweight adapters  
-3. **Dispute Minimization** - Cryptographic proof of condition satisfaction preempts 90%+ conflicts  
+3. **Dispute Minimization** - Cryptographic proof of condition fulfillment preempts 90%+ conflicts  
 
 ## Core Features  
 
@@ -17,31 +17,48 @@ Execute and verify escrow transactions in zero-knowledge.
 
 ## Architecture
 
+### Project Structure
+
+- `adapters` (Chain-specific escrow and ZK verifier programs/smart contracts)
+- `client` (The CLI tool for creating, finishing, and/or cancelling escrows; interacts with `adapters`)
+- `core` (The main library that exposes types and business logic for ZK computations)
+- `prover` (The RISC Zero host/zkVM)
+- `methods` (The RISC Zero guest)
+- `templates` (Contains `escrow_params.json`, `escrow_metadata.json`, `escrow_conditions.json`; these are files that specify escrow parameters/inputs, escrow transaction output, and optional cryptographic conditions for "Release", respectively.)
+
+### High-Level Flow
+
+1. Build and deploy a chain-specific adapter (via the `/adapters`).
+2. Specify the parameters of the escrow (via the `./templates/escrow_params.json`).
+3. `Create` an escrow transaction (via the `client`).
+4. To release an escrow with `has_conditions == false` (i.e., with no cryptographic conditions), execute the `Finish` command of the `client`.
+To release an escrow that `has_conditions`, first run the `prover` to generate a valid `receipt` (zero-knowledge proof) and then execute `Finish` command of the `client`.
+5. To cancel/refund an escrow, execute `Cancel` via the `client`.
+
 ![Zescrow architecture diagram](./assets/zescrow-arch.png)
 
-1. User initiates an escrow transaction by specifying the asset type, amount, beneficiary, timeout, and release conditions using the dApp interface.
-2. Once confirmed, the funds are sent to the escrow component of the on-chain `adapter` (currently a Solana program or an EVM smart contract) where the funds are locked.
-3. The transaction metadata are submitted to the `prover` which executes and cryptographically attests to the validity of the escrow release logic. A receipt (i.e., ZK proof) of the computation is generated.
-4. The receipt is submitted to the verifier component of the on-chain adapter for verification, using the appropriate RISC0 verifier (e.g., `risc0-ethereum`, `risc0-solana`).
+Zooming in on the proof generation routine, here's the interaction between the `prover` and the on-chain `adapters`:
 
-    Zooming in on the proof generation flow, here's the interaction between the `prover` and the on-chain `adapters`:
-
-    ![Proof generation flow diagram](./assets/proof-gen-flow.png)
-
-5. If the receipt validates, the specified timeout is not expired, and all other escrow conditions are satisfied, the on-chain escrow adapter releases the funds to the beneficiary, else the funds remain locked until the original depositor withdraws.
-6. For a regular timeout expiration, the depositor must also explicitly trigger a withdrawal.
+![Proof generation flow diagram](./assets/proof-gen-flow.png)
 
 ## Usage
 
-### Prerequisite
+### Prerequisites
 
-1. Build and deploy an on-chain Zescrow `adapter` (e.g., Solana `escrow` + `verifier`). Take note of the program IDs.
+1. Please ensure that [rustup] is installed. The [`rust-toolchain.toml`][rust-toolchain] file will be used by `cargo` to
+automatically install the correct version.
 
-2. Edit the [`templates/escrow_params.json`](/templates/escrow_params.json) file to specify the parameters of your escrow.
-
-When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
+2. If you intend to create escrows with cryptographic conditions then the [risc0-toolchain] must be installed, since the `zescrow-prover` requires it.
 
 ### End-to-End
+
+1. Clone the repository:
+
+```sh
+git clone https://github.com/maatlabs/zescrow.git
+```
+
+2. To create an escrow end-to-end on Ethereum (and other EVM-compatible chains), please follow the [ethereum-demo][ethereum-demo]. To create an escrow end-to-end on Solana, please follow the [solana-demo][solana-demo].
 
 ## Contributing
 
@@ -56,3 +73,9 @@ Thank you for considering contributing to this project! All contributions large 
 Licensed under [Apache License, Version 2.0](https://github.com/maatlabs/zescrow/blob/main/LICENSE).
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this codebase by you, as defined in the Apache-2.0 license, shall be licensed as above, without any additional terms or conditions.
+
+[ethereum-demo]: docs/ethereum_demo.md
+[risc0-toolchain]: https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain
+[rust-toolchain]: rust-toolchain.toml
+[rustup]: https://rustup.rs
+[solana-demo]: docs/solana_demo.md
