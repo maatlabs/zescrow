@@ -46,15 +46,17 @@ struct EscrowCreatedEvent {
 pub struct EthereumAgent {
     // Ethereum JSON-RPC provider
     provider: Provider<Http>,
-    // Wallet for signing transactions
-    wallet: LocalWallet,
+    // Escrow creator wallet
+    sender_wallet: LocalWallet,
+    // Escrow beneficiary wallet
+    recipient_wallet: Option<LocalWallet>,
 }
 
 impl EthereumAgent {
-    pub fn new(config: &ChainConfig) -> Result<Self> {
+    pub fn new(config: &ChainConfig, recipient_wallet: Option<LocalWallet>) -> Result<Self> {
         let ChainConfig::Ethereum {
             rpc_url,
-            private_key,
+            sender_private_key,
             ..
         } = config
         else {
@@ -63,7 +65,8 @@ impl EthereumAgent {
 
         Ok(Self {
             provider: Provider::<Http>::try_from(rpc_url)?,
-            wallet: private_key.parse()?,
+            sender_wallet: sender_private_key.parse()?,
+            recipient_wallet,
         })
     }
 }
@@ -73,7 +76,7 @@ impl Agent for EthereumAgent {
     async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata> {
         let client = Arc::new(SignerMiddleware::new(
             self.provider.clone(),
-            self.wallet.clone(),
+            self.sender_wallet.clone(),
         ));
 
         let artifact: Value = serde_json::from_str(ESCROW_FACTORY_JSON)
@@ -153,9 +156,13 @@ impl Agent for EthereumAgent {
     }
 
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
+        let recipient_wallet = self
+            .recipient_wallet
+            .as_ref()
+            .ok_or_else(|| ClientError::Keypair("Recipient wallet not provided".to_string()))?;
         let client = Arc::new(SignerMiddleware::new(
             self.provider.clone(),
-            self.wallet.clone(),
+            recipient_wallet.to_owned(),
         ));
 
         let artifact: Value = serde_json::from_str(ESCROW_FACTORY_JSON)
@@ -192,7 +199,7 @@ impl Agent for EthereumAgent {
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let client = Arc::new(SignerMiddleware::new(
             self.provider.clone(),
-            self.wallet.clone(),
+            self.sender_wallet.clone(),
         ));
 
         let artifact: Value = serde_json::from_str(ESCROW_FACTORY_JSON)

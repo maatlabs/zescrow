@@ -1,7 +1,5 @@
-use std::path::PathBuf;
-
 use clap::{Parser, Subcommand};
-use zescrow_client::ZescrowClient;
+use zescrow_client::{Recipient, ZescrowClient};
 use zescrow_core::interface::{
     load_escrow_data, save_escrow_data, ESCROW_METADATA_PATH, ESCROW_PARAMS_PATH,
 };
@@ -24,9 +22,9 @@ enum Commands {
     /// Complete/release an existing escrow to the beneficiary.
     /// Reads `templates/escrow_metadata.json`.
     Finish {
-        /// Path to the escrow recipient's keypair for signing.
-        #[arg(long)]
-        recipient_keypair_path: PathBuf,
+        /// Solana keypair file or Ethereum private key (WIF).
+        #[arg(long, value_name = "RECIPIENT")]
+        recipient: Recipient,
     },
     /// Cancel/refund an existing escrow to the creator.
     /// Reads `templates/escrow_metadata.json`.
@@ -51,14 +49,12 @@ async fn main() -> anyhow::Result<()> {
                 ESCROW_METADATA_PATH
             );
         }
-        Commands::Finish {
-            recipient_keypair_path,
-        } => {
+        Commands::Finish { recipient } => {
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
             let client = ZescrowClient::new(
                 &metadata.chain_config.chain_id(),
                 &metadata.chain_config,
-                Some(recipient_keypair_path),
+                Some(recipient),
             )?;
             client.finish_escrow(&metadata).await?;
             tracing::info!("Escrow completed and released successfully");

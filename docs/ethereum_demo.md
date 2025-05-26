@@ -44,7 +44,7 @@ After deployment completes, note the printed addresses for both the escrow and v
     "network": "ethereum",
     "chain_config": {
         "rpc_url": "http://localhost:8545",
-        "private_key": "YOUR-WIF-ENCODED-PRIVATE-KEY",
+        "sender_private_key": "YOUR-WIF-ENCODED-PRIVATE-KEY",
         "escrow_factory_address": "YOUR_ESCROW_FACTORY_CONTRACT_ADDRESS",
         "verifier_address": "YOUR_VERIFIER_CONTRACT_ADDRESS"
     },
@@ -84,7 +84,7 @@ cargo run --release -- create
 
 ```sh
 # From the `client` directory:
-cargo run --release -- finish --recipient-keypair-path ../templates/test_keypair.json
+cargo run --release -- finish --recipient <RECIPIENT>
 ```
 
 9. To finish an escrow with `has_conditions == true`...

@@ -6,32 +6,43 @@ pub type Result<T> = std::result::Result<T, ClientError>;
 pub enum ClientError {
     #[error("Unsupported chain: {0}")]
     UnsupportedChain(String),
+
     #[error("Chain configuration mismatch")]
     ConfigMismatch,
+
     #[error("Solana keypair: {0}")]
     Keypair(String),
+
     #[error("Blockchain error: {0}")]
     BlockchainError(String),
+
     #[error("Serialization error: {0}")]
     Serialization(String),
+
     #[error("URL parse error")]
     UrlParse(#[from] url::ParseError),
+
     #[error("Address parse error")]
     AddressParse(#[from] rustc_hex::FromHexError),
+
     #[error("Invalid chain operation")]
     InvalidChainOperation,
+
     #[error("Solana RPC client error")]
     SolanaRpcClient(#[from] Box<solana_client::client_error::ClientError>),
+
     #[error("Anchor program error")]
     Anchorlang(#[from] anchor_lang::prelude::ProgramError),
-    #[error("Error while trying to retrieve program-derived address: {0}")]
-    GetPda(String),
+
     #[error("Chain agent error: {0}")]
     AgentError(#[from] AgentError),
+
     #[error("Transaction dropped")]
     TxDropped,
+
     #[error("Missing on-chain escrow event")]
     MissingEvent(String),
+
     #[error("Zescrow core: {0}")]
     ZescrowCore(String),
 }

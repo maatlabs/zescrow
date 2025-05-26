@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
-use error::Result;
+use error::{ClientError, Result};
 pub use ethereum_agent::EthereumAgent;
+use ethers::signers::LocalWallet;
 pub use solana_agent::SolanaAgent;
 use zescrow_core::interface::ChainConfig;
 use zescrow_core::{Chain, EscrowMetadata, EscrowParams};
@@ -55,14 +56,26 @@ pub struct ZescrowClient {
 }
 
 impl ZescrowClient {
-    pub fn new(
-        chain: &Chain,
-        config: &ChainConfig,
-        recipient_keypair_path: Option<PathBuf>,
-    ) -> Result<Self> {
-        let agent: Box<dyn Agent> = match chain {
-            Chain::Ethereum => Box::new(EthereumAgent::new(config)?),
-            Chain::Solana => Box::new(SolanaAgent::new(config, recipient_keypair_path)?),
+    pub fn new(chain: &Chain, config: &ChainConfig, recipient: Option<Recipient>) -> Result<Self> {
+        let agent: Box<dyn Agent> = match (chain, recipient) {
+            (Chain::Ethereum, opt) => {
+                let wallet = opt.and_then(|r| {
+                    if let Recipient::Ethereum(w) = r {
+                        Some(w)
+                    } else {
+                        None
+                    }
+                });
+                Box::new(EthereumAgent::new(config, wallet)?)
+            }
+            (Chain::Solana, Some(Recipient::Solana(path))) => {
+                Box::new(SolanaAgent::new(config, Some(path))?)
+            }
+            (Chain::Solana, _) => {
+                return Err(ClientError::Keypair(
+                    "Solana escrow `finish` requires a recipient keypair file".to_string(),
+                ));
+            }
         };
         Ok(Self { agent })
     }
@@ -77,5 +90,26 @@ impl ZescrowClient {
 
     pub async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         self.agent.cancel_escrow(metadata).await
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Recipient {
+    Ethereum(LocalWallet),
+    Solana(PathBuf),
+}
+
+impl std::str::FromStr for Recipient {
+    type Err = ClientError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        // If it looks like a hex key, parse as Ethereum
+        if let Some(v) = s.strip_prefix("0x") {
+            let key = format!("0x{}", v);
+            let wallet = key.parse::<LocalWallet>()?;
+            return Ok(Self::Ethereum(wallet));
+        }
+        // Otherwise treat as Solana keypair path
+        Ok(Self::Solana(PathBuf::from(s)))
     }
 }

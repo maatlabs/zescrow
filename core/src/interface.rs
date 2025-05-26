@@ -143,8 +143,8 @@ pub enum ChainConfig {
     Ethereum {
         /// JSON-RPC endpoint URL
         rpc_url: String,
-        /// Private key in wallet import format (WIF)
-        private_key: String,
+        /// Sender's private key in wallet import format (WIF)
+        sender_private_key: String,
         /// Address of the `EscrowFactory` smart contract
         escrow_factory_address: String,
         /// On-chain ZK verifier contract address

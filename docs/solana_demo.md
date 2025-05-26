@@ -72,13 +72,13 @@ cargo run --release -- create
 11. To release an escrow with `has_conditions == false` execute:
 
 ```sh
-cargo run --release -- finish --recipient-keypair-path <PATH>
+cargo run --release -- finish --recipient <PATH>
 ```
 
 For example, using the `test_keypair.json` created earlier, the above command will be:
 
 ```sh
-cargo run --release -- finish --recipient-keypair-path ../templates/test_keypair.json
+cargo run --release -- finish --recipient ../templates/test_keypair.json
 ```
 
 12. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:

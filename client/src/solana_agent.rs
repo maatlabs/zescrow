@@ -138,10 +138,7 @@ impl Agent for SolanaAgent {
                 "Recipient keypair-pubkey mismatch".to_string(),
             ));
         }
-        let pda = metadata
-            .chain_data
-            .get_pda()
-            .map_err(|e| ClientError::GetPda(e.to_string()))?;
+        let pda = metadata.chain_data.get_pda()?;
         let pda = Pubkey::from_str(&pda)?;
 
         // TODO
@@ -179,10 +176,7 @@ impl Agent for SolanaAgent {
 
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let sender = Pubkey::from_str(&metadata.sender.to_string())?;
-        let pda = metadata
-            .chain_data
-            .get_pda()
-            .map_err(|e| ClientError::GetPda(e.to_string()))?;
+        let pda = metadata.chain_data.get_pda()?;
         let pda = Pubkey::from_str(&pda)?;
 
         let ix = Instruction {
