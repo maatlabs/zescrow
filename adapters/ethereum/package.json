@@ -1,5 +1,5 @@
 {
-  "name": "ethereum",
+  "name": "ethereum-adapter",
   "version": "1.0.0",
   "type": "commonjs",
   "scripts": {
@@ -12,7 +12,7 @@
     "@typechain/ethers-v6": "^0.5.1",
     "@typechain/hardhat": "^9.1.0",
     "ethers": "^6.14.1",
-    "hardhat": "^2.24.0",
+    "hardhat": "2.24.1",
     "typescript": "^5.8.3"
   },
   "dependencies": {

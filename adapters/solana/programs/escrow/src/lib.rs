@@ -1,8 +1,10 @@
+#![allow(unexpected_cfgs)]
+
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;
 use anchor_lang::system_program;
 
-declare_id!("G3yBrEJUm9P2VA87ppmc2ZACRxmaQu6BXhgjDNQHNHUw");
+declare_id!("Ds6nwDwgUBKDyAoQRg8fySec6RW77GXT2ktFUMDgYqXB");
 
 /// Program-derived address seed prefix
 pub const PREFIX: &str = "escrow";

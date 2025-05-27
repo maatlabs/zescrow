@@ -22,7 +22,7 @@ pub trait Agent: Send + Sync {
     /// Create a new escrow with specified parameters
     ///
     /// # Arguments
-    /// * `params` - Escrow creation parameters including amounts and parties
+    /// * `params` - Escrow creation parameters including assets and parties
     ///
     /// # Returns
     /// Metadata containing chain-specific identifiers and transaction details
@@ -56,27 +56,39 @@ pub struct ZescrowClient {
 }
 
 impl ZescrowClient {
-    pub fn new(chain: &Chain, config: &ChainConfig, recipient: Option<Recipient>) -> Result<Self> {
-        let agent: Box<dyn Agent> = match (chain, recipient) {
-            (Chain::Ethereum, opt) => {
-                let wallet = opt.and_then(|r| {
-                    if let Recipient::Ethereum(w) = r {
-                        Some(w)
-                    } else {
-                        None
+    pub async fn new(
+        chain: &Chain,
+        config: &ChainConfig,
+        recipient: Option<Recipient>,
+    ) -> Result<Self> {
+        let agent: Box<dyn Agent> = match chain {
+            Chain::Ethereum => {
+                let maybe_wallet = match recipient {
+                    Some(Recipient::Ethereum(w)) => Some(w),
+                    Some(Recipient::Solana(_)) => {
+                        return Err(ClientError::Keypair(
+                            "Expected Ethereum key for Ethereum escrows".into(),
+                        ));
                     }
-                });
-                Box::new(EthereumAgent::new(config, wallet)?)
+                    None => None,
+                };
+                Box::new(EthereumAgent::new(config, maybe_wallet).await?)
             }
-            (Chain::Solana, Some(Recipient::Solana(path))) => {
-                Box::new(SolanaAgent::new(config, Some(path))?)
-            }
-            (Chain::Solana, _) => {
-                return Err(ClientError::Keypair(
-                    "Solana escrow `finish` requires a recipient keypair file".to_string(),
-                ));
+
+            Chain::Solana => {
+                let maybe_keypath = match recipient {
+                    None => None,
+                    Some(Recipient::Solana(keypath)) => Some(keypath),
+                    Some(Recipient::Ethereum(_)) => {
+                        return Err(ClientError::Keypair(
+                            "Expected Solana keypair file for Solana escrows".into(),
+                        ));
+                    }
+                };
+                Box::new(SolanaAgent::new(config, maybe_keypath).await?)
             }
         };
+
         Ok(Self { agent })
     }
 
@@ -104,9 +116,8 @@ impl std::str::FromStr for Recipient {
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         // If it looks like a hex key, parse as Ethereum
-        if let Some(v) = s.strip_prefix("0x") {
-            let key = format!("0x{}", v);
-            let wallet = key.parse::<LocalWallet>()?;
+        if let Some(_hex) = s.strip_prefix("0x") {
+            let wallet = s.parse::<LocalWallet>()?;
             return Ok(Self::Ethereum(wallet));
         }
         // Otherwise treat as Solana keypair path

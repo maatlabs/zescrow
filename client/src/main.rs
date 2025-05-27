@@ -6,7 +6,6 @@ use zescrow_core::interface::{
 use zescrow_core::{EscrowMetadata, EscrowParams};
 
 #[derive(Parser)]
-#[command(name = "zescrow-cli")]
 #[command(author, version, about)]
 struct Cli {
     #[command(subcommand)]
@@ -22,7 +21,9 @@ enum Commands {
     /// Complete/release an existing escrow to the beneficiary.
     /// Reads `templates/escrow_metadata.json`.
     Finish {
-        /// Solana keypair file or Ethereum private key (WIF).
+        /// `RECIPIENT` is either:
+        /// - a path to a keypair file (e.g., for Solana), or
+        /// - a WIF-encoded private key
         #[arg(long, value_name = "RECIPIENT")]
         recipient: Recipient,
     },
@@ -40,7 +41,8 @@ async fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Create => {
             let params: EscrowParams = load_escrow_data(ESCROW_PARAMS_PATH)?;
-            let client = ZescrowClient::new(params.asset.chain(), &params.chain_config, None)?;
+            let client =
+                ZescrowClient::new(params.asset.chain(), &params.chain_config, None).await?;
             let metadata = client.create_escrow(&params).await?;
 
             save_escrow_data(ESCROW_METADATA_PATH, &metadata)?;
@@ -55,7 +57,8 @@ async fn main() -> anyhow::Result<()> {
                 &metadata.chain_config.chain_id(),
                 &metadata.chain_config,
                 Some(recipient),
-            )?;
+            )
+            .await?;
             client.finish_escrow(&metadata).await?;
             tracing::info!("Escrow completed and released successfully");
         }
@@ -65,7 +68,8 @@ async fn main() -> anyhow::Result<()> {
                 &metadata.chain_config.chain_id(),
                 &metadata.chain_config,
                 None,
-            )?;
+            )
+            .await?;
             client.cancel_escrow(&metadata).await?;
             tracing::info!("Escrow cancelled and refunded successfully");
         }

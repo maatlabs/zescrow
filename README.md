@@ -2,6 +2,10 @@
 
 Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic, generic implementation of an escrow program using the RISC Zero zkVM as the zero-knowledge prover.
 
+> [!WARNING]
+
+**This project is not audited, and it's currently under active development. Until v1.0.0, please do not use in production**.
+
 ## Goals
 
 1. **Privacy-Preserving** - Reveal only necessary transaction details to counterparties  

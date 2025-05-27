@@ -3,10 +3,6 @@ name = "zescrow-client"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
-name = "zescrow-cli"
-path = "src/main.rs"
-
 [dependencies]
 anchor-lang = "0.31.1"
 anchor-client = "0.31.1"
@@ -23,7 +19,7 @@ serde_json = "1.0.140"
 solana-client = "2.2.7"
 solana-sdk = "2.2.2"
 thiserror = "2.0.12"
-tokio = { version = "1.45.0", features = ["full"] }
+tokio = { version = "1.45.1", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 url = { version = "2.5.4", features = ["std"] }

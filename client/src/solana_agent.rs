@@ -30,7 +30,10 @@ pub struct SolanaAgent {
 }
 
 impl SolanaAgent {
-    pub fn new(config: &ChainConfig, recipient_keypair_path: Option<PathBuf>) -> Result<Self> {
+    pub async fn new(
+        config: &ChainConfig,
+        recipient_keypair_path: Option<PathBuf>,
+    ) -> Result<Self> {
         let ChainConfig::Solana {
             rpc_url,
             sender_keypair_path,

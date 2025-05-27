@@ -5,8 +5,8 @@ use std::sync::Arc;
 use ethers::abi::{Abi, RawLog};
 use ethers::contract::{Contract, EthEvent, EthLogDecode};
 use ethers::middleware::SignerMiddleware;
-use ethers::providers::{Http, Provider};
-use ethers::signers::LocalWallet;
+use ethers::providers::{Http, Middleware, Provider};
+use ethers::signers::{LocalWallet, Signer};
 use ethers::types::{Address, H256, U256};
 use serde_json::Value;
 use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, EscrowState};
@@ -53,7 +53,7 @@ pub struct EthereumAgent {
 }
 
 impl EthereumAgent {
-    pub fn new(config: &ChainConfig, recipient_wallet: Option<LocalWallet>) -> Result<Self> {
+    pub async fn new(config: &ChainConfig, recipient_wallet: Option<LocalWallet>) -> Result<Self> {
         let ChainConfig::Ethereum {
             rpc_url,
             sender_private_key,
@@ -63,9 +63,21 @@ impl EthereumAgent {
             return Err(ClientError::ConfigMismatch);
         };
 
+        let provider = Provider::<Http>::try_from(rpc_url)?;
+        let chain_id = provider
+            .get_chainid()
+            .await
+            .map_err(|e| AgentError::Ethereum(e.to_string()))?
+            .as_u64();
+
+        let sender_wallet = sender_private_key
+            .parse::<LocalWallet>()?
+            .with_chain_id(chain_id);
+        let recipient_wallet = recipient_wallet.map(|w| w.with_chain_id(chain_id));
+
         Ok(Self {
-            provider: Provider::<Http>::try_from(rpc_url)?,
-            sender_wallet: sender_private_key.parse()?,
+            provider,
+            sender_wallet,
             recipient_wallet,
         })
     }
@@ -149,7 +161,7 @@ impl Agent for EthereumAgent {
             recipient: params.recipient.clone(),
             has_conditions,
             chain_data: ChainMetadata::Ethereum {
-                escrow_address: escrow_addr.to_string(),
+                escrow_address: format!("{:#x}", escrow_addr),
             },
             state: EscrowState::Funded,
         })
@@ -181,13 +193,19 @@ impl Agent for EthereumAgent {
         let escrow_addr = metadata.chain_data.get_eth_contract_address()?;
         let escrow_addr = Address::from_str(&escrow_addr)?;
 
-        // TODO: set up RISC Zero prover API call
-        let proof_data: Vec<u8> = vec![];
+        let proof_data = if metadata.has_conditions {
+            // TODO: set up RISC Zero prover API call
+            let p: Vec<u8> = vec![];
+            p
+        } else {
+            Vec::new()
+        };
 
-        factory
+        let call = factory
             .method::<_, H256>("finishEscrow", (escrow_addr, proof_data))
-            .map_err(|e| AgentError::Ethereum(e.to_string()))?
-            .send()
+            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+
+        call.send()
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .await

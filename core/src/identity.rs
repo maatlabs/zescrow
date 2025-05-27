@@ -119,14 +119,11 @@ impl ID {
 }
 
 impl std::fmt::Display for ID {
-    /// Show each variant as its "natural" string form:
-    /// - Hex: with `0x` prefix so it's still obvious
-    /// - Base58: raw
-    /// - Base64: raw
-    /// - Bytes: interpret arbitrary bytes as base64, since that round-trips safely
+    /// Show each variant as its "natural" string form,
+    /// interpreting arbitrary bytes as base64, since that round-trips safely.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Hex(s) => write!(f, "0x{}", s),
+            Self::Hex(s) => write!(f, "{}", s),
             Self::Base58(s) => f.write_str(s),
             Self::Base64(s) => f.write_str(s),
             Self::Bytes(b) => f.write_str(&BASE64_STANDARD.encode(b)),
