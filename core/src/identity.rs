@@ -1,4 +1,5 @@
 //! Chain-agnostic identity types for escrow participants.
+#![warn(missing_docs)]
 
 use core::str::FromStr as _;
 
@@ -24,9 +25,13 @@ pub struct Party {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(tag = "encoding", content = "value", rename_all = "lowercase")]
 pub enum ID {
+    /// Hex-encoded string.
     Hex(String),
+    /// Base58-encoded string.
     Base58(String),
+    /// Base64-encoded string.
     Base64(String),
+    /// Raw bytes.
     #[serde(with = "serde_bytes")]
     Bytes(Vec<u8>),
 }
@@ -44,24 +49,39 @@ impl Party {
     ///
     /// Returns `Err(EscrowError::Identity(_))` if the input is empty or cannot be
     /// decoded into a valid byte sequence.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use zescrow_core::Party;
+    /// let party = Party::new("0xdeadbeef").unwrap();
+    /// assert_eq!(party.to_string(), "deadbeef");
+    /// ```
     pub fn new<S: AsRef<str>>(id_str: S) -> Result<Self> {
         let identity = ID::from_str(id_str.as_ref())?;
         Ok(Self { identity })
     }
 
-    /// Verifies that the underlying [`ID`] is well-formed by attempting
-    /// to decode it into raw bytes.
-    ///
-    /// This uses `ID::to_bytes()` internally, so you’ll get back exactly
-    /// the same decoding errors (`Hex`, `Base58`, or `Base64` failures)
-    /// as if you had called it yourself.
+    /// Verifies that the underlying [`ID`] can be decoded into raw bytes.
     ///
     /// # Errors
     ///
     /// - `Err(EscrowError::Identity(_))` if decoding fails.
+    ///
+    /// This method uses `ID::to_bytes()` internally, so you’ll get back exactly
+    /// the same decoding errors (`Hex`, `Base58`, or `Base64` failures)
+    /// as if you had called the internal method yourself.
     pub fn verify_identity(&self) -> Result<()> {
-        let _ = self.identity.to_bytes()?;
-        Ok(())
+        self.identity.to_bytes().map(|_| ())
+    }
+}
+
+impl std::str::FromStr for Party {
+    type Err = EscrowError;
+
+    /// Parses an instance of `Self` from a string, alias for [`Self::new`].
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        Party::new(s)
     }
 }
 
@@ -71,62 +91,79 @@ impl std::fmt::Display for Party {
     }
 }
 
-impl std::str::FromStr for Party {
-    type Err = EscrowError;
-
-    /// Parses an instance of `Self` from a string, alias for [`Self::new`].
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        Self::new(s)
-    }
-}
-
 impl ID {
+    const HEX: &'static str = "hex";
+    const BASE58: &'static str = "base58";
+    const BASE64: &'static str = "base64";
+    const BYTES: &'static str = "bytes";
+
     /// Decode this `ID` into its raw byte representation.
     ///
     /// Depending on the variant:
     /// - **Hex**: decodes the lowercase hex string (e.g. `"0xdeadbeef"`) into bytes.
     /// - **Base58**: decodes the Base58 string into bytes.
     /// - **Base64**: decodes the Base64 string into bytes.
-    /// - **Bytes**: simply clones and returns the inner `Vec<u8>`.
-    ///
-    /// # Returns
-    ///
-    /// A `Vec<u8>` containing the decoded bytes.
+    /// - **Bytes**: clones and returns the inner `Vec<u8>`.
     ///
     /// # Errors
     ///
     /// An `IdentityError` corresponding to the failing ID type.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
-        Ok(match self {
-            Self::Hex(s) => hex::decode(s).map_err(IdentityError::Hex)?,
-            Self::Base58(s) => bs58::decode(s).into_vec().map_err(IdentityError::Base58)?,
-            Self::Base64(s) => BASE64_STANDARD.decode(s).map_err(IdentityError::Base64)?,
-            Self::Bytes(b) => b.clone(),
-        })
+        let decoded = match self {
+            Self::Hex(s) => hex::decode(s).map_err(IdentityError::Hex),
+            Self::Base58(s) => bs58::decode(s).into_vec().map_err(IdentityError::Base58),
+            Self::Base64(s) => BASE64_STANDARD.decode(s).map_err(IdentityError::Base64),
+            Self::Bytes(b) => Ok(b.clone()),
+        }?;
+        Ok(decoded)
     }
 
+    /// Returns the hex string representation of the identity.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `EscrowError::Identity` if the underlying bytes cannot be obtained.
     pub fn to_hex(&self) -> Result<String> {
-        Ok(hex::encode(self.to_bytes()?))
+        let bytes = self.to_bytes()?;
+        Ok(hex::encode(bytes))
     }
 
+    /// Returns the Base58 string representation of the identity.
     pub fn to_base58(&self) -> Result<String> {
-        Ok(bs58::encode(self.to_bytes()?).into_string())
+        let bytes = self.to_bytes()?;
+        Ok(bs58::encode(bytes).into_string())
     }
 
+    /// Returns the Base64 string representation of the identity.
     pub fn to_base64(&self) -> Result<String> {
-        Ok(BASE64_STANDARD.encode(self.to_bytes()?))
+        let bytes = self.to_bytes()?;
+        Ok(BASE64_STANDARD.encode(bytes))
+    }
+
+    /// Returns the encoding variant as a `&'static str`.
+    pub fn encoding(&self) -> &'static str {
+        match self {
+            Self::Hex(_) => Self::HEX,
+            Self::Base58(_) => Self::BASE58,
+            Self::Base64(_) => Self::BASE64,
+            Self::Bytes(_) => Self::BYTES,
+        }
     }
 }
 
 impl std::fmt::Display for ID {
-    /// Show each variant as its "natural" string form,
-    /// interpreting arbitrary bytes as base64, since that round-trips safely.
+    /// Returns the canonical string representation of this `ID`.
+    ///
+    /// - **Hex**: lowercase hex string without prefix.
+    /// - **Base58**: canonical Base58 string.
+    /// - **Base64**: standard Base64 string.
+    /// - **Bytes**: standard Base64 string of bytes.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Hex(s) => write!(f, "{}", s),
-            Self::Base58(s) => f.write_str(s),
-            Self::Base64(s) => f.write_str(s),
-            Self::Bytes(b) => f.write_str(&BASE64_STANDARD.encode(b)),
+            Self::Base58(s) => write!(f, "{}", s),
+            Self::Base64(s) => write!(f, "{}", s),
+            Self::Bytes(b) => write!(f, "{}", BASE64_STANDARD.encode(b)),
         }
     }
 }
@@ -135,69 +172,105 @@ impl std::str::FromStr for ID {
     type Err = EscrowError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        let s = s.trim();
-        if s.is_empty() {
+        let trimmed = s.trim();
+        if trimmed.is_empty() {
             return Err(IdentityError::EmptyIdentity.into());
         }
-        // strip optional "0x" for hex-encoded IDs
-        let raw = s.strip_prefix("0x").unwrap_or(s);
+        let raw = trimmed
+            .strip_prefix("0x")
+            .or_else(|| trimmed.strip_prefix("0X"))
+            .unwrap_or(trimmed);
 
         // try hex decoding
         if let Ok(bytes) = hex::decode(raw) {
-            return Ok(Self::Hex(hex::encode(bytes)));
+            return Ok(ID::Hex(hex::encode(bytes)));
         }
         // try base58 decoding
         if let Ok(bytes) = bs58::decode(raw).into_vec() {
-            return Ok(Self::Base58(bs58::encode(bytes).into_string()));
+            return Ok(ID::Base58(bs58::encode(bytes).into_string()));
         }
         // try base64 decoding
         if let Ok(bytes) = BASE64_STANDARD.decode(raw) {
-            return Ok(Self::Base64(BASE64_STANDARD.encode(bytes)));
+            return Ok(ID::Base64(BASE64_STANDARD.encode(bytes)));
         }
 
         Err(IdentityError::UnsupportedFormat.into())
     }
 }
 
+impl From<Vec<u8>> for ID {
+    fn from(bytes: Vec<u8>) -> Self {
+        ID::Bytes(bytes)
+    }
+}
+
+impl From<&[u8]> for ID {
+    fn from(bytes: &[u8]) -> Self {
+        ID::Bytes(bytes.to_vec())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use core::str::FromStr as _;
 
     use super::*;
 
     #[test]
-    fn parse_and_display_id() {
-        // hex (with 0x prefix)
-        let id_hex = "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
-        let id_hex_no_prefix = "d8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
-        let id = id_hex.parse::<ID>().unwrap();
-        assert_eq!(id.to_hex().unwrap(), id_hex_no_prefix.to_lowercase());
-        assert_eq!(id.to_string(), "d8da6bf26964af9d7eed9e03e53415d37aa96045");
+    fn hex_identity() {
+        let id_str = "deadbeef";
+        let id = ID::from_str(id_str).unwrap();
+        assert_eq!(id, ID::Hex("deadbeef".into()));
+        assert_eq!(id.to_bytes().unwrap(), vec![0xde, 0xad, 0xbe, 0xef]);
+        assert_eq!(id.to_hex().unwrap(), id_str);
+        assert_eq!(id.encoding(), "hex");
+    }
 
-        // base58 (no prefix)
-        let id_bs58 = "9Ah3Yf4Q82n4RHmoyR4kQc8acbu7UbHDy3coc1QqVvRF";
-        let id = id_bs58.parse::<ID>().unwrap();
-        assert_eq!(id.to_base58().unwrap(), id_bs58);
-        assert_eq!(id.to_string(), id_bs58);
+    #[test]
+    fn hex_with_prefix() {
+        let id_str = "0XDEADBEEF";
+        let id = ID::from_str(id_str).unwrap();
+        assert_eq!(id, ID::Hex("deadbeef".into()));
+    }
 
-        // base64 (no prefix) case 1
-        let id_bs64 = "YWJjMTIzIT8kKiYoKSctPUB+";
-        let id = id_bs64.parse::<ID>().unwrap();
-        assert_eq!(id.to_base64().unwrap(), id_bs64);
-        assert_eq!(id.to_string(), id_bs64);
-
-        // parse raw bytes as ID
+    #[test]
+    fn base58_identity() {
         let raw = vec![1, 2, 3, 4];
-        let raw_bs64 = BASE64_STANDARD.encode(&raw);
-        let id = raw_bs64.parse::<ID>().unwrap();
+        let b58_str = bs58::encode(&raw).into_string();
+        let id = ID::from_str(&b58_str).unwrap();
+        assert_eq!(id, ID::Base58(b58_str.clone()));
+        assert_eq!(id.to_base58().unwrap(), b58_str);
+        assert_eq!(id.encoding(), "base58");
+    }
+
+    #[test]
+    fn base64_identity() {
+        let raw = vec![1, 2, 3, 4];
+        let b64 = BASE64_STANDARD.encode(&raw);
+        let id = ID::from_str(&b64).unwrap();
+        assert_eq!(id, ID::Base64(b64.clone()));
+        assert_eq!(id.to_base64().unwrap(), b64);
+        assert_eq!(id.encoding(), "base64");
+    }
+
+    #[test]
+    fn bytes_identity() {
+        let raw = vec![9, 8, 7];
+        let id: ID = raw.clone().into();
+        assert_eq!(id, ID::Bytes(raw.clone()));
         assert_eq!(id.to_bytes().unwrap(), raw);
-        assert_eq!(id.to_string(), raw_bs64);
+        assert_eq!(id.to_string(), BASE64_STANDARD.encode(&raw));
+        assert_eq!(id.encoding(), "bytes");
+    }
 
-        // display party
-        let party = Party::from_str("0xdeadbeef").unwrap();
+    #[test]
+    fn verify_identity() {
+        let party = Party::new("0xdeadbeef").unwrap();
         assert_eq!(party.to_string(), "deadbeef");
+        assert!(party.verify_identity().is_ok());
+    }
 
-        // unsupported format
-        assert!("no-prefix".parse::<ID>().is_err());
+    #[test]
+    fn invalid_identity() {
+        assert!(ID::from_str("not a valid ID").is_err());
     }
 }
