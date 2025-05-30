@@ -1,5 +1,4 @@
 //! Chain-agnostic identity types for escrow participants.
-#![warn(missing_docs)]
 
 use core::str::FromStr as _;
 

@@ -1,4 +1,8 @@
-//! Escrow conditions and deterministic verification logic.
+//! Deterministic crypto conditions and fulfillment verification logic.
+//!
+//! This module defines the `Condition` enum, representing on-chain and off-chain
+//! cryptographic conditions (e.g., hashlocks, digital signatures, and threshold
+//! conditions) and provides deterministic verification.
 
 use ed25519_dalek::{Signature as Ed25519Sig, Verifier, VerifyingKey as Ed25519Pub};
 use k256::ecdsa::{Signature as Secp256k1Sig, VerifyingKey as Secp256k1Pub};
@@ -11,45 +15,65 @@ use subtle::ConstantTimeEq;
 use crate::error::ConditionError;
 use crate::Result;
 
-/// Deterministic crypto conditions and fulfillments.
+/// A cryptographic condition that can be deterministically verified.
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "condition", content = "fulfillment", rename_all = "lowercase")]
 pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.
     Preimage {
+        /// The expected SHA-256 digest of the preimage.
         #[serde_as(as = "Hex")]
         hash: [u8; 32],
+        /// Secret preimage bytes.
         #[serde_as(as = "Hex")]
         preimage: Vec<u8>,
     },
-    /// Ed25519 signature over a message.
+
+    /// Ed25519 signature over an arbitrary message.
     Ed25519 {
+        /// Public key bytes.
         #[serde_as(as = "Hex")]
         public_key: [u8; 32],
+        /// Signature bytes.
         #[serde_as(as = "Hex")]
         signature: Vec<u8>,
+        /// Original message bytes.
         #[serde_as(as = "Hex")]
         message: Vec<u8>,
     },
-    /// Secp256k1 signature over a message.
+
+    /// Secp256k1 ECDSA signature over an arbitrary message.
     Secp256k1 {
+        /// Compressed SEC1-encoded public key bytes.
         #[serde_as(as = "Hex")]
         public_key: Vec<u8>,
+        /// DER-encoded signature bytes.
         #[serde_as(as = "Hex")]
         signature: Vec<u8>,
+        /// Original message bytes.
         #[serde_as(as = "Hex")]
         message: Vec<u8>,
     },
-    /// Threshold SHA-256: at least `threshold` of `subconditions` must hold.
+
+    /// Threshold condition: at least `threshold` subconditions must hold.
     Threshold {
+        /// Minimum number of valid subconditions required.
         threshold: usize,
+        /// Subconditions to evaluate.
         subconditions: Vec<Condition>,
     },
 }
 
 impl Condition {
-    /// Verify that specified fulfillments satisfy conditions.
+    /// Verify that this condition's fulfillment satisfies the requirement.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err(EscrowError::Condition(...))` when:
+    /// - **Preimage**: SHA-256(preimage) does not match.
+    /// - **Ed25519/Secp256k1**: public key parsing or signature verification fails.
+    /// - **Threshold**: fewer than `threshold` subconditions succeed.
     pub fn verify(&self) -> Result<()> {
         match self {
             Self::Preimage { hash, preimage } => {
@@ -60,6 +84,7 @@ impl Condition {
                     Err(ConditionError::PreimageMismatch.into())
                 }
             }
+
             Self::Ed25519 {
                 public_key,
                 signature,
@@ -72,6 +97,7 @@ impl Condition {
                 pk.verify(message, &sig)
                     .map_err(|e| ConditionError::PubkeyOrSigVerification(e).into())
             }
+
             Self::Secp256k1 {
                 public_key,
                 signature,
@@ -84,16 +110,17 @@ impl Condition {
                 vk.verify(message, &sig)
                     .map_err(|e| ConditionError::PubkeyOrSigVerification(e).into())
             }
+
             Self::Threshold {
                 threshold,
                 subconditions,
             } => {
-                let mut valid = 0usize;
-                for cond in subconditions.iter() {
-                    if cond.verify().is_ok() {
-                        valid += 1;
-                    }
+                // zero threshold always satisfied
+                if *threshold == 0 {
+                    return Ok(());
                 }
+
+                let valid = subconditions.iter().filter(|c| c.verify().is_ok()).count();
                 if valid >= *threshold {
                     Ok(())
                 } else {
@@ -106,9 +133,41 @@ impl Condition {
             }
         }
     }
+
+    /// Construct a hashlock (preimage) condition.
+    pub fn preimage(hash: [u8; 32], preimage: Vec<u8>) -> Self {
+        Self::Preimage { hash, preimage }
+    }
+
+    /// Construct an Ed25519 signature condition.
+    pub fn ed25519(public_key: [u8; 32], message: Vec<u8>, signature: Vec<u8>) -> Self {
+        Self::Ed25519 {
+            public_key,
+            signature,
+            message,
+        }
+    }
+
+    /// Construct a Secp256k1 signature condition.
+    pub fn secp256k1(public_key: Vec<u8>, message: Vec<u8>, signature: Vec<u8>) -> Self {
+        Self::Secp256k1 {
+            public_key,
+            signature,
+            message,
+        }
+    }
+
+    /// Construct a threshold condition.
+    pub fn threshold(threshold: usize, subconditions: Vec<Self>) -> Self {
+        Self::Threshold {
+            threshold,
+            subconditions,
+        }
+    }
 }
 
 impl std::fmt::Display for Condition {
+    /// Serialize the condition to compact JSON for logging or write formats.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
         write!(f, "{}", json)

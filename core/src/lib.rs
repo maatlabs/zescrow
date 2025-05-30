@@ -1,4 +1,6 @@
 //! Pure, chain-agnostic escrow core library.
+// TODO: uncomment
+// #![warn(missing_docs)]
 
 pub mod asset;
 pub mod condition;
