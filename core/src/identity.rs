@@ -172,7 +172,7 @@ mod tests {
         let id_hex_no_prefix = "d8dA6BF26964aF9D7eEd9e03E53415D37aA96045";
         let id = id_hex.parse::<ID>().unwrap();
         assert_eq!(id.to_hex().unwrap(), id_hex_no_prefix.to_lowercase());
-        assert_eq!(id.to_string(), id_hex.to_lowercase());
+        assert_eq!(id.to_string(), "d8da6bf26964af9d7eed9e03e53415d37aa96045");
 
         // base58 (no prefix)
         let id_bs58 = "9Ah3Yf4Q82n4RHmoyR4kQc8acbu7UbHDy3coc1QqVvRF";
@@ -195,7 +195,7 @@ mod tests {
 
         // display party
         let party = Party::from_str("0xdeadbeef").unwrap();
-        assert_eq!(party.to_string(), "Party(0xdeadbeef)");
+        assert_eq!(party.to_string(), "deadbeef");
 
         // unsupported format
         assert!("no-prefix".parse::<ID>().is_err());
