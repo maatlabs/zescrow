@@ -17,7 +17,7 @@ use crate::Result;
 
 /// A cryptographic condition that can be deterministically verified.
 #[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(tag = "condition", content = "fulfillment", rename_all = "lowercase")]
 pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.

@@ -48,7 +48,7 @@ where
 }
 
 /// Where in the lifecycle an escrow is.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum EscrowState {
     Funded,
     Released,

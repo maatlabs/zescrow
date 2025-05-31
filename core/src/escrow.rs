@@ -1,26 +1,39 @@
-//! Escrow state machine with time locks and optional crypto conditions.
+//! Escrow state machine with optional cryptographic conditions.
+//!
+//! This module provides the `Escrow` type, representing an escrow instance with its
+//! asset, parties, state, and optional conditions.
 
 use serde::{Deserialize, Serialize};
 
 use crate::interface::ESCROW_CONDITIONS_PATH;
 use crate::{Asset, Condition, EscrowError, EscrowMetadata, EscrowState, Party, Result};
 
-/// Full escrow context
-#[derive(Serialize, Deserialize, Debug, Clone)]
+/// Full escrow context, representing the locked asset, participants, and settlement rules.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Escrow {
     /// Asset locked in escrow.
     pub asset: Asset,
-    /// Recipient of funds.
+    /// Intended recipient of the asset.
     pub recipient: Party,
-    /// Who funded it.
+    /// The party who funded (deposited) the asset.
     pub sender: Party,
-    /// Optional cryptographic condition.
+    /// Optional cryptographic condition that must be fulfilled before release.
     pub condition: Option<Condition>,
-    /// Current state.
+    /// Current state in the escrow lifecycle.
     pub state: EscrowState,
 }
 
 impl Escrow {
+    /// Constructs an `Escrow` from on-chain metadata and, if required,
+    /// loads the cryptographic condition from a JSON file.
+    ///
+    /// If `metadata.has_conditions` is `true`, reads the file at
+    /// `ESCROW_CONDITIONS_PATH` and parses it as a `Condition`.
+    ///
+    /// # Errors
+    ///
+    /// - I/O error when reading the condition file.
+    /// - JSON parsing error when decoding the condition.
     pub fn from_metadata(metadata: EscrowMetadata) -> Result<Self> {
         let EscrowMetadata {
             asset,
@@ -32,9 +45,9 @@ impl Escrow {
         } = metadata;
 
         let condition = if has_conditions {
-            let c = std::fs::read_to_string(ESCROW_CONDITIONS_PATH)?;
-            let c: Condition = serde_json::from_str(&c)?;
-            Some(c)
+            let content = std::fs::read_to_string(ESCROW_CONDITIONS_PATH)?;
+            let cond: Condition = serde_json::from_str(&content)?;
+            Some(cond)
         } else {
             None
         };
@@ -48,22 +61,41 @@ impl Escrow {
         })
     }
 
-    /// Validates and attempts to finish (release) escrow by
-    /// verifying all predefined conditions.
-    // TODO: Add more robust checks
+    /// Attempts to execute (release) the escrow, performing all necessary checks.
+    ///
+    /// - Ensures current `state` is `Funded`.
+    /// - Verifies `sender` and `recipient` identities.
+    /// - Validates the `asset` parameters.
+    /// - If a cryptographic `condition` is present, verifies it.
+    ///
+    /// On success, transitions to `EscrowState::Released`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EscrowError::InvalidState` if not in `Funded` state, or
+    /// propagates identity, asset, or condition errors.
     pub fn execute(&mut self) -> Result<EscrowState> {
         if self.state != EscrowState::Funded {
             return Err(EscrowError::InvalidState);
         }
+
         self.sender.verify_identity()?;
         self.recipient.verify_identity()?;
         self.asset.validate()?;
-
         if let Some(condition) = &self.condition {
             condition.verify()?;
         }
+
         self.state = EscrowState::Released;
         Ok(self.state)
+    }
+}
+
+impl std::fmt::Display for Escrow {
+    /// Compact JSON representation of the `Escrow` for logging.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
+        write!(f, "{}", json)
     }
 }
 
