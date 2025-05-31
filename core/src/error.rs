@@ -1,79 +1,115 @@
 use thiserror::Error;
 
-/// Escrow-related errors.
+/// Errors arising from on-chain `Escrow` operations and parameter validation.
 #[derive(Debug, Error)]
 pub enum EscrowError {
-    /// Condition verification failed.
+    /// A cryptographic condition failed to verify.
     #[error("condition error: {0}")]
     Condition(#[from] ConditionError),
-    /// Attempted an invalid state transition.
+
+    /// Attempted to transition an `Escrow` in an invalid state.
     #[error("invalid state transition")]
     InvalidState,
-    /// Identity parsing or validation error.
+
+    /// An identity could not be parsed or validated.
     #[error("identity error: {0}")]
     Identity(#[from] IdentityError),
-    /// Asset parsing or validation error.
+
+    /// An asset failed parsing, validation, or formatting.
     #[error("asset error: {0}")]
     Asset(#[from] AssetError),
-    /// Unsupported chain identifier.
-    #[error("unsupported chain")]
-    UnsupportedChain,
-    /// Attempted a chain-specific operation and failed.
+
+    /// Attempted a chain-specific operation on the wrong network
+    /// (e.g., getting Solana PDA on Ethereum).
     #[error("invalid chain operation: {0}")]
     InvalidChainOp(String),
-    /// JSON (de)serialization errors.
-    #[error("serde_json (de)serialization error")]
-    SerdeJson(#[from] serde_json::Error),
-    /// I/O errors.
-    #[error("I/O error")]
-    IoError(#[from] std::io::Error),
+
+    /// An I/O error occurred (e.g., reading or writing JSON files).
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    /// JSON parsing or serialization error.
+    #[error("JSON error: {0}")]
+    Json(#[from] serde_json::Error),
+
+    /// The specified blockchain network is not supported.
+    #[error("unsupported chain specified")]
+    UnsupportedChain,
 }
 
-/// Errors that can occur during cryptographic condition verification.
+/// Errors related to cryptographic condition verification.
 #[derive(Debug, Error)]
 pub enum ConditionError {
-    /// SHA-256(preimage) did not match the stored digest.
-    #[error("preimage hash mismatch")]
+    /// The provided preimage did not hash to the expected value.
+    #[error("preimage mismatch")]
     PreimageMismatch,
-    /// Ed25519/Secp256k1 public key or signature was malformed,
-    /// or verification failed.
-    #[error("Pubkey or signature error: {0}")]
+
+    /// Public key parsing or signature verification failed.
+    #[error("public key or signature verification failed: {0}")]
     PubkeyOrSigVerification(#[from] ed25519_dalek::SignatureError),
-    /// Fewer than `threshold` subconditions passed verification.
-    #[error("threshold condition not met: {valid} of {threshold} valid")]
-    ThresholdNotMet { threshold: usize, valid: usize },
+
+    /// Fewer than the required number of subconditions were satisfied.
+    #[error("threshold not met: required {threshold}, valid {valid}")]
+    ThresholdNotMet {
+        /// Minimum number of valid subconditions required.
+        threshold: usize,
+        /// Number of verified subconditions.
+        valid: usize,
+    },
 }
 
-/// Errors that might occur while parsing into an `ID`.
+/// Errors related to identity parsing and validation.
 #[derive(Debug, Error)]
 pub enum IdentityError {
-    #[error("invalid hex: {0}")]
-    Hex(#[from] hex::FromHexError),
-    #[error("invalid base58: {0}")]
-    Base58(#[from] bs58::decode::Error),
-    #[error("invalid base64: {0}")]
-    Base64(#[from] base64::DecodeError),
-    #[error("cannot parse identity from empty string")]
+    /// The provided identity string was empty.
+    #[error("empty identity string")]
     EmptyIdentity,
+
+    /// Error decoding a hex-encoded identity.
+    #[error("hex decoding error: {0}")]
+    Hex(#[from] hex::FromHexError),
+
+    /// Error decoding a Base58-encoded identity.
+    #[error("Base58 decoding error: {0}")]
+    Base58(#[from] bs58::decode::Error),
+
+    /// Error decoding a Base64-encoded identity.
+    #[error("Base64 decoding error: {0}")]
+    Base64(#[from] base64::DecodeError),
+
+    /// The input string did not match any supported identity format (hex, Base58, Base64).
     #[error("unsupported identity format")]
     UnsupportedFormat,
 }
 
-/// Errors when parsing or working with `Asset`.
+/// Errors related to asset parsing, validation, or formatting.
 #[derive(Debug, Error)]
 pub enum AssetError {
+    /// Failed to parse an asset from a string or JSON.
     #[error("could not parse asset: {0}")]
     Parsing(String),
+
+    /// A fungible or multi-token amount was zero, which is not allowed.
     #[error("amount must be non-zero")]
     ZeroAmount,
+
+    /// A liquidity pool share was invalid (must be > 0 and <= total supply).
     #[error("share must be non-zero and <= total supply (share={0}, total={1})")]
     InvalidShare(u64, u64),
+
+    /// The specified number of decimals was invalid.
     #[error("invalid decimals: {0}")]
     InvalidDecimals(u8),
+
+    /// Fixed-point formatting overflow (e.g., amount or decimals too large).
     #[error("human formatting overflow: amount={0}, decimals={1}")]
     FormatOverflow(u64, u8),
+
+    /// The provided asset string did not match a supported format.
     #[error("unsupported asset string format")]
     UnsupportedFormat,
-    #[error("parse int error: {0}")]
+
+    /// Error parsing an integer (e.g., token ID or amount) from a string.
+    #[error("integer parsing error: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
 }
