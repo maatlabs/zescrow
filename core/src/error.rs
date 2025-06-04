@@ -93,6 +93,10 @@ pub enum AssetError {
     #[error("amount must be non-zero")]
     ZeroAmount,
 
+    /// The provided token ID of an NFT or multi-token is invalid or empty.
+    #[error("provided token ID is invalid or empty")]
+    InvalidTokenId,
+
     /// A liquidity pool share was invalid (must be > 0 and <= total supply).
     #[error("share must be non-zero and <= total supply (share={0}, total={1})")]
     InvalidShare(u64, u64),

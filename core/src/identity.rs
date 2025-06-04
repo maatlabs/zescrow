@@ -66,12 +66,8 @@ impl Party {
     /// # Errors
     ///
     /// - `Err(EscrowError::Identity(_))` if decoding fails.
-    ///
-    /// This method uses `ID::to_bytes()` internally, so you’ll get back exactly
-    /// the same decoding errors (`Hex`, `Base58`, or `Base64` failures)
-    /// as if you had called the internal method yourself.
     pub fn verify_identity(&self) -> Result<()> {
-        self.identity.to_bytes().map(|_| ())
+        self.identity.validate()
     }
 }
 
@@ -95,6 +91,19 @@ impl ID {
     const BASE58: &'static str = "base58";
     const BASE64: &'static str = "base64";
     const BYTES: &'static str = "bytes";
+
+    /// Verifies that self can be decoded into raw bytes, and that it's not empty.
+    ///
+    /// # Errors
+    ///
+    /// - `Err(EscrowError::Identity(_))` if decoding fails, or is empty.
+    pub fn validate(&self) -> Result<()> {
+        let id_bytes = self.to_bytes()?;
+        if id_bytes.is_empty() {
+            return Err(IdentityError::EmptyIdentity.into());
+        }
+        Ok(())
+    }
 
     /// Decode this `ID` into its raw byte representation.
     ///

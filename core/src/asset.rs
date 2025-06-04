@@ -126,29 +126,64 @@ impl Asset {
 
     /// Ensure asset parameters are semantically valid.
     ///
-    /// - Zero `amount` for fungible assets is invalid.
-    /// - Pool share must be > 0, <= `total_supply`, and `total_supply` > 0.
-    // TODO: Add more robust checks.
+    /// - **Native**: `amount` must be > 0.
+    /// - **Token**: `amount` must be > 0, `contract` must be valid `ID`.
+    /// - **MultiToken**: `amount` must be > 0, `contract` must be valid `ID`, `token_id` cannot be empty.
+    /// - **Nft**: `contract` must be valid `ID`, `token_id` cannot be empty.
+    /// - **PoolShare**: `share` must be > 0, `total_supply` must be > 0, and `share` <= `total_supply`.
     pub fn validate(&self) -> Result<()> {
         match self {
-            Self::Native { amount, .. }
-            | Self::Token { amount, .. }
-            | Self::MultiToken { amount, .. }
-                if *amount == 0 =>
-            {
-                Err(AssetError::ZeroAmount.into())
+            Self::Native { amount, .. } if *amount == 0 => Err(AssetError::ZeroAmount.into()),
+
+            Self::Token {
+                contract, amount, ..
+            } => {
+                // verify that `contract` is a valid `ID`.
+                contract.validate()?;
+                if *amount == 0 {
+                    return Err(AssetError::ZeroAmount.into());
+                }
+                Ok(())
+            }
+
+            Self::Nft {
+                contract, token_id, ..
+            } => {
+                contract.validate()?;
+                if token_id.is_empty() {
+                    return Err(AssetError::InvalidTokenId.into());
+                }
+                Ok(())
+            }
+
+            Self::MultiToken {
+                contract,
+                token_id,
+                amount,
+                ..
+            } => {
+                contract.validate()?;
+                if token_id.is_empty() {
+                    return Err(AssetError::InvalidTokenId.into());
+                }
+                if *amount == 0 {
+                    return Err(AssetError::ZeroAmount.into());
+                }
+                Ok(())
             }
 
             Self::PoolShare {
+                pool,
                 share,
                 total_supply,
                 ..
             } => {
+                // verify that `pool` is a valid `ID`.
+                pool.validate()?;
                 if *share == 0 || *total_supply == 0 || *share > *total_supply {
-                    Err(AssetError::InvalidShare(*share, *total_supply).into())
-                } else {
-                    Ok(())
+                    return Err(AssetError::InvalidShare(*share, *total_supply).into());
                 }
+                Ok(())
             }
 
             _ => Ok(()),
@@ -272,16 +307,65 @@ mod tests {
     use super::*;
 
     #[test]
-    fn validate_zero_amount() {
-        let asset = Asset::native(Chain::Ethereum, 0);
-        assert!(asset.validate().is_err());
+    fn native() {
+        let coin = Asset::native(Chain::Ethereum, 1);
+        assert!(coin.validate().is_ok());
+        let zero_coin = Asset::native(Chain::Ethereum, 0);
+        assert!(zero_coin.validate().is_err());
     }
 
     #[test]
-    fn validate_pool_share_bounds() {
-        let bad_asset = Asset::pool_share(Chain::Solana, ID::from(vec![]), 0, 100, 0);
+    fn token() {
+        let token = Asset::token(Chain::Solana, ID::from(vec![4, 5, 6]), 1000, 9);
+        assert!(token.validate().is_ok());
+        // empty contract ID
+        let token2 = Asset::token(Chain::Solana, ID::from(Vec::new()), 100, 9);
+        assert!(token2.validate().is_err());
+        let zero_token = Asset::token(Chain::Ethereum, ID::from(vec![1, 2, 3]), 0, 6);
+        assert!(zero_token.validate().is_err());
+    }
+
+    #[test]
+    fn nft() {
+        let nft = Asset::nft(Chain::Ethereum, ID::from(vec![7, 8, 9]), "zescrowNFT");
+        assert!(nft.validate().is_ok());
+        // empty token ID
+        let bad_nft = Asset::nft(Chain::Ethereum, ID::from(vec![1]), "");
+        assert!(bad_nft.validate().is_err());
+        // empty contract ID
+        let bad_nft = Asset::nft(Chain::Ethereum, ID::from(Vec::new()), "zescrowNFT");
+        assert!(bad_nft.validate().is_err());
+    }
+
+    #[test]
+    fn multi_token() {
+        let asset = Asset::multi_token(Chain::Ethereum, ID::from(vec![1]), "zescrowToken", 500);
+        assert!(asset.validate().is_ok());
+        // zero amount
+        let bad_asset = Asset::multi_token(Chain::Ethereum, ID::from(vec![1]), "zescrowToken", 0);
         assert!(bad_asset.validate().is_err());
-        let good_asset = Asset::pool_share(Chain::Solana, ID::from(vec![]), 50, 100, 0);
-        assert!(good_asset.validate().is_ok());
+        // empty token ID
+        let bad_asset =
+            Asset::multi_token(Chain::Ethereum, ID::from(Vec::new()), "zescrowToken", 10);
+        assert!(bad_asset.validate().is_err());
+        // empty contract ID
+        let bad_asset = Asset::multi_token(Chain::Ethereum, ID::from(vec![1]), "", 10);
+        assert!(bad_asset.validate().is_err());
+    }
+
+    #[test]
+    fn pool_share() {
+        let share = Asset::pool_share(Chain::Solana, ID::from(vec![1]), 50, 100, 0);
+        assert!(share.validate().is_ok());
+        let zero_share = Asset::pool_share(Chain::Solana, ID::from(vec![1]), 0, 100, 0);
+        assert!(zero_share.validate().is_err());
+        let zero_supply = Asset::pool_share(Chain::Solana, ID::from(vec![1]), 10, 0, 0);
+        assert!(zero_supply.validate().is_err());
+        // empty pool ID
+        let bad_asset = Asset::pool_share(Chain::Solana, ID::from(Vec::new()), 50, 100, 0);
+        assert!(bad_asset.validate().is_err());
+        // share greater than total_supply
+        let bad_asset = Asset::pool_share(Chain::Solana, ID::from(vec![1]), 150, 100, 0);
+        assert!(bad_asset.validate().is_err());
     }
 }
