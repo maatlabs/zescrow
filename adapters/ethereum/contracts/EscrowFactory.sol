@@ -58,6 +58,7 @@ contract EscrowFactory {
         }
 
         Escrow escrow = new Escrow{value: msg.value}(
+            msg.sender,
             recipient,
             finishAfter,
             cancelAfter,

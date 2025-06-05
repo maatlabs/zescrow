@@ -33,6 +33,9 @@ contract Escrow is ReentrancyGuard {
     /// @notice Address of the on-chain verifier contract (if `hasConditions`)
     address public immutable verifier;
 
+    /// @notice Address of the factory that deployed this escrow
+    address public immutable factory;
+
     /// @notice Remaining amount locked in escrow
     uint256 public amount;
 
@@ -45,18 +48,21 @@ contract Escrow is ReentrancyGuard {
     event Released(address indexed recipient, uint256 amount);
     event Cancelled(address indexed sender, uint256 amount);
 
+    /// @param _depositor Party creating the escrow
     /// @param _recipient Intended beneficiary of escrowed funds
     /// @param _finishAfter Block number after which release is allowed (if no ZK conditions)
     /// @param _cancelAfter Block number after which refund is allowed
     /// @param _hasConditions If true, must submit a proof instead of waiting for `_finishAfter`
     /// @param _verifier Address of the verifier contract
     constructor(
+        address _depositor,
         address _recipient,
         uint256 _finishAfter,
         uint256 _cancelAfter,
         bool _hasConditions,
         address _verifier
     ) payable {
+        require(_depositor != address(0), "Zescrow: invalid depositor");
         require(_recipient != address(0), "Zescrow: invalid recipient");
         require(
             _finishAfter > block.number,
@@ -70,12 +76,13 @@ contract Escrow is ReentrancyGuard {
             require(_verifier != address(0), "Zescrow: verifier required");
         }
 
-        sender = msg.sender;
+        sender = _depositor;
         recipient = _recipient;
         finishAfter = _finishAfter;
         cancelAfter = _cancelAfter;
         hasConditions = _hasConditions;
         verifier = _verifier;
+        factory = msg.sender;
         amount = msg.value;
 
         emit Created(sender, recipient, amount, hasConditions);
@@ -104,7 +111,10 @@ contract Escrow is ReentrancyGuard {
 
     /// @notice Cancel the escrow and refund the `sender` after `cancelAfter`
     function cancelEscrow() external nonReentrant {
-        require(msg.sender == sender, "Zescrow: only sender can cancel");
+        require(
+            msg.sender == sender || msg.sender == factory,
+            "Zescrow: only sender can cancel"
+        );
         require(block.number >= cancelAfter, "Zescrow: too early to cancel");
 
         uint256 refund = amount;
