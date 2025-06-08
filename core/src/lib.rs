@@ -51,3 +51,23 @@ pub use interface::{Chain, ChainConfig, ChainMetadata, EscrowMetadata, EscrowPar
 
 /// `Result` type for all core operations, using [`EscrowError`] as the error.
 pub type Result<T> = std::result::Result<T, EscrowError>;
+
+mod biguint_serde {
+    use num_bigint::BigUint;
+    use serde::{de, Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(value: &BigUint, s: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        s.serialize_str(&value.to_str_radix(10))
+    }
+
+    pub fn deserialize<'de, D>(d: D) -> Result<BigUint, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(d)?;
+        s.parse::<BigUint>().map_err(de::Error::custom)
+    }
+}

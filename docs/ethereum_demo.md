@@ -50,7 +50,7 @@ After deployment completes, note the printed `EscrowFactory` and `Verifier` addr
     "asset_type": "native",
     "asset": {
         "chain": "ethereum",
-        "amount": 1
+        "amount": "100000000000000000000" // 100 ETH
     },
     "sender": {
         "identity": {
@@ -64,8 +64,8 @@ After deployment completes, note the printed `EscrowFactory` and `Verifier` addr
             "value": "0xRECIPIENT_ADDRESS"
         }
     },
-    "finish_after": 4,
-    "cancel_after": 12,
+    "finish_after": 4, // finishAfter block
+    "cancel_after": 12, // cancelAfter block
     "has_conditions": false
 }
 ```
@@ -79,14 +79,33 @@ cd client
 cargo run --release -- create
 ```
 
-7. To finish (release) an escrow with `has_conditions == false`:
+7. After sending the escrow transaction, the logs from the Hardhat node will most likely show that your transaction was mined in `Block #2`. Before you can finish/release an escrow, `finish_after` must be `>=` current block. For example, if you specified `"finish_after": 4`, then you need to use the JSON-RPC method `evm_mine` to force Hardhat to mine some empty blocks. Each call bumps the block number by one:
+
+```sh
+# Connect to the node
+cd adapters/ethereum
+npx hardhat console --network localhost
+
+# While in the console, mine as many blocks as you need
+# to reach `finish_after`
+await ethers.provider.send("evm_mine", []);
+```
+
+8. To finish (release) an escrow with `has_conditions == false`:
 
 ```sh
 # From the `client` directory:
 cargo run --release -- finish --recipient <RECIPIENT_PRIVATE_KEY>
 ```
 
-8. To finish an escrow with `has_conditions == true`...
+To verify that the `recipient` received the funds, you can query the balance inside the Hardhat console you instantiated earlier:
+
+```js
+const balance = await ethers.provider.getBalance("0xRECIPIENT_ADDRESS")
+ethers.formatEther(balance)
+```
+
+9. To finish an escrow with `has_conditions == true`...
 First, generate the zero-knowledge proof:
 
 ```sh
@@ -95,9 +114,9 @@ cd zescrow
 cargo run --release
 ```
 
-Then rerun the `Finish` command as in step 7.
+Then rerun the `Finish` command just like in the previous step.
 
-9. To cancel an escrow:
+10. To cancel an escrow:
 
 ```sh
 cd client

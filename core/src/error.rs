@@ -1,3 +1,4 @@
+use num_bigint::BigUint;
 use thiserror::Error;
 
 /// Errors arising from on-chain `Escrow` operations and parameter validation.
@@ -99,7 +100,7 @@ pub enum AssetError {
 
     /// A liquidity pool share was invalid (must be > 0 and <= total supply).
     #[error("share must be non-zero and <= total supply (share={0}, total={1})")]
-    InvalidShare(u64, u64),
+    InvalidShare(BigUint, BigUint),
 
     /// The specified number of decimals was invalid.
     #[error("invalid decimals: {0}")]
@@ -107,7 +108,7 @@ pub enum AssetError {
 
     /// Fixed-point formatting overflow (e.g., amount or decimals too large).
     #[error("human formatting overflow: amount={0}, decimals={1}")]
-    FormatOverflow(u64, u8),
+    FormatOverflow(BigUint, u8),
 
     /// The provided asset string did not match a supported format.
     #[error("unsupported asset string format")]

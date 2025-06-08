@@ -7,7 +7,7 @@ use ethers::contract::{Contract, EthEvent, EthLogDecode};
 use ethers::middleware::SignerMiddleware;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use ethers::types::{Address, H256, U256};
+use ethers::types::{Address, Bytes, H256, U256};
 use serde_json::Value;
 use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, EscrowState};
 
@@ -111,7 +111,8 @@ impl Agent for EthereumAgent {
         let has_conditions = params.has_conditions;
         let verifier_addr = params.chain_config.eth_verifier_contract()?;
         let verifier = Address::from_str(&verifier_addr)?;
-        let amount = U256::from(params.asset.amount());
+        let amt_str = params.asset.amount().to_str_radix(10);
+        let amount = U256::from_dec_str(&amt_str).map_err(|_| ClientError::AssetOverflow)?;
 
         // Send `createEscrow` transaction, funding with `amount`
         let call = factory
@@ -193,16 +194,11 @@ impl Agent for EthereumAgent {
         let escrow_addr = metadata.chain_data.get_eth_contract_address()?;
         let escrow_addr = Address::from_str(&escrow_addr)?;
 
-        let proof_data = if metadata.has_conditions {
-            // TODO: set up RISC Zero prover API call
-            let p: Vec<u8> = vec![];
-            p
-        } else {
-            Vec::new()
-        };
+        // TODO: set up RISC Zero prover API call
+        let proof_data: Bytes = Vec::new().into();
 
         let call = factory
-            .method::<_, H256>("finishEscrow", (escrow_addr, proof_data))
+            .method::<_, ()>("finishEscrow", (escrow_addr, proof_data))
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
 
         call.send()
@@ -237,7 +233,7 @@ impl Agent for EthereumAgent {
         let escrow_addr = Address::from_str(&escrow_addr)?;
 
         factory
-            .method::<_, H256>("cancelEscrow", escrow_addr)
+            .method::<_, ()>("cancelEscrow", escrow_addr)
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .send()
             .await

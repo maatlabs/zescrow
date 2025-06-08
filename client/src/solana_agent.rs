@@ -6,6 +6,7 @@ use anchor_client::solana_sdk::system_program;
 use anchor_lang::prelude::AccountMeta;
 use anchor_lang::InstructionData;
 use escrow::{instruction as escrow_instruction, CreateEscrowArgs, FinishEscrowArgs, PREFIX};
+use num_traits::ToPrimitive;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
@@ -74,6 +75,8 @@ impl Agent for SolanaAgent {
             ));
         }
         let recipient = Pubkey::from_str(&params.recipient.to_string())?;
+        let amount = params.asset.amount();
+        let amount = amount.to_u64().ok_or(ClientError::AssetOverflow)?;
         let (pda, bump) = Pubkey::find_program_address(
             &[PREFIX.as_bytes(), sender.as_ref(), recipient.as_ref()],
             &self.escrow_program_id,
@@ -89,7 +92,7 @@ impl Agent for SolanaAgent {
             ],
             data: InstructionData::data(&escrow_instruction::CreateEscrow {
                 args: CreateEscrowArgs {
-                    amount: params.asset.amount(),
+                    amount,
                     finish_after: params.finish_after,
                     cancel_after: params.cancel_after,
                     has_conditions: params.has_conditions,

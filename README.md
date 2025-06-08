@@ -1,6 +1,6 @@
 # Zescrow
 
-Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic, generic implementation of an escrow program using the RISC Zero zkVM as the zero-knowledge prover.
+Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic implementation of an escrow program using the RISC Zero zkVM as the zero-knowledge prover.
 
 > [!WARNING]
 
@@ -74,7 +74,7 @@ Thank you for considering contributing to this project! All contributions large 
 
 ## License
 
-Licensed under [Apache License, Version 2.0](https://github.com/maatlabs/zescrow/blob/main/LICENSE).
+Licensed under [Apache License, Version 2.0](./LICENSE).
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this codebase by you, as defined in the Apache-2.0 license, shall be licensed as above, without any additional terms or conditions.
 

@@ -3,24 +3,24 @@
     "chain_config": {
         "rpc_url": "http://localhost:8899",
         "sender_keypair_path": "absolute/path/to/your/own/.config/solana/id.json",
-        "escrow_program_id": "escrow_program_id",
-        "verifier_program_id": "verifier_program_id"
+        "escrow_program_id": "ESCROW_PROGRAM_ID",
+        "verifier_program_id": "VERIFIER_PROGRAM_ID"
     },
     "asset_type": "native",
     "asset": {
         "chain": "solana",
-        "amount": 100
+        "amount": "1000000000"
     },
     "sender": {
         "identity": {
             "encoding": "base58",
-            "value": "sender-address"
+            "value": "SENDER_PUBKEY"
         }
     },
     "recipient": {
         "identity": {
             "encoding": "base58",
-            "value": "recipient-address"
+            "value": "RECIPIENT_PUBKEY"
         }
     },
     "finish_after": 1000,

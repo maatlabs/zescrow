@@ -93,7 +93,7 @@ pub enum EscrowState {
 }
 
 /// Parameters required to **create** an escrow on-chain.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowParams {
     /// Chain-specific network configuration.
     #[serde(flatten)]
@@ -122,7 +122,7 @@ pub struct EscrowParams {
 }
 
 /// Metadata **returned** from on-chain escrow creation.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EscrowMetadata {
     /// Chain-specific network configuration.
     #[serde(flatten)]
@@ -151,7 +151,7 @@ pub struct EscrowMetadata {
 }
 
 /// Chain-specific on-chain escrow metadata.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum ChainMetadata {
     /// Data relating to an escrow on Etherum (and/or any EVM chain).
@@ -202,7 +202,7 @@ impl ChainMetadata {
 }
 
 /// Chain-specific network configuration for creating or querying escrows.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "network", content = "chain_config", rename_all = "snake_case")]
 pub enum ChainConfig {
     /// Ethereum network configuration.
@@ -324,7 +324,8 @@ impl ChainConfig {
 }
 
 /// Supported blockchain networks.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Chain {
     /// Ethereum and other EVM-compatible chains.
     Ethereum,

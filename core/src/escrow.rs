@@ -9,7 +9,7 @@ use crate::interface::ESCROW_CONDITIONS_PATH;
 use crate::{Asset, Condition, EscrowError, EscrowMetadata, EscrowState, Party, Result};
 
 /// Full escrow context, representing the locked asset, participants, and settlement rules.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Escrow {
     /// Asset locked in escrow.
     pub asset: Asset,
@@ -104,6 +104,7 @@ mod tests {
 
     use core::str::FromStr as _;
 
+    use num_bigint::BigUint;
     use sha2::{Digest as _, Sha256};
 
     use super::*;
@@ -117,7 +118,7 @@ mod tests {
         let asset = Asset::Token {
             chain: Chain::Ethereum,
             contract: ID::from_str("0xdeadbeef").unwrap(),
-            amount: 1000,
+            amount: BigUint::from(1000u64),
             decimals: 18,
         };
 
@@ -144,7 +145,7 @@ mod tests {
         let invalid_asset = Asset::Token {
             chain: Chain::Ethereum,
             contract: ID::from_str("0xdeadbeef").unwrap(),
-            amount: 0, // invalid zero amount
+            amount: BigUint::from(0u64), // invalid zero amount
             decimals: 18,
         };
 

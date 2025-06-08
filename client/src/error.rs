@@ -40,6 +40,9 @@ pub enum ClientError {
     #[error("Transaction dropped")]
     TxDropped,
 
+    #[error("Asset amount overflow")]
+    AssetOverflow,
+
     #[error("Missing on-chain escrow event")]
     MissingEvent(String),
 
