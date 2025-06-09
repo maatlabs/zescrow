@@ -9,7 +9,7 @@ use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::{Address, Bytes, H256, U256};
 use serde_json::Value;
-use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, EscrowState};
+use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
 use crate::error::{AgentError, ClientError, Result};
 use crate::Agent;
@@ -164,7 +164,7 @@ impl Agent for EthereumAgent {
             chain_data: ChainMetadata::Ethereum {
                 escrow_address: format!("{:#x}", escrow_addr),
             },
-            state: EscrowState::Funded,
+            state: ExecutionState::Funded,
         })
     }
 

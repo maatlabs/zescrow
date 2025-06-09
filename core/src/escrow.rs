@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::interface::ESCROW_CONDITIONS_PATH;
-use crate::{Asset, Condition, EscrowError, EscrowMetadata, EscrowState, Party, Result};
+use crate::{Asset, Condition, EscrowError, EscrowMetadata, ExecutionState, Party, Result};
 
 /// Full escrow context, representing the locked asset, participants, and settlement rules.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,11 +19,40 @@ pub struct Escrow {
     pub sender: Party,
     /// Optional cryptographic condition that must be fulfilled before release.
     pub condition: Option<Condition>,
-    /// Current state in the escrow lifecycle.
-    pub state: EscrowState,
+    /// State of escrow execution in the prover (zkVM).
+    pub state: ExecutionState,
 }
 
 impl Escrow {
+    /// Attempts to execute (release) the escrow, performing all necessary checks.
+    ///
+    /// - Ensures current `state` is `Funded`.
+    /// - Verifies `sender` and `recipient` identities.
+    /// - Validates the `asset` parameters.
+    /// - If a cryptographic `condition` is present, verifies it.
+    ///
+    /// On success, transitions to `ExecutionState::ConditionsMet`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `EscrowError::InvalidState` if not in `Funded` state, or
+    /// propagates identity, asset, or condition errors.
+    pub fn execute(&mut self) -> Result<ExecutionState> {
+        if self.state != ExecutionState::Funded {
+            return Err(EscrowError::InvalidState);
+        }
+
+        self.sender.verify_identity()?;
+        self.recipient.verify_identity()?;
+        self.asset.validate()?;
+        if let Some(condition) = &self.condition {
+            condition.verify()?;
+        }
+
+        self.state = ExecutionState::ConditionsMet;
+        Ok(self.state)
+    }
+
     /// Constructs an `Escrow` from on-chain metadata and, if required,
     /// loads the cryptographic condition from a JSON file.
     ///
@@ -59,35 +88,6 @@ impl Escrow {
             condition,
             state,
         })
-    }
-
-    /// Attempts to execute (release) the escrow, performing all necessary checks.
-    ///
-    /// - Ensures current `state` is `Funded`.
-    /// - Verifies `sender` and `recipient` identities.
-    /// - Validates the `asset` parameters.
-    /// - If a cryptographic `condition` is present, verifies it.
-    ///
-    /// On success, transitions to `EscrowState::Released`.
-    ///
-    /// # Errors
-    ///
-    /// Returns `EscrowError::InvalidState` if not in `Funded` state, or
-    /// propagates identity, asset, or condition errors.
-    pub fn execute(&mut self) -> Result<EscrowState> {
-        if self.state != EscrowState::Funded {
-            return Err(EscrowError::InvalidState);
-        }
-
-        self.sender.verify_identity()?;
-        self.recipient.verify_identity()?;
-        self.asset.validate()?;
-        if let Some(condition) = &self.condition {
-            condition.verify()?;
-        }
-
-        self.state = EscrowState::Released;
-        Ok(self.state)
     }
 }
 
@@ -132,11 +132,11 @@ mod tests {
             recipient: recipient.clone(),
             sender: sender.clone(),
             condition: Some(condition),
-            state: EscrowState::Funded,
+            state: ExecutionState::Funded,
         };
 
-        assert_eq!(escrow.execute().unwrap(), EscrowState::Released);
-        assert_eq!(escrow.state, EscrowState::Released);
+        assert_eq!(escrow.execute().unwrap(), ExecutionState::ConditionsMet);
+        assert_eq!(escrow.state, ExecutionState::ConditionsMet);
 
         // Ensure re-execution is not allowed
         assert!(escrow.execute().is_err());
@@ -154,7 +154,7 @@ mod tests {
             recipient,
             sender,
             condition: None,
-            state: EscrowState::Funded,
+            state: ExecutionState::Funded,
         };
 
         assert!(invalid_escrow.execute().is_err(),);

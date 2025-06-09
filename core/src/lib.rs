@@ -47,7 +47,9 @@ pub use condition::Condition;
 pub use error::EscrowError;
 pub use escrow::Escrow;
 pub use identity::Party;
-pub use interface::{Chain, ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, EscrowState};
+pub use interface::{
+    Chain, ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState,
+};
 
 /// `Result` type for all core operations, using [`EscrowError`] as the error.
 pub type Result<T> = std::result::Result<T, EscrowError>;

@@ -1,6 +1,6 @@
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use zescrow_core::interface::ESCROW_METADATA_PATH;
-use zescrow_core::{Escrow, EscrowMetadata, EscrowState};
+use zescrow_core::interface::{ExecutionResult, ESCROW_METADATA_PATH};
+use zescrow_core::{Escrow, EscrowMetadata, ExecutionState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
 
 fn main() {
@@ -25,25 +25,14 @@ fn main() {
     let prover_info = prover.prove(env, ZESCROW_GUEST_ELF).unwrap();
     let receipt = prover_info.receipt;
 
-    match receipt.journal.decode::<EscrowState>() {
-        Ok(escrow_state) => {
-            if escrow_state == EscrowState::Released {
-                println!("\nEscrow executed successfully!\n");
-            } else {
-                println!(
-                    "\nINVALID escrow state: {:#?}. Execution failed!",
-                    escrow_state
-                );
-            }
-        }
-        Err(_) => {
-            let err: String = receipt.journal.decode().unwrap();
-            println!("\nEscrow execution failed: {}\n", err);
-        }
-    }
+    receipt.verify(ZESCROW_GUEST_ID).expect("Invalid receipt");
 
-    // Sanity check
-    receipt
-        .verify(ZESCROW_GUEST_ID)
-        .expect("This should not happen!");
+    match receipt.journal.decode::<ExecutionResult>() {
+        Ok(ExecutionResult::Ok(ExecutionState::ConditionsMet)) => {
+            println!("\nEscrow conditions fulfilled!\n")
+        }
+        Ok(ExecutionResult::Ok(state)) => println!("\nInvalid escrow state: {:?}", state),
+        Ok(ExecutionResult::Err(err)) => println!("\nExecution failed: {}\n", err),
+        Err(e) => println!("Error decoding journal: {}\n", e),
+    }
 }

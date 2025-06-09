@@ -13,7 +13,7 @@ use solana_sdk::signature::{read_keypair_file, Keypair};
 use solana_sdk::signer::Signer;
 use solana_sdk::transaction::Transaction;
 use zescrow_core::interface::ChainConfig;
-use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, EscrowState};
+use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
 use crate::error::{AgentError, ClientError, Result};
 use crate::Agent;
@@ -129,7 +129,7 @@ impl Agent for SolanaAgent {
                 pda: pda.to_string(),
                 bump,
             },
-            state: EscrowState::Funded,
+            state: ExecutionState::Funded,
         })
     }
 

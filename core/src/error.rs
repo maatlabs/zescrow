@@ -118,3 +118,11 @@ pub enum AssetError {
     #[error("integer parsing error: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
 }
+
+impl EscrowError {
+    /// A helper to bypass the unavailability of the `ToString` trait
+    /// in the RISC Zero guest.
+    pub fn to_str(&self) -> String {
+        self.to_string()
+    }
+}

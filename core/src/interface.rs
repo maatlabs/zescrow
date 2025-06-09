@@ -1,4 +1,4 @@
-//! Core types for JSON (de)serialization of escrow parameters and metadata.
+//! Core types and interface for JSON (de)serialization of escrow parameters and metadata.
 
 use std::fs::File;
 use std::path::Path;
@@ -83,13 +83,23 @@ where
         .with_context(|| format!("serializing to JSON to {:?}", path))
 }
 
-/// Lifecycle of an escrow.
+/// State of escrow execution in the host (`prover`).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-pub enum EscrowState {
+pub enum ExecutionState {
     /// Funds have been deposited; awaiting release or cancellation.
     Funded,
-    /// Conditions (if any) met; funds have been released to the recipient.
-    Released,
+    /// Conditions (if any) have been fulfilled;
+    /// funds will be released to the recipient if the proof verifies on-chain.
+    ConditionsMet,
+}
+
+/// Result of escrow execution in the guest (`methods`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ExecutionResult {
+    /// Happy path; no errors in execution.
+    Ok(ExecutionState),
+    /// Unsuccessful escrow execution, with the error message.
+    Err(String),
 }
 
 /// Parameters required to **create** an escrow on-chain.
@@ -109,15 +119,15 @@ pub struct EscrowParams {
     /// Who will receive the funds once conditions pass.
     pub recipient: Party,
 
-    /// Optional block height or slot after which `execute` is allowed.
+    /// Optional block height or slot after which "release" is allowed.
     /// Must be `None` or less than `cancel_after` if both are set.
     pub finish_after: Option<u64>,
 
-    /// Optional block height or slot after which `cancel` is allowed.
+    /// Optional block height or slot after which "cancel" is allowed.
     /// Must be `None` or greater than `finish_after` if both are set.
     pub cancel_after: Option<u64>,
 
-    /// Whether this escrow is subject to cryptographic conditions.
+    /// Denotes whether this escrow is subject to cryptographic conditions.
     pub has_conditions: bool,
 }
 
@@ -146,8 +156,8 @@ pub struct EscrowMetadata {
     #[serde(flatten)]
     pub chain_data: ChainMetadata,
 
-    /// Where in the lifecycle the escrow currently is.
-    pub state: EscrowState,
+    /// State of escrow execution in the prover (zkVM).
+    pub state: ExecutionState,
 }
 
 /// Chain-specific on-chain escrow metadata.
