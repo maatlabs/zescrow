@@ -78,8 +78,8 @@ Licensed under [Apache License, Version 2.0](./LICENSE).
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this codebase by you, as defined in the Apache-2.0 license, shall be licensed as above, without any additional terms or conditions.
 
-[ethereum-demo]: docs/ethereum_demo.md
+[ethereum-demo]: demos/ethereum_demo.md
 [risc0-toolchain]: https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain
 [rust-toolchain]: rust-toolchain.toml
 [rustup]: https://rustup.rs
-[solana-demo]: docs/solana_demo.md
+[solana-demo]: demos/solana_demo.md

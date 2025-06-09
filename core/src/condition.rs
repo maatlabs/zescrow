@@ -183,14 +183,11 @@ mod tests {
     fn preimage() {
         let preimage = b"secret".to_vec();
         let hash = Sha256::digest(&preimage).into();
-        let cond = Condition::Preimage { hash, preimage };
+        let cond = Condition::preimage(hash, preimage);
         assert!(cond.verify().is_ok());
 
         // invalid preimage
-        let cond = Condition::Preimage {
-            hash,
-            preimage: b"wrong-secret".to_vec(),
-        };
+        let cond = Condition::preimage(hash, b"wrong-secret".to_vec());
         assert!(cond.verify().is_err());
     }
 
@@ -206,21 +203,14 @@ mod tests {
         let signature = sk.sign(&message).to_bytes().to_vec();
         let public_key = sk.verifying_key().to_bytes();
 
-        let cond = Condition::Ed25519 {
-            public_key: public_key.clone(),
-            signature: signature.clone(),
-            message: message.clone(),
-        };
+        let cond = Condition::ed25519(public_key.clone(), message.clone(), signature.clone());
         assert!(cond.verify().is_ok());
 
         // tampered sig
         let mut signature = signature;
         signature[0] ^= 0xFF;
-        let cond = Condition::Ed25519 {
-            public_key,
-            signature,
-            message,
-        };
+
+        let cond = Condition::ed25519(public_key, message, signature);
         assert!(cond.verify().is_err());
     }
 
@@ -238,19 +228,11 @@ mod tests {
         let sig_bytes = signature.to_der().as_bytes().to_vec();
         let pk_bytes = vk.to_encoded_point(false).as_bytes().to_vec();
 
-        let cond = Condition::Secp256k1 {
-            public_key: pk_bytes.clone(),
-            signature: sig_bytes.clone(),
-            message,
-        };
+        let cond = Condition::secp256k1(pk_bytes.clone(), message, sig_bytes.clone());
         assert!(cond.verify().is_ok());
 
         // tampered message
-        let cond = Condition::Secp256k1 {
-            public_key: pk_bytes,
-            signature: sig_bytes,
-            message: b"tampered".to_vec(),
-        };
+        let cond = Condition::secp256k1(pk_bytes, b"tampered".to_vec(), sig_bytes);
         assert!(cond.verify().is_err());
     }
 
@@ -258,54 +240,33 @@ mod tests {
     fn nonzero_threshold() {
         // two trivial subconditions: one succeeds, one fails
         let hash = Sha256::digest(b"zkEscrow").into();
-        let correct = Condition::Preimage {
-            hash,
-            preimage: b"zkEscrow".to_vec(),
-        };
-        let wrong = Condition::Preimage {
-            hash,
-            preimage: b"wrong-preimage".to_vec(),
-        };
+        let correct = Condition::preimage(hash, b"zkEscrow".to_vec());
+        let wrong = Condition::preimage(hash, b"wrong-preimage".to_vec());
 
         // threshold == 1 should pass
-        let cond = Condition::Threshold {
-            threshold: 1,
-            subconditions: vec![correct.clone(), wrong.clone()],
-        };
+        let cond = Condition::threshold(1, vec![correct.clone(), wrong.clone()]);
         assert!(cond.verify().is_ok());
 
         // threshold == 2 should fail
-        let cond = Condition::Threshold {
-            threshold: 2,
-            subconditions: vec![correct, wrong],
-        };
+        let cond = Condition::threshold(2, vec![correct, wrong]);
         assert!(cond.verify().is_err());
 
         // threshold == 1 and no subconditions should fail
-        let cond = Condition::Threshold {
-            threshold: 1,
-            subconditions: vec![],
-        };
+        let cond = Condition::threshold(1, vec![]);
         assert!(cond.verify().is_err());
     }
 
     #[test]
     fn zero_threshold() {
         // threshold == 0 with empty subconditions should pass
-        let cond = Condition::Threshold {
-            threshold: 0,
-            subconditions: vec![],
-        };
+        let cond = Condition::threshold(0, vec![]);
         assert!(cond.verify().is_ok());
 
         // threshold == 0 with subconditions should also pass
         let preimage = b"zkEscrow".to_vec();
         let hash = Sha256::digest(&preimage).into();
-        let subcond = Condition::Preimage { hash, preimage };
-        let cond = Condition::Threshold {
-            threshold: 0,
-            subconditions: vec![subcond],
-        };
+        let subcond = Condition::preimage(hash, preimage);
+        let cond = Condition::threshold(0, vec![subcond]);
         assert!(cond.verify().is_ok());
     }
 
@@ -313,33 +274,18 @@ mod tests {
     fn nested_thresholds() {
         let preimage = b"zkEscrow".to_vec();
         let hash = Sha256::digest(&preimage).into();
-        let leaf = Condition::Preimage { hash, preimage };
+        let leaf = Condition::preimage(hash, preimage);
 
         // inner threshold: need 1 of `leaf`
-        let inner = Condition::Threshold {
-            threshold: 1,
-            subconditions: vec![leaf.clone()],
-        };
+        let inner = Condition::threshold(1, vec![leaf.clone()]);
         // outer threshold: need 1 of `inner`
-        let outer = Condition::Threshold {
-            threshold: 1,
-            subconditions: vec![inner],
-        };
+        let outer = Condition::threshold(1, vec![inner]);
         assert!(outer.verify().is_ok());
 
         // if `leaf` wrong, `inner` fails, and so does `outer`
-        let wrong_leaf = Condition::Preimage {
-            hash,
-            preimage: b"wrong-preimage".to_vec(),
-        };
-        let inner2 = Condition::Threshold {
-            threshold: 1,
-            subconditions: vec![wrong_leaf],
-        };
-        let outer2 = Condition::Threshold {
-            threshold: 1,
-            subconditions: vec![inner2],
-        };
+        let wrong_leaf = Condition::preimage(hash, b"wrong-preimage".to_vec());
+        let inner2 = Condition::threshold(1, vec![wrong_leaf]);
+        let outer2 = Condition::threshold(1, vec![inner2]);
         assert!(outer2.verify().is_err());
     }
 }

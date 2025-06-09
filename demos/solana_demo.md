@@ -41,8 +41,6 @@ cd templates
 
 6. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
 
-If `has_conditions == true` as specified in your `escrow_params.json`, then ensure the conditions and their fulfillment (i.e., the witness data) are specified in the [escrow_conditions.json](/templates/escrow_conditions.json) file.
-
 An example of how your `escrow_params.json` might look like:
 
 ```json
@@ -74,6 +72,18 @@ An example of how your `escrow_params.json` might look like:
     "finish_after": 1000, // finish_after slot
     "cancel_after": 1200, // cancel_after slot
     "has_conditions": false
+}
+```
+
+If `has_conditions == true` as specified in your `escrow_params.json`, then ensure the conditions and their fulfillment (i.e., the witness data) are specified in the [escrow_conditions.json](/templates/escrow_conditions.json) file. Here's an example of how your conditions file might look like:
+
+```json
+{
+  "condition": "preimage",
+  "fulfillment": {
+    "hash": "<hex-encoded SHA-256 digest of the preimage>",
+    "preimage": "<the actual preimage value, as a UTF-8 string>"
+  }
 }
 ```
 

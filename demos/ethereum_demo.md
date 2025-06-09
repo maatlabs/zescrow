@@ -36,7 +36,7 @@ npx hardhat run --network localhost scripts/deploy.ts
 
 After deployment completes, note the printed `EscrowFactory` and `Verifier` addresses.
 
-5. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected. Here's an example of what yours might look like:
+5. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected. Here's an example of what your escrow parameters might look like:
 
 ```json
 {
@@ -70,7 +70,17 @@ After deployment completes, note the printed `EscrowFactory` and `Verifier` addr
 }
 ```
 
-If `has_conditions == true` as specified in your `escrow_params.json`, then ensure the conditions and their fulfillment (i.e., the witness data) are specified in the [escrow_conditions.json](/templates/escrow_conditions.json) file.
+If `has_conditions == true` as specified in your `escrow_params.json`, then ensure the conditions and their fulfillment (i.e., the witness data) are specified in the [escrow_conditions.json](/templates/escrow_conditions.json) file. Here's an example of how your conditions file might look like:
+
+```json
+{
+  "condition": "preimage",
+  "fulfillment": {
+    "hash": "<hex-encoded SHA-256 digest of the preimage>",
+    "preimage": "<the actual preimage value, as a UTF-8 string>"
+  }
+}
+```
 
 6. To create an escrow transaction:
 
