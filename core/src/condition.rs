@@ -13,7 +13,7 @@ use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
 use crate::error::ConditionError;
-use crate::Result;
+use crate::{utf8_serde, Result};
 
 /// A cryptographic condition that can be deterministically verified.
 #[serde_as]
@@ -25,8 +25,8 @@ pub enum Condition {
         /// The expected SHA-256 digest of the preimage.
         #[serde_as(as = "Hex")]
         hash: [u8; 32],
-        /// Secret preimage bytes.
-        #[serde_as(as = "Hex")]
+        /// Secret preimage as UTF-8 string.
+        #[serde(with = "utf8_serde")]
         preimage: Vec<u8>,
     },
 
