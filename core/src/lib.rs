@@ -143,9 +143,9 @@ impl<Context> Decode<Context> for BigNumber {
 
 impl<'de, Context> BorrowDecode<'de, Context> for BigNumber {
     fn borrow_decode<D: BorrowDecoder<'de>>(
-        _decoder: &mut D,
+        decoder: &mut D,
     ) -> std::result::Result<Self, DecodeError> {
-        todo!()
+        Self::decode(decoder)
     }
 }
 
