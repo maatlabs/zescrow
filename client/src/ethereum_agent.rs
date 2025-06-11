@@ -111,7 +111,7 @@ impl Agent for EthereumAgent {
         let has_conditions = params.has_conditions;
         let verifier_addr = params.chain_config.eth_verifier_contract()?;
         let verifier = Address::from_str(&verifier_addr)?;
-        let amt_str = params.asset.amount().to_str_radix(10);
+        let amt_str = params.asset.amount().0.to_str_radix(10);
         let amount = U256::from_dec_str(&amt_str).map_err(|_| ClientError::AssetOverflow)?;
 
         // Send `createEscrow` transaction, funding with `amount`

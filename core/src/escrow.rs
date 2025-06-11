@@ -3,13 +3,21 @@
 //! This module provides the `Escrow` type, representing an escrow instance with its
 //! asset, parties, state, and optional conditions.
 
-use serde::{Deserialize, Serialize};
+use bincode::{Decode, Encode};
+#[cfg(feature = "json")]
+use {
+    crate::interface::ESCROW_CONDITIONS_PATH,
+    serde::{Deserialize, Serialize},
+    serde_json,
+};
 
-use crate::interface::ESCROW_CONDITIONS_PATH;
-use crate::{Asset, Condition, EscrowError, EscrowMetadata, ExecutionState, Party, Result};
+#[cfg(feature = "json")]
+use crate::EscrowMetadata;
+use crate::{Asset, Condition, EscrowError, ExecutionState, Party, Result};
 
 /// Full escrow context, representing the locked asset, participants, and settlement rules.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct Escrow {
     /// Asset locked in escrow.
     pub asset: Asset,
@@ -63,6 +71,7 @@ impl Escrow {
     ///
     /// - I/O error when reading the condition file.
     /// - JSON parsing error when decoding the condition.
+    #[cfg(feature = "json")]
     pub fn from_metadata(metadata: EscrowMetadata) -> Result<Self> {
         let EscrowMetadata {
             asset,
@@ -91,6 +100,7 @@ impl Escrow {
     }
 }
 
+#[cfg(feature = "json")]
 impl std::fmt::Display for Escrow {
     /// Compact JSON representation of the `Escrow` for logging.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -118,7 +128,7 @@ mod tests {
         let asset = Asset::Token {
             chain: Chain::Ethereum,
             contract: ID::from_str("0xdeadbeef").unwrap(),
-            amount: BigUint::from(1000u64),
+            amount: BigUint::from(1000u64).into(),
             decimals: 18,
         };
 
@@ -145,7 +155,7 @@ mod tests {
         let invalid_asset = Asset::Token {
             chain: Chain::Ethereum,
             contract: ID::from_str("0xdeadbeef").unwrap(),
-            amount: BigUint::from(0u64), // invalid zero amount
+            amount: BigUint::from(0u64).into(), // invalid zero amount
             decimals: 18,
         };
 

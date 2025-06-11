@@ -1,10 +1,16 @@
 //! Core types and interface for JSON (de)serialization of escrow parameters and metadata.
 
+#[cfg(feature = "json")]
 use std::fs::File;
+#[cfg(feature = "json")]
 use std::path::Path;
 
+#[cfg(feature = "json")]
 use anyhow::Context;
+use bincode::{Decode, Encode};
+#[cfg(feature = "json")]
 use serde::de::DeserializeOwned;
+#[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
 use crate::{Asset, EscrowError, Party, Result};
@@ -43,6 +49,7 @@ pub const ESCROW_CONDITIONS_PATH: &str = concat!(
 ///
 /// let _params: MyParams = load_escrow_data(./my_params.json).unwrap();
 /// ```
+#[cfg(feature = "json")]
 pub fn load_escrow_data<P, T>(path: P) -> anyhow::Result<T>
 where
     P: AsRef<Path>,
@@ -72,6 +79,7 @@ where
 /// let metadata = MyMetadata { /* ... */ };
 /// save_escrow_data("./metadata.json", &metadata).unwrap();
 /// ```
+#[cfg(feature = "json")]
 pub fn save_escrow_data<P, T>(path: P, data: &T) -> anyhow::Result<()>
 where
     P: AsRef<Path>,
@@ -84,7 +92,8 @@ where
 }
 
 /// State of escrow execution in the host (`prover`).
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq)]
 pub enum ExecutionState {
     /// Funds have been deposited; awaiting release or cancellation.
     Funded,
@@ -94,7 +103,8 @@ pub enum ExecutionState {
 }
 
 /// Result of escrow execution in the guest (`methods`).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Encode, Decode)]
 pub enum ExecutionResult {
     /// Happy path; no errors in execution.
     Ok(ExecutionState),
@@ -103,14 +113,15 @@ pub enum ExecutionResult {
 }
 
 /// Parameters required to **create** an escrow on-chain.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct EscrowParams {
     /// Chain-specific network configuration.
-    #[serde(flatten)]
+    #[cfg_attr(feature = "json", serde(flatten))]
     pub chain_config: ChainConfig,
 
     /// Exactly which asset to lock (native, token, NFT, pool-share, etc).
-    #[serde(flatten)]
+    #[cfg_attr(feature = "json", serde(flatten))]
     pub asset: Asset,
 
     /// Who is funding (locking) the escrow.
@@ -132,14 +143,15 @@ pub struct EscrowParams {
 }
 
 /// Metadata **returned** from on-chain escrow creation.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Encode, Decode)]
 pub struct EscrowMetadata {
     /// Chain-specific network configuration.
-    #[serde(flatten)]
+    #[cfg_attr(feature = "json", serde(flatten))]
     pub chain_config: ChainConfig,
 
     /// Exactly which asset got locked.
-    #[serde(flatten)]
+    #[cfg_attr(feature = "json", serde(flatten))]
     pub asset: Asset,
 
     /// The party who funded the escrow.
@@ -153,7 +165,7 @@ pub struct EscrowMetadata {
 
     /// Chain-specific on-chain accounts/programs
     /// used to finish or cancel the escrow.
-    #[serde(flatten)]
+    #[cfg_attr(feature = "json", serde(flatten))]
     pub chain_data: ChainMetadata,
 
     /// State of escrow execution in the prover (zkVM).
@@ -161,8 +173,9 @@ pub struct EscrowMetadata {
 }
 
 /// Chain-specific on-chain escrow metadata.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "json", serde(untagged))]
+#[derive(Debug, Clone, Encode, Decode)]
 pub enum ChainMetadata {
     /// Data relating to an escrow on Etherum (and/or any EVM chain).
     Ethereum {
@@ -212,8 +225,12 @@ impl ChainMetadata {
 }
 
 /// Chain-specific network configuration for creating or querying escrows.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "network", content = "chain_config", rename_all = "snake_case")]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "json",
+    serde(tag = "network", content = "chain_config", rename_all = "snake_case")
+)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub enum ChainConfig {
     /// Ethereum network configuration.
     Ethereum {
@@ -334,8 +351,9 @@ impl ChainConfig {
 }
 
 /// Supported blockchain networks.
-#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "json", serde(rename_all = "lowercase"))]
+#[derive(Debug, Copy, Clone, Encode, Decode)]
 pub enum Chain {
     /// Ethereum and other EVM-compatible chains.
     Ethereum,

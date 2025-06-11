@@ -76,7 +76,7 @@ impl Agent for SolanaAgent {
         }
         let recipient = Pubkey::from_str(&params.recipient.to_string())?;
         let amount = params.asset.amount();
-        let amount = amount.to_u64().ok_or(ClientError::AssetOverflow)?;
+        let amount = amount.0.to_u64().ok_or(ClientError::AssetOverflow)?;
         let (pda, bump) = Pubkey::find_program_address(
             &[PREFIX.as_bytes(), sender.as_ref(), recipient.as_ref()],
             &self.escrow_program_id,

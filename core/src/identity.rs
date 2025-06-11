@@ -1,9 +1,11 @@
 //! Chain-agnostic identity types for escrow participants.
 
-use core::str::FromStr as _;
+use std::str::FromStr;
 
 use base64::prelude::*;
 use base64::Engine;
+use bincode::{Decode, Encode};
+#[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
 use crate::error::IdentityError;
@@ -14,15 +16,20 @@ use crate::{EscrowError, Result};
 /// A `Party` represents an on-chain account or public-key identity.  
 /// Internally it holds an [`ID`], which may have been encoded as hex, Base58, Base64,
 /// or raw bytes.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Hash)]
 pub struct Party {
     /// The participant’s on-chain identity.
     pub identity: ID,
 }
 
 /// Supported encoding formats for on-chain identities.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(tag = "encoding", content = "value", rename_all = "lowercase")]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "json",
+    serde(tag = "encoding", content = "value", rename_all = "lowercase")
+)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Hash)]
 pub enum ID {
     /// Hex-encoded string.
     Hex(String),
@@ -31,7 +38,7 @@ pub enum ID {
     /// Base64-encoded string.
     Base64(String),
     /// Raw bytes.
-    #[serde(with = "serde_bytes")]
+    #[cfg_attr(feature = "json", serde(with = "serde_bytes"))]
     Bytes(Vec<u8>),
 }
 
@@ -180,7 +187,7 @@ impl std::fmt::Display for ID {
     }
 }
 
-impl std::str::FromStr for ID {
+impl FromStr for ID {
     type Err = EscrowError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {

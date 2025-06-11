@@ -1,5 +1,6 @@
-use num_bigint::BigUint;
 use thiserror::Error;
+
+use crate::BigNumber;
 
 /// Errors arising from on-chain `Escrow` operations and parameter validation.
 #[derive(Debug, Error)]
@@ -30,6 +31,7 @@ pub enum EscrowError {
     Io(#[from] std::io::Error),
 
     /// JSON parsing or serialization error.
+    #[cfg(feature = "json")]
     #[error("JSON error: {0}")]
     Json(#[from] serde_json::Error),
 
@@ -87,6 +89,10 @@ pub enum IdentityError {
 #[derive(Debug, Error)]
 pub enum AssetError {
     /// Failed to parse an asset from a string or JSON.
+    #[error("could not serialize asset: {0}")]
+    Serialization(String),
+
+    /// Failed to parse an asset from a string or JSON.
     #[error("could not parse asset: {0}")]
     Parsing(String),
 
@@ -100,7 +106,7 @@ pub enum AssetError {
 
     /// A liquidity pool share was invalid (must be > 0 and <= total supply).
     #[error("share must be non-zero and <= total supply (share={0}, total={1})")]
-    InvalidShare(BigUint, BigUint),
+    InvalidShare(BigNumber, BigNumber),
 
     /// The specified number of decimals was invalid.
     #[error("invalid decimals: {0}")]
@@ -108,7 +114,7 @@ pub enum AssetError {
 
     /// Fixed-point formatting overflow (e.g., amount or decimals too large).
     #[error("human formatting overflow: amount={0}, decimals={1}")]
-    FormatOverflow(BigUint, u8),
+    FormatOverflow(BigNumber, u8),
 
     /// The provided asset string did not match a supported format.
     #[error("unsupported asset string format")]

@@ -4,55 +4,63 @@
 //! cryptographic conditions (e.g., hashlocks, digital signatures, and threshold
 //! conditions) and provides deterministic verification.
 
+use bincode::{Decode, Encode};
 use ed25519_dalek::{Signature as Ed25519Sig, Verifier, VerifyingKey as Ed25519Pub};
 use k256::ecdsa::{Signature as Secp256k1Sig, VerifyingKey as Secp256k1Pub};
+#[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
-use serde_with::hex::Hex;
+#[cfg(feature = "json")]
 use serde_with::serde_as;
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
 use crate::error::ConditionError;
-use crate::{utf8_serde, Result};
+#[cfg(feature = "json")]
+use crate::utf8_serde;
+use crate::Result;
 
 /// A cryptographic condition that can be deterministically verified.
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(tag = "condition", content = "fulfillment", rename_all = "lowercase")]
+#[cfg_attr(feature = "json", serde_as)]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
+#[cfg_attr(
+    feature = "json",
+    serde(tag = "condition", content = "fulfillment", rename_all = "lowercase")
+)]
 pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.
     Preimage {
         /// The expected SHA-256 digest of the preimage.
-        #[serde_as(as = "Hex")]
+        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
         hash: [u8; 32],
         /// Secret preimage as UTF-8 string.
-        #[serde(with = "utf8_serde")]
+        #[cfg_attr(feature = "json", serde(with = "utf8_serde"))]
         preimage: Vec<u8>,
     },
 
     /// Ed25519 signature over an arbitrary message.
     Ed25519 {
         /// Public key bytes.
-        #[serde_as(as = "Hex")]
+        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
         public_key: [u8; 32],
         /// Signature bytes.
-        #[serde_as(as = "Hex")]
+        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
         signature: Vec<u8>,
         /// Original message bytes.
-        #[serde_as(as = "Hex")]
+        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
         message: Vec<u8>,
     },
 
     /// Secp256k1 ECDSA signature over an arbitrary message.
     Secp256k1 {
         /// Compressed SEC1-encoded public key bytes.
-        #[serde_as(as = "Hex")]
+        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
         public_key: Vec<u8>,
         /// DER-encoded signature bytes.
-        #[serde_as(as = "Hex")]
+        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
         signature: Vec<u8>,
         /// Original message bytes.
-        #[serde_as(as = "Hex")]
+        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
         message: Vec<u8>,
     },
 
@@ -166,6 +174,7 @@ impl Condition {
     }
 }
 
+#[cfg(feature = "json")]
 impl std::fmt::Display for Condition {
     /// Serialize the condition to compact JSON for logging or write formats.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

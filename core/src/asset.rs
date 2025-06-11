@@ -4,26 +4,38 @@
 //! fungible tokens, non-fungible tokens, multi-tokens, and liquidity pool shares),
 //! along with validation, human-readable formatting, and (de)serialization logic.
 
+#[cfg(feature = "json")]
+use std::str::FromStr;
+
+use bincode::{Decode, Encode};
 use num_bigint::BigUint;
 use num_integer::Integer;
 use num_traits::ToPrimitive;
+#[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "json")]
+use serde_json;
 
 use crate::error::AssetError;
 use crate::identity::ID;
-use crate::{biguint_serde, Chain, EscrowError, Result};
+#[cfg(feature = "json")]
+use crate::EscrowError;
+use crate::{BigNumber, Chain, Result};
 
 /// All the "kinds" of assets we might escrow on any chain.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "asset_type", content = "asset", rename_all = "snake_case")]
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "json",
+    serde(tag = "asset_type", content = "asset", rename_all = "snake_case")
+)]
+#[derive(Debug, Clone, Encode, Decode)]
 pub enum Asset {
     /// Native chain coin (e.g., ETH, SOL).
     Native {
         /// Blockchain network identifier.
         chain: Chain,
         /// Quantity in smallest unit (e.g., wei, lamports).
-        #[serde(with = "biguint_serde")]
-        amount: BigUint,
+        amount: BigNumber,
     },
 
     /// Fungible token (e.g., ERC-20, SPL).
@@ -33,8 +45,7 @@ pub enum Asset {
         /// Token contract address or program ID.
         contract: ID,
         /// Quantity in token's smallest unit.
-        #[serde(with = "biguint_serde")]
-        amount: BigUint,
+        amount: BigNumber,
         /// Number of decimals the token uses.
         decimals: u8,
     },
@@ -58,8 +69,7 @@ pub enum Asset {
         /// Token identifier.
         token_id: String,
         /// Quantity in token's smallest unit.
-        #[serde(with = "biguint_serde")]
-        amount: BigUint,
+        amount: BigNumber,
     },
 
     /// Liquidity pool share (proportional ownership).
@@ -69,11 +79,9 @@ pub enum Asset {
         /// Pool contract address or ID.
         pool: ID,
         /// User's share quantity.
-        #[serde(with = "biguint_serde")]
-        share: BigUint,
+        share: BigNumber,
         /// Total supply of pool tokens.
-        #[serde(with = "biguint_serde")]
-        total_supply: BigUint,
+        total_supply: BigNumber,
         /// Number of decimals the token uses.
         decimals: u8,
     },
@@ -87,14 +95,14 @@ impl Asset {
     /// ```
     /// # use zescrow_core::{Asset, Chain};
     /// use num_bigint::BigUint;
-    /// let _asset = Asset::native(Chain::Ethereum, BigUint::from(1_000u64));
+    /// let _asset = Asset::native(Chain::Ethereum, BigUint::from(1_000u64).into());
     /// ```
-    pub fn native(chain: Chain, amount: BigUint) -> Self {
+    pub fn native(chain: Chain, amount: BigNumber) -> Self {
         Self::Native { chain, amount }
     }
 
     /// Create a fungible token asset.
-    pub fn token(chain: Chain, contract: ID, amount: BigUint, decimals: u8) -> Self {
+    pub fn token(chain: Chain, contract: ID, amount: BigNumber, decimals: u8) -> Self {
         Self::Token {
             chain,
             contract,
@@ -113,7 +121,7 @@ impl Asset {
     }
 
     /// Create a multi-token asset.
-    pub fn multi_token(chain: Chain, contract: ID, token_id: &str, amount: BigUint) -> Self {
+    pub fn multi_token(chain: Chain, contract: ID, token_id: &str, amount: BigNumber) -> Self {
         Self::MultiToken {
             chain,
             contract,
@@ -126,8 +134,8 @@ impl Asset {
     pub fn pool_share(
         chain: Chain,
         pool: ID,
-        share: BigUint,
-        total_supply: BigUint,
+        share: BigNumber,
+        total_supply: BigNumber,
         decimals: u8,
     ) -> Self {
         Self::PoolShare {
@@ -212,6 +220,19 @@ impl Asset {
         }
     }
 
+    /// Encode `self` to Vec.
+    pub fn to_bytes(&self) -> Result<Vec<u8>> {
+        bincode::encode_to_vec(self, bincode::config::standard())
+            .map_err(|e| AssetError::Serialization(e.to_string()).into())
+    }
+
+    /// Decode `self` from a slice.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        bincode::decode_from_slice(bytes, bincode::config::standard())
+            .map_err(|e| AssetError::Parsing(e.to_string()).into())
+            .map(|(asset, _)| asset)
+    }
+
     /// Returns a human-readable representation of the asset
     /// (e.g., "1.2345 USDC", "12.3456% of Pool(0xdeadbeef)").
     pub fn to_human(&self) -> Result<String> {
@@ -250,9 +271,10 @@ impl Asset {
                 ..
             } => {
                 let share = share
+                    .0
                     .to_f64()
                     .ok_or_else(|| AssetError::Parsing("share too large to format".into()))?;
-                let total_supply = total_supply.to_f64().ok_or_else(|| {
+                let total_supply = total_supply.0.to_f64().ok_or_else(|| {
                     AssetError::Parsing("total supply too large to format".into())
                 })?;
                 let percentage = share / total_supply * 100.0;
@@ -261,10 +283,11 @@ impl Asset {
         }
     }
 
-    /// Format a BigUint `amount` using `decimals` as fixed‐point precision.
-    fn format_amount(amount: &BigUint, decimals: u8) -> Result<String> {
+    /// Format a BigNumber `amount` using `decimals` as fixed‐point precision.
+    fn format_amount(amount: &BigNumber, decimals: u8) -> Result<String> {
+        let raw = &amount.0;
         let scale = BigUint::from(10u8).pow(decimals as u32);
-        let (whole, rem) = amount.div_rem(&scale);
+        let (whole, rem) = raw.div_rem(&scale);
 
         let whole_str = whole.to_str_radix(10);
         if decimals == 0 {
@@ -284,14 +307,14 @@ impl Asset {
     /// - `Native`, `Token`, `MultiToken`: the `amount` field.
     /// - `PoolShare`: the `share` field.
     /// - `Nft`: implicitly `1`.
-    pub fn amount(&self) -> BigUint {
+    pub fn amount(&self) -> BigNumber {
         match self {
             Asset::Native { amount, .. }
             | Asset::Token { amount, .. }
             | Asset::MultiToken { amount, .. } => amount.clone(),
 
             Asset::PoolShare { share, .. } => share.clone(),
-            Asset::Nft { .. } => BigUint::from(1u64),
+            Asset::Nft { .. } => BigUint::from(1u64).into(),
         }
     }
 
@@ -319,11 +342,12 @@ impl Asset {
         }
     }
 
-    fn zero_amount() -> BigUint {
-        BigUint::from(0u64)
+    fn zero_amount() -> BigNumber {
+        BigUint::from(0u64).into()
     }
 }
 
+#[cfg(feature = "json")]
 impl std::fmt::Display for Asset {
     /// Compact representation for logging.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -332,7 +356,8 @@ impl std::fmt::Display for Asset {
     }
 }
 
-impl std::str::FromStr for Asset {
+#[cfg(feature = "json")]
+impl FromStr for Asset {
     type Err = EscrowError;
 
     /// Parse an `Asset` from its JSON representation.
@@ -346,26 +371,26 @@ mod tests {
 
     use super::*;
 
-    fn to_biguint(num: u64) -> BigUint {
-        BigUint::from(num)
+    fn to_bignum(num: u64) -> BigNumber {
+        BigNumber(BigUint::from(num))
     }
 
     #[test]
     fn native() {
-        let coin = Asset::native(Chain::Ethereum, to_biguint(1));
+        let coin = Asset::native(Chain::Ethereum, to_bignum(1));
         assert!(coin.validate().is_ok());
-        let zero_coin = Asset::native(Chain::Ethereum, to_biguint(0));
+        let zero_coin = Asset::native(Chain::Ethereum, to_bignum(0));
         assert!(zero_coin.validate().is_err());
     }
 
     #[test]
     fn token() {
-        let token = Asset::token(Chain::Solana, ID::from(vec![4, 5, 6]), to_biguint(1000), 9);
+        let token = Asset::token(Chain::Solana, ID::from(vec![4, 5, 6]), to_bignum(1000), 9);
         assert!(token.validate().is_ok());
         // empty contract ID
-        let token2 = Asset::token(Chain::Solana, ID::from(Vec::new()), to_biguint(100), 9);
+        let token2 = Asset::token(Chain::Solana, ID::from(Vec::new()), to_bignum(100), 9);
         assert!(token2.validate().is_err());
-        let zero_token = Asset::token(Chain::Ethereum, ID::from(vec![1, 2, 3]), to_biguint(0), 6);
+        let zero_token = Asset::token(Chain::Ethereum, ID::from(vec![1, 2, 3]), to_bignum(0), 6);
         assert!(zero_token.validate().is_err());
     }
 
@@ -387,7 +412,7 @@ mod tests {
             Chain::Ethereum,
             ID::from(vec![1]),
             "zescrowToken",
-            to_biguint(500),
+            to_bignum(500),
         );
         assert!(asset.validate().is_ok());
         // zero amount
@@ -395,7 +420,7 @@ mod tests {
             Chain::Ethereum,
             ID::from(vec![1]),
             "zescrowToken",
-            to_biguint(0),
+            to_bignum(0),
         );
         assert!(bad_asset.validate().is_err());
         // empty token ID
@@ -403,44 +428,44 @@ mod tests {
             Chain::Ethereum,
             ID::from(Vec::new()),
             "zescrowToken",
-            to_biguint(10),
+            to_bignum(10),
         );
         assert!(bad_asset.validate().is_err());
         // empty contract ID
-        let bad_asset = Asset::multi_token(Chain::Ethereum, ID::from(vec![1]), "", to_biguint(10));
+        let bad_asset = Asset::multi_token(Chain::Ethereum, ID::from(vec![1]), "", to_bignum(10));
         assert!(bad_asset.validate().is_err());
     }
 
     #[test]
     fn pool_share() {
-        let share = to_biguint(50);
-        let total_supply = to_biguint(100);
+        let share = to_bignum(50);
+        let total_supply = to_bignum(100);
         let pool_share =
             Asset::pool_share(Chain::Solana, ID::from(vec![1]), share, total_supply, 0);
         assert!(pool_share.validate().is_ok());
 
-        let share = to_biguint(0);
-        let total_supply = to_biguint(100);
+        let share = to_bignum(0);
+        let total_supply = to_bignum(100);
         let zero_share =
             Asset::pool_share(Chain::Solana, ID::from(vec![1]), share, total_supply, 0);
         assert!(zero_share.validate().is_err());
 
-        let share = to_biguint(10);
-        let total_supply = to_biguint(0);
+        let share = to_bignum(10);
+        let total_supply = to_bignum(0);
         let zero_supply =
             Asset::pool_share(Chain::Solana, ID::from(vec![1]), share, total_supply, 0);
         assert!(zero_supply.validate().is_err());
 
         // empty pool ID
-        let share = to_biguint(50);
-        let total_supply = to_biguint(100);
+        let share = to_bignum(50);
+        let total_supply = to_bignum(100);
         let bad_asset =
             Asset::pool_share(Chain::Solana, ID::from(Vec::new()), share, total_supply, 0);
         assert!(bad_asset.validate().is_err());
 
         // share greater than total_supply
-        let share = to_biguint(150);
-        let total_supply = to_biguint(100);
+        let share = to_bignum(150);
+        let total_supply = to_bignum(100);
         let bad_asset = Asset::pool_share(Chain::Solana, ID::from(vec![1]), share, total_supply, 0);
         assert!(bad_asset.validate().is_err());
     }

@@ -8,7 +8,7 @@ anchor-lang = "0.31.1"
 anchor-client = "0.31.1"
 anyhow = "1.0.98"
 async-trait = "0.1.88"
-clap = { version = "4.5.38", features = ["derive"] }
+clap = { version = "4.5.40", features = ["derive"] }
 escrow = { path = "../adapters/solana/programs/escrow", features = [
     "no-entrypoint",
 ] }
@@ -23,5 +23,7 @@ tokio = { version = "1.45.1", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 url = { version = "2.5.4", features = ["std"] }
-zescrow-core = { path = "../core" }
+zescrow-core = { path = "../core", default-features = false, features = [
+    "json",
+] }
 num-traits = "0.2.19"
