@@ -91,19 +91,19 @@ If `has_conditions == true` as specified in your `escrow_params.json`, then ensu
 
 ```sh
 cd client
-cargo run --release -- create
+RUST_LOG=info cargo run --release -- create
 ```
 
 8. To release an escrow with `has_conditions == false` execute:
 
 ```sh
-cargo run --release -- finish --recipient <KEYPAIR_FILE_PATH>
+RUST_LOG=info cargo run --release -- finish --recipient <KEYPAIR_FILE_PATH>
 ```
 
 For example, using the `test_keypair.json` created earlier, the above command will be:
 
 ```sh
-cargo run --release -- finish --recipient ../templates/test_keypair.json
+RUST_LOG=info cargo run --release -- finish --recipient ../templates/test_keypair.json
 ```
 
 To verify that the `recipient` received the funds, you can query the balance on the corresponding address/pubkey:
@@ -118,7 +118,7 @@ solana balance <RECIPIENT_PUBKEY>
 ```sh
 # project root
 cd zescrow
-cargo run --release
+RUST_LOG=info cargo run --release
 ```
 
 Then execute the `Finish` command of the `client`, just like in the previous step.
@@ -127,5 +127,5 @@ Then execute the `Finish` command of the `client`, just like in the previous ste
 
 ```sh
 cd client
-cargo run --release -- cancel
+RUST_LOG=info cargo run --release -- cancel
 ```

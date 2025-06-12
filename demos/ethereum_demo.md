@@ -86,7 +86,7 @@ If `has_conditions == true` as specified in your `escrow_params.json`, then ensu
 
 ```sh
 cd client
-cargo run --release -- create
+RUST_LOG=info cargo run --release -- create
 ```
 
 7. After sending the escrow transaction, the logs from the Hardhat node will most likely show that your transaction was mined in `Block #2`. Before you can finish/release an escrow, `finish_after` must be `>=` current block. For example, if you specified `"finish_after": 4`, then you need to use the JSON-RPC method `evm_mine` to force Hardhat to mine some empty blocks. Each call bumps the block number by one:
@@ -105,7 +105,7 @@ await ethers.provider.send("evm_mine", []);
 
 ```sh
 # From the `client` directory:
-cargo run --release -- finish --recipient <RECIPIENT_PRIVATE_KEY>
+RUST_LOG=info cargo run --release -- finish --recipient <RECIPIENT_PRIVATE_KEY>
 ```
 
 To verify that the `recipient` received the funds, you can query the balance inside the Hardhat console you instantiated earlier:
@@ -121,7 +121,7 @@ First, generate the zero-knowledge proof:
 ```sh
 # project root
 cd zescrow
-cargo run --release
+RUST_LOG=info cargo run --release
 ```
 
 Then rerun the `Finish` command just like in the previous step.
@@ -130,5 +130,5 @@ Then rerun the `Finish` command just like in the previous step.
 
 ```sh
 cd client
-cargo run --release -- cancel
+RUST_LOG=info cargo run --release -- cancel
 ```
