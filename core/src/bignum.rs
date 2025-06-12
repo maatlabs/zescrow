@@ -7,7 +7,7 @@ use num_bigint::BigUint;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "json")]
-use crate::biguint_serde;
+use crate::serde::biguint_serde;
 
 /// Wrapper around BigUint so we can implement bincode traits.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]

@@ -16,7 +16,7 @@ use subtle::ConstantTimeEq;
 
 use crate::error::ConditionError;
 #[cfg(feature = "json")]
-use crate::utf8_serde;
+use crate::serde::utf8_serde;
 use crate::Result;
 
 /// A cryptographic condition that can be deterministically verified.
