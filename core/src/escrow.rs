@@ -6,13 +6,11 @@
 use bincode::{Decode, Encode};
 #[cfg(feature = "json")]
 use {
-    crate::interface::ESCROW_CONDITIONS_PATH,
+    crate::interface::{EscrowMetadata, ESCROW_CONDITIONS_PATH},
     serde::{Deserialize, Serialize},
     serde_json,
 };
 
-#[cfg(feature = "json")]
-use crate::EscrowMetadata;
 use crate::{Asset, Condition, EscrowError, ExecutionState, Party, Result};
 
 /// Full escrow context, representing the locked asset, participants, and settlement rules.

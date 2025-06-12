@@ -199,7 +199,7 @@ impl ChainMetadata {
     ///
     /// # Errors
     ///
-    /// Returns an `EscrowError::InvalidChainOp` error if called on a non-Solana variant.
+    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Solana variant.
     pub fn get_pda(&self) -> Result<String> {
         match self {
             Self::Solana { pda, .. } => Ok(pda.clone()),
@@ -213,7 +213,7 @@ impl ChainMetadata {
     ///
     /// # Errors
     ///
-    /// Returns an `EscrowError::InvalidChainOp` error if called on a non-Ethereum variant.
+    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Ethereum variant.
     pub fn get_eth_contract_address(&self) -> Result<String> {
         match self {
             Self::Ethereum { escrow_address, .. } => Ok(escrow_address.clone()),
@@ -270,7 +270,7 @@ impl ChainConfig {
     ///
     /// # Errors
     ///
-    /// Returns an `EscrowError::InvalidChainOp` error if called on a non-Ethereum variant.
+    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Ethereum variant.
     pub fn eth_escrow_factory_contract(&self) -> Result<String> {
         match self {
             Self::Ethereum {
@@ -287,7 +287,7 @@ impl ChainConfig {
     ///
     /// # Errors
     ///
-    /// Returns an `EscrowError::InvalidChainOp` error if called on a non-Ethereum variant.
+    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Ethereum variant.
     pub fn eth_verifier_contract(&self) -> Result<String> {
         match self {
             Self::Ethereum {
@@ -303,7 +303,7 @@ impl ChainConfig {
     ///
     /// # Errors
     ///
-    /// Returns an `EscrowError::InvalidChainOp` error if called on a non-Solana variant.
+    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Solana variant.
     pub fn sol_escrow_program(&self) -> Result<String> {
         match self {
             Self::Solana {
@@ -319,7 +319,7 @@ impl ChainConfig {
     ///
     /// # Errors
     ///
-    /// Returns an `EscrowError::InvalidChainOp` error if called on a non-Solana variant.
+    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Solana variant.
     pub fn sol_verifier_program(&self) -> Result<String> {
         match self {
             Self::Solana {
@@ -336,7 +336,7 @@ impl ChainConfig {
     ///
     /// # Errors
     ///
-    /// Returns an `EscrowError::InvalidChainOp` error if called on a non-Solana variant.
+    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Solana variant.
     pub fn sol_sender_keypair_path(&self) -> Result<String> {
         match self {
             Self::Solana {

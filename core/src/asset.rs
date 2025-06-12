@@ -94,7 +94,8 @@ impl Asset {
     ///
     /// ```
     /// # use zescrow_core::{Asset, Chain};
-    /// use num_bigint::BigUint;
+    /// # use num_bigint::BigUint;
+    ///
     /// let _asset = Asset::native(Chain::Ethereum, BigUint::from(1_000u64).into());
     /// ```
     pub fn native(chain: Chain, amount: BigNumber) -> Self {
@@ -220,15 +221,43 @@ impl Asset {
         }
     }
 
-    /// Encode `self` to Vec.
+    /// Attempt to serialize self into a Bincode‐encoded byte vector.
+    ///
+    /// Uses the standard Bincode configuration to produce a compact,
+    /// little‐endian binary representation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use num_bigint::BigUint;
+    /// # use zescrow_core::{Asset, Chain};
+    ///
+    /// let asset = Asset::native(Chain::Ethereum, BigUint::from(1_000u64).into());
+    /// let bytes = asset.to_bytes().expect("serialize");
+    /// assert!(!bytes.is_empty());
+    /// ```
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         bincode::encode_to_vec(self, bincode::config::standard())
             .map_err(|e| AssetError::Serialization(e.to_string()).into())
     }
 
-    /// Decode `self` from a slice.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
-        bincode::decode_from_slice(bytes, bincode::config::standard())
+    /// Attempt to decode Self from a Bincode‐encoded byte slice `src`.
+    ///
+    /// Expects `src` to match the format produced by [`Self::to_bytes`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use zescrow_core::{Asset, Chain, BigNumber};
+    /// # use zescrow_core::identity::ID;
+    ///
+    /// let original = Asset::token(Chain::Ethereum, ID::from(vec![4, 5, 6]), BigNumber::from_u64(1000), 18);
+    /// let bytes = original.to_bytes().unwrap();
+    /// let decoded = Asset::from_bytes(&bytes).unwrap();
+    /// assert_eq!(format!("{:?}", decoded), format!("{:?}", original));
+    /// ```
+    pub fn from_bytes(src: &[u8]) -> Result<Self> {
+        bincode::decode_from_slice(src, bincode::config::standard())
             .map_err(|e| AssetError::Parsing(e.to_string()).into())
             .map(|(asset, _)| asset)
     }
@@ -372,7 +401,7 @@ mod tests {
     use super::*;
 
     fn to_bignum(num: u64) -> BigNumber {
-        BigNumber(BigUint::from(num))
+        BigNumber::from_u64(num)
     }
 
     #[test]

@@ -1,10 +1,6 @@
 {
     "rust-analyzer.linkedProjects": [
-        // "core/Cargo.toml",
-        // "methods/Cargo.toml",
-        // "methods/guest/Cargo.toml",
-        // "prover/Cargo.toml",
-        "adapters/solana/programs/escrow/Cargo.toml",
+        "adapters/solana/Cargo.toml",
         "client/Cargo.toml"
     ],
     "rust-analyzer.check.overrideCommand": [

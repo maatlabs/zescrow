@@ -74,11 +74,11 @@ pub enum Condition {
 }
 
 impl Condition {
-    /// Verify that this condition's fulfillment satisfies the requirement.
+    /// Validate the provided witness data.
     ///
     /// # Errors
     ///
-    /// Returns `Err(EscrowError::Condition(...))` when:
+    /// Returns `EscrowError::Condition` under any of the following circumstances:
     /// - **Preimage**: SHA-256(preimage) does not match.
     /// - **Ed25519/Secp256k1**: public key parsing or signature verification fails.
     /// - **Threshold**: fewer than `threshold` subconditions succeed.

@@ -92,7 +92,7 @@ pub enum AssetError {
     #[error("could not serialize asset: {0}")]
     Serialization(String),
 
-    /// Failed to parse an asset from a string or JSON.
+    /// Failed to parse an asset from bytes or JSON.
     #[error("could not parse asset: {0}")]
     Parsing(String),
 

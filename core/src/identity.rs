@@ -53,13 +53,14 @@ impl Party {
     ///
     /// # Errors
     ///
-    /// Returns `Err(EscrowError::Identity(_))` if the input is empty or cannot be
+    /// Returns `EscrowError::Identity` if the input is empty or cannot be
     /// decoded into a valid byte sequence.
     ///
     /// # Examples
     ///
     /// ```
     /// # use zescrow_core::Party;
+    ///
     /// let party = Party::new("0xdeadbeef").unwrap();
     /// assert_eq!(party.to_string(), "deadbeef");
     /// ```

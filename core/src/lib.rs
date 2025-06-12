@@ -27,6 +27,9 @@
 /// Chain-agnostic asset representations and utilities.
 pub mod asset;
 
+/// Wrapper around [BigUint] so we can implement [bincode] traits.
+pub mod bignum;
+
 /// Deterministic cryptographic conditions and fulfillment logic.
 pub mod condition;
 
@@ -43,10 +46,7 @@ pub mod identity;
 pub mod interface;
 
 pub use asset::Asset;
-use bincode::de::{BorrowDecoder, Decoder};
-use bincode::enc::Encoder;
-use bincode::error::{DecodeError, EncodeError};
-use bincode::{BorrowDecode, Decode, Encode};
+pub use bignum::BigNumber;
 pub use condition::Condition;
 pub use error::EscrowError;
 pub use escrow::Escrow;
@@ -54,9 +54,6 @@ pub use identity::Party;
 pub use interface::{
     Chain, ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState,
 };
-use num_bigint::BigUint;
-#[cfg(feature = "json")]
-use serde::{Deserialize, Serialize};
 
 /// `Result` type for all core operations, using [`EscrowError`] as the error.
 pub type Result<T> = std::result::Result<T, EscrowError>;
@@ -104,55 +101,6 @@ mod utf8_serde {
     {
         let s = String::deserialize(deserializer)?;
         Ok(s.into_bytes())
-    }
-}
-
-/// Wrapper around BigUint so we can implement bincode traits.
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "json", serde(transparent))]
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
-pub struct BigNumber(#[cfg_attr(feature = "json", serde(with = "biguint_serde"))] pub BigUint);
-
-impl From<BigUint> for BigNumber {
-    fn from(v: BigUint) -> Self {
-        BigNumber(v)
-    }
-}
-
-impl From<BigNumber> for BigUint {
-    fn from(v: BigNumber) -> BigUint {
-        v.0
-    }
-}
-
-impl Encode for BigNumber {
-    fn encode<E: Encoder>(&self, encoder: &mut E) -> std::result::Result<(), EncodeError> {
-        let s = self.0.to_str_radix(10);
-        s.encode(encoder)
-    }
-}
-
-impl<Context> Decode<Context> for BigNumber {
-    fn decode<D: Decoder>(decoder: &mut D) -> std::result::Result<Self, DecodeError> {
-        let s = String::decode(decoder)?;
-        BigUint::parse_bytes(s.as_bytes(), 10)
-            .map(BigNumber)
-            .ok_or_else(|| DecodeError::OtherString("BigUint parse error".into()))
-    }
-}
-
-impl<'de, Context> BorrowDecode<'de, Context> for BigNumber {
-    fn borrow_decode<D: BorrowDecoder<'de>>(
-        decoder: &mut D,
-    ) -> std::result::Result<Self, DecodeError> {
-        Self::decode(decoder)
-    }
-}
-
-impl std::fmt::Display for BigNumber {
-    /// Print the inner BigUint as a decimal string.
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0.to_str_radix(10))
     }
 }
 
