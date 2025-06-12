@@ -1,36 +1,34 @@
+//! BigNumber — a wrapper around [BigUint] that supports:
+//!  - JSON (de)serialization under the `json` feature,
+//!  - Bincode Encode/Decode for the `prover`,
+//!  - Generic conversion from numeric types,
+//!  - TryFrom<String> parsing, and
+//!  - Display as decimal string.
+
 use bincode::de::{BorrowDecoder, Decoder};
 use bincode::enc::Encoder;
 use bincode::error::{DecodeError, EncodeError};
 use bincode::{BorrowDecode, Decode, Encode};
 use num_bigint::BigUint;
 #[cfg(feature = "json")]
-use serde::{Deserialize, Serialize};
+use {
+    crate::serde::biguint_serde,
+    serde::{Deserialize, Serialize},
+};
 
-#[cfg(feature = "json")]
-use crate::serde::biguint_serde;
-
-/// Wrapper around BigUint so we can implement bincode traits.
+/// A wrapper around [BigUint] so we can implement [bincode] traits without violating
+/// orphan rules, and still support Serde/JSON via `#[cfg(feature="json")]`.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "json", serde(transparent))]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub struct BigNumber(#[cfg_attr(feature = "json", serde(with = "biguint_serde"))] pub BigUint);
 
-impl BigNumber {
-    /// Convert Self directly from an `u64`.
-    pub fn from_u64(n: u64) -> Self {
-        Self::from(BigUint::from(n))
-    }
-}
-
-impl From<BigUint> for BigNumber {
-    fn from(v: BigUint) -> Self {
-        BigNumber(v)
-    }
-}
-
-impl From<BigNumber> for BigUint {
-    fn from(v: BigNumber) -> BigUint {
-        v.0
+impl<T> From<T> for BigNumber
+where
+    BigUint: From<T>,
+{
+    fn from(v: T) -> Self {
+        BigNumber(BigUint::from(v))
     }
 }
 

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 //! Zescrow Core Library
 //!
 //! # Overview
@@ -22,7 +23,7 @@
 //!   chain-specific operations.
 //!
 #![warn(missing_docs)]
-#![forbid(unsafe_code)]
+#![deny(rustdoc::invalid_html_tags, rustdoc::broken_intra_doc_links)]
 
 /// Chain-agnostic asset representations and utilities.
 pub mod asset;

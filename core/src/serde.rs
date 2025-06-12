@@ -1,3 +1,5 @@
+//! Helper modules for all things `serde`.
+
 /// Serde helper to (de)serialize [BigUint] as strings.
 #[cfg(feature = "json")]
 pub mod biguint_serde {
@@ -16,7 +18,8 @@ pub mod biguint_serde {
         D: Deserializer<'de>,
     {
         let s = String::deserialize(d)?;
-        s.parse::<BigUint>().map_err(de::Error::custom)
+        BigUint::parse_bytes(s.as_bytes(), 10)
+            .ok_or_else(|| de::Error::custom(format!("invalid BigUint: {}", s)))
     }
 }
 
@@ -25,13 +28,14 @@ pub mod biguint_serde {
 pub mod utf8_serde {
     use std::str;
 
-    use serde::{self, Deserialize, Deserializer, Serializer};
+    use serde::{ser, Deserialize, Deserializer, Serializer};
 
     pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let s = str::from_utf8(bytes).map_err(serde::ser::Error::custom)?;
+        let s = str::from_utf8(bytes)
+            .map_err(|e| ser::Error::custom(format!("invalid UTF-8: {}", e)))?;
         serializer.serialize_str(s)
     }
 
