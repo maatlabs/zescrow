@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use tracing::{debug, info, instrument};
 use zescrow_client::{Recipient, ZescrowClient};
 use zescrow_core::interface::{
     load_escrow_data, save_escrow_data, ESCROW_METADATA_PATH, ESCROW_PARAMS_PATH,
@@ -12,7 +13,7 @@ struct Cli {
     command: Commands,
 }
 
-#[derive(Subcommand)]
+#[derive(Subcommand, Debug)]
 enum Commands {
     /// Create an escrow using the specified parameters in
     /// `templates/escrow_params.json`.
@@ -34,44 +35,73 @@ enum Commands {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt().init();
+    // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
+        .init();
 
     let cli = Cli::parse();
+    info!("Starting command handling");
 
-    match cli.command {
+    run(cli.command).await
+}
+
+#[instrument(skip_all, fields(command = ?command))]
+async fn run(command: Commands) -> anyhow::Result<()> {
+    match command {
         Commands::Create => {
+            info!("Loading escrow parameters from {}", ESCROW_PARAMS_PATH);
             let params: EscrowParams = load_escrow_data(ESCROW_PARAMS_PATH)?;
-            let client =
-                ZescrowClient::new(params.asset.chain(), &params.chain_config, None).await?;
-            let metadata = client.create_escrow(&params).await?;
+            debug!("EscrowParams: {:#?}", params);
 
+            info!("Building ZescrowClient");
+            let client = ZescrowClient::builder(*params.asset.chain(), params.chain_config.clone())
+                .build()
+                .await?;
+            info!("Creating escrow on-chain");
+            let metadata = client.create_escrow(&params).await?;
+            info!("Escrow created!");
+            debug!("EscrowMetadata: {:#?}", metadata);
+
+            info!("Saving metadata to {}", ESCROW_METADATA_PATH);
             save_escrow_data(ESCROW_METADATA_PATH, &metadata)?;
-            tracing::info!(
-                "Escrow created successfully; metadata written to `{}`",
-                ESCROW_METADATA_PATH
-            );
         }
+
         Commands::Finish { recipient } => {
+            info!("Loading escrow metadata from {}", ESCROW_METADATA_PATH);
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
-            let client = ZescrowClient::new(
-                &metadata.chain_config.chain_id(),
-                &metadata.chain_config,
-                Some(recipient),
+            debug!("EscrowMetadata: {:#?}", metadata);
+
+            info!("Building ZescrowClient for `finish`");
+            let client = ZescrowClient::builder(
+                metadata.chain_config.chain_id(),
+                metadata.chain_config.clone(),
             )
+            .recipient(recipient)
+            .build()
             .await?;
+
+            info!("Finishing escrow");
             client.finish_escrow(&metadata).await?;
-            tracing::info!("Escrow completed and released successfully");
+            info!("Escrow completed and released successfully");
         }
+
         Commands::Cancel => {
+            info!("Loading escrow metadata from {}", ESCROW_METADATA_PATH);
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
-            let client = ZescrowClient::new(
-                &metadata.chain_config.chain_id(),
-                &metadata.chain_config,
-                None,
+            debug!("EscrowMetadata: {:#?}", metadata);
+
+            info!("Building ZescrowClient for `cancel`");
+            let client = ZescrowClient::builder(
+                metadata.chain_config.chain_id(),
+                metadata.chain_config.clone(),
             )
+            .build()
             .await?;
+
+            info!("Cancelling escrow");
             client.cancel_escrow(&metadata).await?;
-            tracing::info!("Escrow cancelled and refunded successfully");
+            info!("Escrow cancelled and refunded successfully");
         }
     }
     Ok(())

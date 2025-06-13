@@ -9,15 +9,21 @@ use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
 use ethers::types::{Address, Bytes, H256, U256};
 use serde_json::Value;
+use tracing::{debug, info, instrument, trace};
 use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
+use super::Agent;
 use crate::error::{AgentError, ClientError, Result};
-use crate::Agent;
 
-/// Factory ABI for encoding/decoding calls and events
+// Factory ABI for encoding/decoding calls and events
 const ESCROW_FACTORY_JSON: &str = include_str!(
-    "../../adapters/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
+    "../../../adapters/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
 );
+
+// On-chain escrow operations.
+const CREATE_ESCROW: &str = "createEscrow";
+const FINISH_ESCROW: &str = "finishEscrow";
+const CANCEL_ESCROW: &str = "cancelEscrow";
 
 /// ABI for the `EscrowCreated` event
 #[derive(Clone, Debug, EthEvent)]
@@ -46,14 +52,12 @@ struct EscrowCreatedEvent {
 pub struct EthereumAgent {
     // Ethereum JSON-RPC provider
     provider: Provider<Http>,
-    // Escrow creator wallet
-    sender_wallet: LocalWallet,
-    // Escrow beneficiary wallet
-    recipient_wallet: Option<LocalWallet>,
+    // Factory contract
+    factory: Contract<SignerMiddleware<Provider<Http>, LocalWallet>>,
 }
 
 impl EthereumAgent {
-    pub async fn new(config: &ChainConfig, recipient_wallet: Option<LocalWallet>) -> Result<Self> {
+    pub async fn new(config: &ChainConfig, recipient: Option<LocalWallet>) -> Result<Self> {
         let ChainConfig::Ethereum {
             rpc_url,
             sender_private_key,
@@ -69,55 +73,53 @@ impl EthereumAgent {
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .as_u64();
+        debug!(%chain_id, "Connected to Ethereum");
 
-        let sender_wallet = sender_private_key
+        let sender = sender_private_key
             .parse::<LocalWallet>()?
             .with_chain_id(chain_id);
-        let recipient_wallet = recipient_wallet.map(|w| w.with_chain_id(chain_id));
+        let recipient = recipient.map(|w| w.with_chain_id(chain_id));
+        debug!(has_recipient = recipient.is_some(), "Wallets configured");
 
-        Ok(Self {
-            provider,
-            sender_wallet,
-            recipient_wallet,
-        })
+        let artifact: Value = serde_json::from_str(ESCROW_FACTORY_JSON)
+            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+        let abi_json = artifact
+            .get("abi")
+            .ok_or_else(|| AgentError::Ethereum("Missing ABI section".into()))?
+            .to_string();
+        let abi = serde_json::from_str::<Abi>(&abi_json)
+            .map_err(|e| AgentError::Ethereum(e.to_string()))?;
+
+        let client = Arc::new(SignerMiddleware::new(provider.clone(), sender));
+        let factory_addr = Address::from_str(&config.eth_escrow_factory_contract()?)?;
+        let factory = Contract::new(factory_addr, abi, client);
+
+        Ok(Self { provider, factory })
     }
 }
 
 #[async_trait::async_trait]
 impl Agent for EthereumAgent {
+    #[instrument(skip(self, params), fields(
+        chain = ?self.provider.get_chainid().await,
+        amount = %params.asset.amount(),
+        has_conditions = params.has_conditions
+    ))]
     async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata> {
-        let client = Arc::new(SignerMiddleware::new(
-            self.provider.clone(),
-            self.sender_wallet.clone(),
-        ));
-
-        let artifact: Value = serde_json::from_str(ESCROW_FACTORY_JSON)
-            .map_err(|e| ClientError::Serialization(e.to_string()))?;
-        let abi_json = artifact
-            .get("abi")
-            .ok_or_else(|| ClientError::Serialization("Missing ABI".into()))?
-            .to_string();
-        let abi = serde_json::from_str::<Abi>(&abi_json)
-            .map_err(|e| ClientError::Serialization(e.to_string()))?;
-        let factory_addr_str = params.chain_config.eth_escrow_factory_contract()?;
-        let factory_addr = Address::from_str(&factory_addr_str)?;
-
-        let factory = Contract::new(factory_addr, abi.clone(), client.clone());
-
-        // Escrow params
         let recipient = Address::from_str(&params.recipient.to_string())?;
         let finish_after = params.finish_after.unwrap_or_default();
         let cancel_after = params.cancel_after.unwrap_or_default();
         let has_conditions = params.has_conditions;
-        let verifier_addr = params.chain_config.eth_verifier_contract()?;
-        let verifier = Address::from_str(&verifier_addr)?;
-        let amt_str = params.asset.amount().0.to_str_radix(10);
-        let amount = U256::from_dec_str(&amt_str).map_err(|_| ClientError::AssetOverflow)?;
+        let verifier = Address::from_str(&params.chain_config.eth_verifier_contract()?)?;
+        let amount = U256::from_dec_str(&params.asset.amount().to_string())
+            .map_err(|_| ClientError::AssetOverflow)?;
 
         // Send `createEscrow` transaction, funding with `amount`
-        let call = factory
+        info!("Sending createEscrow(tx) with amount {}", amount);
+        let call = self
+            .factory
             .method::<_, H256>(
-                "createEscrow",
+                CREATE_ESCROW,
                 (
                     recipient,
                     finish_after,
@@ -132,26 +134,27 @@ impl Agent for EthereumAgent {
             .send()
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
-
         // Await mined receipt
         let receipt = pending_tx
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .ok_or(ClientError::TxDropped)?;
+        info!(tx_hash = ?receipt.transaction_hash, "Transaction mined");
 
+        // Decode event
         let mut escrow_addr = Address::zero();
-        for log in receipt.logs.iter() {
-            let raw_log = RawLog {
+        for log in &receipt.logs {
+            trace!(topics = ?log.topics, "Parsing log");
+            if let Ok(ev) = <EscrowCreatedEvent as EthLogDecode>::decode_log(&RawLog {
                 topics: log.topics.clone(),
                 data: log.data.to_vec(),
-            };
-            if let Ok(parsed) = <EscrowCreatedEvent as EthLogDecode>::decode_log(&raw_log) {
-                escrow_addr = parsed.escrow_address;
+            }) {
+                escrow_addr = ev.escrow_address;
                 break;
             }
         }
 
-        if escrow_addr == Address::zero() {
+        if escrow_addr.is_zero() {
             return Err(ClientError::MissingEvent("EscrowCreated".into()));
         }
 
@@ -162,43 +165,22 @@ impl Agent for EthereumAgent {
             recipient: params.recipient.clone(),
             has_conditions,
             chain_data: ChainMetadata::Ethereum {
-                escrow_address: format!("{:#x}", escrow_addr),
+                escrow_address: format!("{escrow_addr:#x}"),
             },
             state: ExecutionState::Funded,
         })
     }
 
+    #[instrument(skip(self, metadata))]
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        let recipient_wallet = self
-            .recipient_wallet
-            .as_ref()
-            .ok_or_else(|| ClientError::Keypair("Recipient wallet not provided".to_string()))?;
-        let client = Arc::new(SignerMiddleware::new(
-            self.provider.clone(),
-            recipient_wallet.to_owned(),
-        ));
-
-        let artifact: Value = serde_json::from_str(ESCROW_FACTORY_JSON)
-            .map_err(|e| ClientError::Serialization(e.to_string()))?;
-        let abi_json = artifact
-            .get("abi")
-            .ok_or_else(|| ClientError::Serialization("Missing ABI".into()))?
-            .to_string();
-        let abi = serde_json::from_str::<Abi>(&abi_json)
-            .map_err(|e| ClientError::Serialization(e.to_string()))?;
-
-        let factory_addr_str = metadata.chain_config.eth_escrow_factory_contract()?;
-        let factory_addr = Address::from_str(&factory_addr_str)?;
-        let factory = Contract::new(factory_addr, abi, client);
-
-        let escrow_addr = metadata.chain_data.get_eth_contract_address()?;
-        let escrow_addr = Address::from_str(&escrow_addr)?;
-
+        info!("Sending finishEscrow transaction");
         // TODO: set up RISC Zero prover API call
         let proof_data: Bytes = Vec::new().into();
 
-        let call = factory
-            .method::<_, ()>("finishEscrow", (escrow_addr, proof_data))
+        let escrow_addr = Address::from_str(&metadata.chain_data.get_eth_contract_address()?)?;
+        let call = self
+            .factory
+            .method::<_, ()>(FINISH_ESCROW, (escrow_addr, proof_data))
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
 
         call.send()
@@ -206,41 +188,24 @@ impl Agent for EthereumAgent {
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
-
+        info!("finishEscrow transaction confirmed");
         Ok(())
     }
 
+    #[instrument(skip(self, metadata))]
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        let client = Arc::new(SignerMiddleware::new(
-            self.provider.clone(),
-            self.sender_wallet.clone(),
-        ));
+        info!("Sending cancelEscrow transaction");
+        let escrow_addr = Address::from_str(&metadata.chain_data.get_eth_contract_address()?)?;
 
-        let artifact: Value = serde_json::from_str(ESCROW_FACTORY_JSON)
-            .map_err(|e| ClientError::Serialization(e.to_string()))?;
-        let abi_json = artifact
-            .get("abi")
-            .ok_or_else(|| ClientError::Serialization("Missing ABI".into()))?
-            .to_string();
-        let abi = serde_json::from_str::<Abi>(&abi_json)
-            .map_err(|e| ClientError::Serialization(e.to_string()))?;
-
-        let factory_addr_str = metadata.chain_config.eth_escrow_factory_contract()?;
-        let factory_addr = Address::from_str(&factory_addr_str)?;
-        let factory = Contract::new(factory_addr, abi, client);
-
-        let escrow_addr = metadata.chain_data.get_eth_contract_address()?;
-        let escrow_addr = Address::from_str(&escrow_addr)?;
-
-        factory
-            .method::<_, ()>("cancelEscrow", escrow_addr)
+        self.factory
+            .method::<_, ()>(CANCEL_ESCROW, escrow_addr)
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .send()
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
-
+        info!("cancelEscrow transaction confirmed");
         Ok(())
     }
 }

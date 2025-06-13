@@ -12,11 +12,12 @@ use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
 use solana_sdk::signer::Signer;
 use solana_sdk::transaction::Transaction;
+use tracing::{debug, info, instrument, trace};
 use zescrow_core::interface::ChainConfig;
 use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
+use super::Agent;
 use crate::error::{AgentError, ClientError, Result};
-use crate::Agent;
 
 /// Escrow agent for interacting with the Solana network
 pub struct SolanaAgent {
@@ -31,6 +32,8 @@ pub struct SolanaAgent {
 }
 
 impl SolanaAgent {
+    /// Create a new SolanaAgent, reading keypairs and program ID.
+    #[instrument(skip_all, fields(rpc_url = %config.rpc_url(), program_id = %config.sol_escrow_program()?))]
     pub async fn new(
         config: &ChainConfig,
         recipient_keypair_path: Option<PathBuf>,
@@ -47,26 +50,42 @@ impl SolanaAgent {
 
         let sender_keypair = read_keypair_file(sender_keypair_path)
             .map_err(|e| ClientError::Keypair(e.to_string()))?;
-        let recipient_keypair = match recipient_keypair_path {
-            Some(path) => {
-                let kp =
-                    read_keypair_file(&path).map_err(|e| ClientError::Keypair(e.to_string()))?;
-                Some(kp)
-            }
-            None => None,
+        debug!(sender = %sender_keypair.pubkey(), "Loaded sender keypair");
+
+        // Load optional recipient keypair
+        let recipient_keypair = if let Some(path) = recipient_keypair_path {
+            let kp = read_keypair_file(path).map_err(|e| ClientError::Keypair(e.to_string()))?;
+            debug!(recipient = %kp.pubkey(), "Loaded recipient keypair");
+            Some(kp)
+        } else {
+            None
         };
 
+        // Parse program ID
+        let escrow_program_id =
+            Pubkey::from_str(escrow_program_id).map_err(|e| AgentError::Solana(e.to_string()))?;
+        info!("Using escrow program {}", escrow_program_id);
+
+        let client = RpcClient::new(rpc_url);
         Ok(Self {
-            client: RpcClient::new(rpc_url),
+            client,
             sender_keypair,
             recipient_keypair,
-            escrow_program_id: Pubkey::from_str(escrow_program_id)?,
+            escrow_program_id,
         })
     }
 }
 
 #[async_trait::async_trait]
 impl Agent for SolanaAgent {
+    #[instrument(skip(self, params), fields(
+        sender = %params.sender,
+        recipient = %params.recipient,
+        amount = %params.asset.amount(),
+        finish_after = ?params.finish_after,
+        cancel_after = ?params.cancel_after,
+        has_conditions = %params.has_conditions
+    ))]
     async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata> {
         let sender = Pubkey::from_str(&params.sender.to_string())?;
         if sender != self.sender_keypair.pubkey() {
@@ -74,13 +93,21 @@ impl Agent for SolanaAgent {
                 "Sender keypair-pubkey mismatch".to_string(),
             ));
         }
+
         let recipient = Pubkey::from_str(&params.recipient.to_string())?;
-        let amount = params.asset.amount();
-        let amount = amount.0.to_u64().ok_or(ClientError::AssetOverflow)?;
+        let amount = params
+            .asset
+            .amount()
+            .0
+            .to_u64()
+            .ok_or(ClientError::AssetOverflow)?;
+        trace!("Computed amount: {}", amount);
+
         let (pda, bump) = Pubkey::find_program_address(
             &[PREFIX.as_bytes(), sender.as_ref(), recipient.as_ref()],
             &self.escrow_program_id,
         );
+        info!(pda = %pda, bump, "Derived PDA");
 
         let ix = Instruction {
             program_id: self.escrow_program_id,
@@ -99,31 +126,25 @@ impl Agent for SolanaAgent {
                 },
             }),
         };
+        debug!("CreateEscrow instruction built");
 
         let recent_hash = self.client.get_latest_blockhash()?;
+        info!(blockhash = %recent_hash, "Fetched recent blockhash");
         let tx = Transaction::new_signed_with_payer(
             &[ix],
             Some(&sender),
             &[&self.sender_keypair],
             recent_hash,
         );
+        debug!("Signed CreateEscrow transaction");
         self.client.send_and_confirm_transaction(&tx)?;
 
-        let EscrowParams {
-            chain_config,
-            asset,
-            sender,
-            recipient,
-            has_conditions,
-            ..
-        } = params.clone();
-
         Ok(EscrowMetadata {
-            chain_config,
-            asset,
-            sender,
-            recipient,
-            has_conditions,
+            chain_config: params.chain_config.clone(),
+            asset: params.asset.clone(),
+            sender: params.sender.clone(),
+            recipient: params.recipient.clone(),
+            has_conditions: params.has_conditions,
             chain_data: ChainMetadata::Solana {
                 escrow_program_id: self.escrow_program_id.to_string(),
                 pda: pda.to_string(),
@@ -133,6 +154,7 @@ impl Agent for SolanaAgent {
         })
     }
 
+    #[instrument(skip(self, metadata), fields(pda = %metadata.chain_data.get_pda()?))]
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let recipient = Pubkey::from_str(&metadata.recipient.to_string())?;
         let recipient_keypair = self
@@ -144,8 +166,10 @@ impl Agent for SolanaAgent {
                 "Recipient keypair-pubkey mismatch".to_string(),
             ));
         }
+
         let pda = metadata.chain_data.get_pda()?;
         let pda = Pubkey::from_str(&pda)?;
+        debug!(pda = %pda, "Parsed PDA for finish");
 
         // TODO
         // ZK proof generation
@@ -168,6 +192,7 @@ impl Agent for SolanaAgent {
                 args: FinishEscrowArgs { proof },
             }),
         };
+        debug!("FinishEscrow instruction built");
 
         let recent_hash = self.client.get_latest_blockhash()?;
         let tx = Transaction::new_signed_with_payer(
@@ -180,6 +205,7 @@ impl Agent for SolanaAgent {
         Ok(())
     }
 
+    #[instrument(skip(self, metadata), fields(pda = %metadata.chain_data.get_pda()?))]
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let sender = Pubkey::from_str(&metadata.sender.to_string())?;
         let pda = metadata.chain_data.get_pda()?;
@@ -190,6 +216,7 @@ impl Agent for SolanaAgent {
             accounts: vec![AccountMeta::new(sender, true), AccountMeta::new(pda, false)],
             data: InstructionData::data(&escrow_instruction::CancelEscrow {}),
         };
+        debug!("CancelEscrow instruction built");
 
         let recent_hash = self.client.get_latest_blockhash()?;
         let tx = Transaction::new_signed_with_payer(
