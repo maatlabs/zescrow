@@ -1,5 +1,9 @@
+use std::fs;
+use std::time::Instant;
+
 use bincode::config::standard;
 use risc0_zkvm::{default_prover, ExecutorEnv};
+use tracing::{debug, error, info};
 use zescrow_core::interface::{ExecutionResult, ESCROW_METADATA_PATH};
 use zescrow_core::{Escrow, EscrowMetadata, ExecutionState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
@@ -10,34 +14,55 @@ fn main() {
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
         .init();
 
-    let s = std::fs::read_to_string(ESCROW_METADATA_PATH)
-        .expect("Failed to read escrow metadata JSON file.");
-    let metadata: EscrowMetadata = serde_json::from_str(&s).expect("Invalid escrow metadata JSON");
-    let escrow = Escrow::from_metadata(metadata).expect("Failed to read escrow metadata");
-    // Encode `escrow` into a byte slice
-    let escrow =
-        bincode::encode_to_vec(&escrow, standard()).expect("Failed to encode escrow to vec");
+    info!("Reading escrow metadata from {}", ESCROW_METADATA_PATH);
+    let json =
+        fs::read_to_string(ESCROW_METADATA_PATH).expect("Failed to read escrow metadata JSON file");
+    debug!("Read metadata JSON ({} bytes)", json.len());
 
-    let env = ExecutorEnv::builder().write_frame(&escrow).build().unwrap();
+    let metadata: EscrowMetadata =
+        serde_json::from_str(&json).expect("Invalid escrow metadata JSON");
+    debug!(?metadata, "Parsed EscrowMetadata");
+
+    let escrow = Escrow::from_metadata(metadata).expect("Failed to build Escrow from metadata");
+    let escrow_bin = bincode::encode_to_vec(&escrow, standard()).expect("Failed to encode escrow");
+    debug!("Encoded Escrow via bincode ({} bytes)", escrow_bin.len());
+
+    let env = ExecutorEnv::builder()
+        .write_frame(&escrow_bin)
+        .build()
+        .expect("Failed to build ExecutorEnv");
+
+    info!("Starting zkVM proof generation");
+    let start = Instant::now();
     let receipt = default_prover()
         .prove(env, ZESCROW_GUEST_ELF)
-        .unwrap()
+        .expect("Proof generation failed")
         .receipt;
-    receipt.verify(ZESCROW_GUEST_ID).expect("Invalid receipt");
+    let dur = start.elapsed();
+    info!(
+        "Proof generated in {:?} (journal {} bytes)",
+        dur,
+        receipt.journal.bytes.len()
+    );
 
-    let journal_bytes: Vec<u8> = receipt.journal.bytes.clone();
-    let (public, _): (ExecutionResult, _) =
-        bincode::decode_from_slice(&journal_bytes, standard()).expect("Failed to decode journal");
+    if let Err(e) = receipt.verify(ZESCROW_GUEST_ID) {
+        error!("Receipt verification failed: {}", e);
+        std::process::exit(1);
+    }
+    info!("Receipt verified successfully");
 
-    match public {
+    debug!("Decoding journal ({} bytes)", receipt.journal.bytes.len());
+    let (result, _) = bincode::decode_from_slice(&receipt.journal.bytes, standard())
+        .expect("Failed to decode journal");
+    match result {
         ExecutionResult::Ok(ExecutionState::ConditionsMet) => {
-            println!("\nEscrow conditions fulfilled!\n")
+            println!("\nEscrow conditions fulfilled!\n");
         }
         ExecutionResult::Ok(state) => {
-            println!("\nInvalid escrow state: {:?}\n", state)
+            println!("\nInvalid escrow state: {:?}\n", state);
         }
         ExecutionResult::Err(err) => {
-            println!("\nExecution failed: {}\n", err)
+            println!("\nExecution failed: {}\n", err);
         }
     }
 }
