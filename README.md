@@ -4,7 +4,7 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 
 > [!WARNING]
 
-**This project is not audited, and it's currently under active development. Until v1.0.0, please do not use in production**.
+**This project is not audited, and it's currently under active development. Until `v1.0`, please do not deploy in production**.
 
 ## Goals
 
@@ -62,7 +62,9 @@ automatically install the correct version.
 git clone https://github.com/maatlabs/zescrow.git
 ```
 
-2. To create an escrow end-to-end on Ethereum (and other EVM-compatible chains), please follow the [ethereum-demo][ethereum-demo]. To create an escrow end-to-end on Solana, please follow the [solana-demo][solana-demo].
+2. To create an escrow end-to-end on Ethereum (and other EVM-compatible chains), please follow the [ethereum-demo][ethereum-demo].
+
+3. To create an escrow end-to-end on Solana, please follow the [solana-demo][solana-demo].
 
 ## Contributing
 
