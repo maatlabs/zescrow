@@ -68,6 +68,15 @@ pub enum IdentityError {
     #[error("empty identity string")]
     EmptyIdentity,
 
+    /// The provided identity string exceeds the maximum allowed.
+    #[error("input length {len} exceeds maximum of {max} characters")]
+    InputTooLong {
+        /// Input length
+        len: usize,
+        /// Max allowed
+        max: usize,
+    },
+
     /// Error decoding a hex-encoded identity.
     #[error("hex decoding error: {0}")]
     Hex(#[from] hex::FromHexError),

@@ -11,6 +11,10 @@ use serde::{Deserialize, Serialize};
 use crate::error::IdentityError;
 use crate::{EscrowError, Result};
 
+/// Maximum allowed length of the input string before decoding.
+/// Prevents an attacker from feeding an arbitrarily‐long Base58/hex/base64 blob.
+const MAX_ID_LEN: usize = 256;
+
 /// A participant in the escrow protocol, wrapping a chain-agnostic [`ID`].
 ///
 /// A `Party` represents an on-chain account or public-key identity.  
@@ -192,6 +196,15 @@ impl FromStr for ID {
     type Err = EscrowError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        // Enforce maximum input length
+        if s.len() > MAX_ID_LEN {
+            return Err(IdentityError::InputTooLong {
+                len: s.len(),
+                max: MAX_ID_LEN,
+            }
+            .into());
+        }
+
         let trimmed = s.trim();
         if trimmed.is_empty() {
             return Err(IdentityError::EmptyIdentity.into());
@@ -292,5 +305,18 @@ mod tests {
     #[test]
     fn invalid_identity() {
         assert!(ID::from_str("not a valid ID").is_err());
+    }
+
+    #[test]
+    fn id_from_str_input_too_long() {
+        let oversized = "x".repeat(MAX_ID_LEN + 1);
+        let err = ID::from_str(&oversized).unwrap_err();
+        match err {
+            EscrowError::Identity(IdentityError::InputTooLong { len, max }) => {
+                assert_eq!(len, MAX_ID_LEN + 1);
+                assert_eq!(max, MAX_ID_LEN);
+            }
+            _ => panic!("Expected IdentityError::InputTooLong, got {:?}", err),
+        }
     }
 }
