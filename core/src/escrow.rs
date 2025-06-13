@@ -123,6 +123,7 @@ mod tests {
     fn execute_escrow() {
         let sender = Party::from_str("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045").unwrap();
         let recipient = Party::from_str("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8").unwrap();
+
         let asset = Asset::Token {
             chain: Chain::Ethereum,
             contract: ID::from_str("0xdeadbeef").unwrap(),
@@ -130,11 +131,7 @@ mod tests {
             decimals: 18,
         };
 
-        let condition = Condition::Preimage {
-            hash: Sha256::digest(b"secret").into(),
-            preimage: b"secret".to_vec(),
-        };
-
+        let condition = Condition::preimage(Sha256::digest(b"secret").into(), b"secret".to_vec());
         let mut escrow = Escrow {
             asset,
             recipient: recipient.clone(),
