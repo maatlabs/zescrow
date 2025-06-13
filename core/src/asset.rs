@@ -251,7 +251,7 @@ impl Asset {
     /// # use zescrow_core::{Asset, Chain, BigNumber};
     /// # use zescrow_core::identity::ID;
     ///
-    /// let original = Asset::token(Chain::Ethereum, ID::from(vec![4, 5, 6]), BigNumber::from(1000u64), 18);
+    /// let original = Asset::token(Chain::Ethereum, ID::from(vec![4, 5, 6]), BigNumber::from(1_000u64), 18);
     /// let bytes = original.to_bytes().unwrap();
     /// let decoded = Asset::from_bytes(&bytes).unwrap();
     /// assert_eq!(format!("{:?}", decoded), format!("{:?}", original));

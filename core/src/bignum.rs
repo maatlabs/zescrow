@@ -1,4 +1,4 @@
-//! BigNumber — a wrapper around [BigUint] that supports:
+//! [BigNumber] — a wrapper around [BigUint] that supports:
 //!  - JSON (de)serialization under the `json` feature,
 //!  - Bincode Encode/Decode for the `prover`,
 //!  - Generic conversion from numeric types,
@@ -57,7 +57,7 @@ impl<'de, Context> BorrowDecode<'de, Context> for BigNumber {
 }
 
 impl std::fmt::Display for BigNumber {
-    /// Print the inner BigUint as a decimal string.
+    /// Print the inner [BigUint] as a decimal string.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.to_str_radix(10))
     }

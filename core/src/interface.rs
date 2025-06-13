@@ -258,6 +258,14 @@ pub enum ChainConfig {
 }
 
 impl ChainConfig {
+    /// Return the RPC URL.
+    pub fn rpc_url(&self) -> String {
+        match self {
+            Self::Ethereum { rpc_url, .. } => rpc_url.into(),
+            Self::Solana { rpc_url, .. } => rpc_url.into(),
+        }
+    }
+
     /// Returns the `Chain` enum corresponding to this variant.
     pub fn chain_id(&self) -> Chain {
         match self {
