@@ -59,7 +59,14 @@ automatically install the correct version.
 1. Clone the repository:
 
 ```sh
+# unified command
+git clone --recursive-submodules https://github.com/maatlabs/zescrow.git
+
+# or if you prefer to clone first and then update submodules
 git clone https://github.com/maatlabs/zescrow.git
+
+cd zescrow
+git submodule update --init --recursive
 ```
 
 2. To create an escrow end-to-end on Ethereum (and other EVM-compatible chains), please follow the [ethereum-demo][ethereum-demo].
