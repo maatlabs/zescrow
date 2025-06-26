@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;
 use anchor_lang::system_program;
 
-declare_id!("Ds6nwDwgUBKDyAoQRg8fySec6RW77GXT2ktFUMDgYqXB");
+declare_id!("2eUJWfocc8RGNFPSSxjRqQMsukYYFnJJL1dDUgU17Mp7");
 
 /// Program-derived address seed prefix
 pub const PREFIX: &str = "escrow";
