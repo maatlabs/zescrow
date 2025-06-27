@@ -12,6 +12,8 @@ use bincode::{Decode, Encode};
 use serde::de::DeserializeOwned;
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
+#[cfg(feature = "json")]
+use serde_big_array::BigArray;
 
 use crate::{Asset, EscrowError, Party, Result};
 
@@ -32,6 +34,10 @@ pub const ESCROW_CONDITIONS_PATH: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../templates/escrow_conditions.json"
 );
+
+/// Default path to proof data.
+pub const PROOF_DATA_PATH: &str =
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../templates/proof_data.json");
 
 /// Reads a JSON-encoded file from the given `path` and deserializes into type `T`.
 ///
@@ -89,6 +95,35 @@ where
     let file = File::create(path).with_context(|| format!("creating file {:?}", path))?;
     serde_json::to_writer_pretty(file, data)
         .with_context(|| format!("serializing to JSON to {:?}", path))
+}
+
+/// Values necessary for verification of RISC Zero ZK proofs.
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Clone, PartialEq, Eq)]
+pub struct ProofData {
+    /// RISC Zero guest program ID
+    pub image_id: [u32; 8],
+    /// Groth16 proof
+    pub proof: Groth16Proof,
+    /// Journal (public) output
+    pub output: Vec<u8>,
+}
+
+/// Groth16 proof elements on BN254 curve.
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Clone, PartialEq, Eq)]
+pub struct Groth16Proof {
+    /// - pi_a: must be a point in G1
+    #[cfg_attr(feature = "json", serde(with = "BigArray"))]
+    pub pi_a: [u8; 64],
+
+    /// - pi_b: must be a point in G2
+    #[cfg_attr(feature = "json", serde(with = "BigArray"))]
+    pub pi_b: [u8; 128],
+
+    /// - pi_c: must be a point in G1
+    #[cfg_attr(feature = "json", serde(with = "BigArray"))]
+    pub pi_c: [u8; 64],
 }
 
 /// State of escrow execution in the host (`prover`).
@@ -187,28 +222,10 @@ pub enum ChainMetadata {
     Solana {
         /// Escrow program’s ID.
         escrow_program_id: String,
-        /// The program-derived address for this escrow account.
-        pda: String,
-        /// The bump seed used to derive the PDA.
-        bump: u8,
     },
 }
 
 impl ChainMetadata {
-    /// Get the PDA for a Solana escrow.
-    ///
-    /// # Errors
-    ///
-    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Solana variant.
-    pub fn get_pda(&self) -> Result<String> {
-        match self {
-            Self::Solana { pda, .. } => Ok(pda.clone()),
-            _ => Err(EscrowError::InvalidChainOp(
-                "PDA computation not applicable".to_string(),
-            )),
-        }
-    }
-
     /// Get the Ethereum contract address for the escrow contract.
     ///
     /// # Errors
@@ -252,8 +269,6 @@ pub enum ChainConfig {
         sender_keypair_path: String,
         /// On-chain escrow program ID (base58 string).
         escrow_program_id: String,
-        /// On-chain ZK verifier program ID (base58 string).
-        verifier_program_id: String,
     },
 }
 
@@ -319,23 +334,6 @@ impl ChainConfig {
             } => Ok(escrow_program_id.clone()),
             _ => Err(EscrowError::InvalidChainOp(
                 "Solana escrow program ID not applicable".to_string(),
-            )),
-        }
-    }
-
-    /// Get the Solana ZK verifier program ID.
-    ///
-    /// # Errors
-    ///
-    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Solana variant.
-    pub fn sol_verifier_program(&self) -> Result<String> {
-        match self {
-            Self::Solana {
-                verifier_program_id,
-                ..
-            } => Ok(verifier_program_id.clone()),
-            _ => Err(EscrowError::InvalidChainOp(
-                "Solana verifier program not applicable".to_string(),
             )),
         }
     }

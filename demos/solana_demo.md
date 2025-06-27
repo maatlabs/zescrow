@@ -49,8 +49,7 @@ An example of how your `escrow_params.json` might look like:
     "chain_config": {
         "rpc_url": "http://localhost:8899",
         "sender_keypair_path": "absolute/path/to/your/own/.config/solana/id.json",
-        "escrow_program_id": "ESCROW_PROGRAM_ID",
-        "verifier_program_id": "VERIFIER_PROGRAM_ID"
+        "escrow_program_id": "ESCROW_PROGRAM_ID"
     },
     "asset_type": "native",
     "asset": {

@@ -3,14 +3,29 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;
 use anchor_lang::system_program;
+use verifier_router::cpi::accounts::Verify;
+use verifier_router::program::VerifierRouter as VerifierRouterProgram;
+use verifier_router::state::VerifierRouter;
+
+pub use groth_16_verifier::ID as GROTH16_VERIFIER_ID;
+pub use system_program::ID as SYSTEM_PROGRAM_ID;
+pub use verifier_router::router::Proof;
+pub use verifier_router::ID as VERIFIER_ROUTER_ID;
 
 declare_id!("2eUJWfocc8RGNFPSSxjRqQMsukYYFnJJL1dDUgU17Mp7");
 
-/// Program-derived address seed prefix
-pub const PREFIX: &str = "escrow";
+/// PDA seed prefix for `escrow` program
+pub const ESCROW: &str = "escrow";
+/// PDA seed prefix for `verifier_router` program
+pub const ROUTER: &str = "router";
+/// PDA seed prefix for `groth_16_verifier` program
+pub const GROTH16: &str = "verifier";
+// We assume only one verifier will be used
+pub const SELECTOR: u32 = 1;
 
 #[program]
 pub mod escrow {
+
     use super::*;
 
     /// Creates a new escrow, initializing a PDA and transferring lamports.
@@ -48,25 +63,40 @@ pub mod escrow {
         let escrow = &ctx.accounts.escrow_account;
         let current_slot = Clock::get()?.slot;
 
-        if escrow.has_conditions {
-            require!(!args.proof.is_empty(), EscrowError::ConditionNotMet);
-            // TODO
-            // CPI into the on-chain verifier program
-        } else if let Some(finish_after) = escrow.finish_after {
+        if let Some(finish_after) = escrow.finish_after {
             require!(current_slot >= finish_after, EscrowError::NotReady);
         }
 
-        // Transfer out lamports and close PDA
-        **ctx
-            .accounts
-            .escrow_account
-            .to_account_info()
-            .try_borrow_mut_lamports()? -= escrow.amount;
-        **ctx
-            .accounts
-            .recipient
-            .to_account_info()
-            .try_borrow_mut_lamports()? += escrow.amount;
+        if escrow.has_conditions {
+            require!(args.proof_data.is_some(), EscrowError::ConditionNotMet);
+            let proof_data = args.proof_data.unwrap();
+
+            let image_id = proof_data.image_id;
+            let proof = proof_data.proof;
+            let journal_digest = proof_data.journal_digest;
+
+            let cpi_accounts = Verify {
+                router: ctx.accounts.router_account.to_account_info(),
+                verifier_entry: ctx.accounts.verifier_entry.to_account_info(),
+                verifier_program: ctx.accounts.verifier_program.to_account_info(),
+                system_program: ctx.accounts.system_program.to_account_info(),
+            };
+            let cpi_ctx = CpiContext::new(ctx.accounts.router.to_account_info(), cpi_accounts);
+
+            verifier_router::cpi::verify(cpi_ctx, SELECTOR, proof, image_id, journal_digest)?;
+        }
+
+        // // Transfer out lamports and close PDA
+        // **ctx
+        //     .accounts
+        //     .escrow_account
+        //     .to_account_info()
+        //     .try_borrow_mut_lamports()? -= escrow.amount;
+        // **ctx
+        //     .accounts
+        //     .recipient
+        //     .to_account_info()
+        //     .try_borrow_mut_lamports()? += escrow.amount;
 
         emit!(EscrowEvent {
             sender: escrow.sender,
@@ -74,6 +104,7 @@ pub mod escrow {
             amount: escrow.amount,
             action: EscrowState::Finished
         });
+
         Ok(())
     }
 
@@ -90,16 +121,16 @@ pub mod escrow {
             EscrowError::NotExpired
         );
 
-        **ctx
-            .accounts
-            .escrow_account
-            .to_account_info()
-            .try_borrow_mut_lamports()? -= escrow.amount;
-        **ctx
-            .accounts
-            .sender
-            .to_account_info()
-            .try_borrow_mut_lamports()? += escrow.amount;
+        // **ctx
+        //     .accounts
+        //     .escrow_account
+        //     .to_account_info()
+        //     .try_borrow_mut_lamports()? -= escrow.amount;
+        // **ctx
+        //     .accounts
+        //     .sender
+        //     .to_account_info()
+        //     .try_borrow_mut_lamports()? += escrow.amount;
 
         emit!(EscrowEvent {
             sender: escrow.sender,
@@ -107,6 +138,7 @@ pub mod escrow {
             amount: escrow.amount,
             action: EscrowState::Cancelled
         });
+
         Ok(())
     }
 }
@@ -133,13 +165,15 @@ pub struct CreateEscrow<'info> {
     /// Sender funding the escrow
     #[account(mut)]
     pub sender: Signer<'info>,
+
     /// Recipient of the escrow.
     ///
     /// CHECK: we enforce correctness via PDA seeds
     pub recipient: UncheckedAccount<'info>,
+
     #[account(
         init,
-        seeds = [PREFIX.as_bytes(), sender.key().as_ref(), recipient.key().as_ref()],
+        seeds = [ESCROW.as_bytes(), sender.key().as_ref(), recipient.key().as_ref()],
         bump,
         payer = sender,
         space = 8  // discriminator
@@ -153,6 +187,7 @@ pub struct CreateEscrow<'info> {
              + 1   // has_conditions
     )]
     pub escrow_account: Account<'info, Escrow>,
+
     /// System program for lamport transfers
     pub system_program: Program<'info, System>,
 }
@@ -170,21 +205,44 @@ pub struct FinishEscrow<'info> {
     /// Recipient claiming the funds
     #[account(mut)]
     pub recipient: Signer<'info>,
+
     /// PDA holding the escrow, closed to recipient on success
     #[account(
         mut,
-        seeds = [PREFIX.as_bytes(), escrow_account.sender.as_ref(), recipient.key().as_ref()],
+        seeds = [ESCROW.as_bytes(), escrow_account.sender.as_ref(), recipient.key().as_ref()],
         bump,
         close = recipient
     )]
     pub escrow_account: Account<'info, Escrow>,
-    /// CHECK: on-chain RISC Zero verifier program
+
+    /// The router program that will route to the correct verifier
+    pub router: Program<'info, VerifierRouterProgram>,
+
+    /// The router account that will be used for routing our proof
+    pub router_account: Account<'info, VerifierRouter>,
+
+    /// The PDA entry in the router that maps our selector to the actual verifier.
+    /// CHECK: The verifier program checks are handled by the router program
+    pub verifier_entry: UncheckedAccount<'info>,
+
+    /// The actual Groth16 verifier program that will verify the proof.
+    /// CHECK: The verifier program checks are handled by the router program
     pub verifier_program: UncheckedAccount<'info>,
+
+    pub system_program: Program<'info, System>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[derive(Clone, PartialEq, Eq, AnchorDeserialize, AnchorSerialize)]
 pub struct FinishEscrowArgs {
-    pub proof: Vec<u8>,
+    pub proof_data: Option<ProofData>,
+}
+
+/// Values necessary for verification of RISC Zero ZK proofs.
+#[derive(Clone, PartialEq, Eq, AnchorDeserialize, AnchorSerialize)]
+pub struct ProofData {
+    pub image_id: [u8; 32],
+    pub proof: Proof,
+    pub journal_digest: [u8; 32],
 }
 
 #[derive(Accounts)]
@@ -192,10 +250,11 @@ pub struct CancelEscrow<'info> {
     /// Original initializer reclaiming funds
     #[account(mut)]
     pub sender: Signer<'info>,
+
     /// PDA holding the escrow, closed back to sender
     #[account(
         mut,
-        seeds = [PREFIX.as_bytes(), sender.key().as_ref(), escrow_account.recipient.as_ref()],
+        seeds = [ESCROW.as_bytes(), sender.key().as_ref(), escrow_account.recipient.as_ref()],
         bump,
         close = sender
     )]
