@@ -1,6 +1,8 @@
 [workspace]
 members = [
     "programs/escrow",
+    "programs/risc0-solana/solana-verifier/programs/groth_16_verifier",
+    "programs/risc0-solana/solana-verifier/programs/test_bad_verifier",
     "programs/risc0-solana/solana-verifier/programs/verifier_router",
 ]
 resolver = "2"

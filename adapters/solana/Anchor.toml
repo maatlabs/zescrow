@@ -6,8 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-escrow = "2eUJWfocc8RGNFPSSxjRqQMsukYYFnJJL1dDUgU17Mp7"
-verifier_router = "3uqcghDkzREcs1nbUk1LBXztaHCr9Abt9nrPfv1modF3"
+escrow = "6xiTjjE1g9FujuVvR5EGKafMcnekkr2zfskuCKbK1j5v"
+groth_16_verifier = "2yTmU3HDxzsikdPeWEb43Ep2J2hZNkmF4kSZAp9dXoKC"
+test_bad_verifier = "D9PuDGdrNLP9NpH7h7rJi4hHkWv2eAFXfSXaMnoG8c9N"
+verifier_router = "DuBqvX4W6sU62f9bYBAajkXDkdcqus1cZpbyxCTksTUe"
 
 [registry]
 url = "https://api.apr.dev"
@@ -17,7 +19,7 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [workspace]
-members = ["programs/escrow", "programs/risc0-solana/solana-verifier/programs/verifier_router"]
+members = ["programs/escrow", "programs/risc0-solana/solana-verifier/programs/groth_16_verifier", "programs/risc0-solana/solana-verifier/programs/test_bad_verifier", "programs/risc0-solana/solana-verifier/programs/verifier_router"]
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

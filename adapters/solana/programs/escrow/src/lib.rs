@@ -12,7 +12,7 @@ pub use system_program::ID as SYSTEM_PROGRAM_ID;
 pub use verifier_router::router::Proof;
 pub use verifier_router::ID as VERIFIER_ROUTER_ID;
 
-declare_id!("2eUJWfocc8RGNFPSSxjRqQMsukYYFnJJL1dDUgU17Mp7");
+declare_id!("6xiTjjE1g9FujuVvR5EGKafMcnekkr2zfskuCKbK1j5v");
 
 /// PDA seed prefix for `escrow` program
 pub const ESCROW: &str = "escrow";
