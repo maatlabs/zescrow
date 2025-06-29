@@ -16,7 +16,7 @@ import {
 import { type ParsedVerifyInstruction } from '../instructions';
 
 export const GROTH16_VERIFIER_PROGRAM_ADDRESS =
-  'CA4wbHHhe4bxakLB4t21uQKWSjpGYciNKJjJS26XRnmi' as Address<'CA4wbHHhe4bxakLB4t21uQKWSjpGYciNKJjJS26XRnmi'>;
+  '2yTmU3HDxzsikdPeWEb43Ep2J2hZNkmF4kSZAp9dXoKC' as Address<'2yTmU3HDxzsikdPeWEb43Ep2J2hZNkmF4kSZAp9dXoKC'>;
 
 export enum Groth16VerifierInstruction {
   Verify,
@@ -43,7 +43,7 @@ export function identifyGroth16VerifierInstruction(
 }
 
 export type ParsedGroth16VerifierInstruction<
-  TProgram extends string = 'CA4wbHHhe4bxakLB4t21uQKWSjpGYciNKJjJS26XRnmi',
+  TProgram extends string = '2yTmU3HDxzsikdPeWEb43Ep2J2hZNkmF4kSZAp9dXoKC',
 > = {
   instructionType: Groth16VerifierInstruction.Verify;
 } & ParsedVerifyInstruction<TProgram>;

@@ -9,7 +9,7 @@
 import {
   AccountRole,
   isProgramDerivedAddress,
-  isTransactionSigner as web3JsIsTransactionSigner,
+  isTransactionSigner as kitIsTransactionSigner,
   type Address,
   type IAccountMeta,
   type IAccountSignerMeta,
@@ -159,6 +159,6 @@ export function isTransactionSigner<TAddress extends string = string>(
     !!value &&
     typeof value === 'object' &&
     'address' in value &&
-    web3JsIsTransactionSigner(value)
+    kitIsTransactionSigner(value)
   );
 }

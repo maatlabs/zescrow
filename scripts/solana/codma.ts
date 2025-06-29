@@ -50,7 +50,8 @@ const grothIdlPath = path.normalize("../../adapters/solana/target/idl/groth_16_v
 const badVerifierIdlPath = path.normalize(
   "../../adapters/solana/target/idl/test_bad_verifier.json"
 );
-const loaderV3IdlPath = path.normalize("idl/loader-v3.json");
+// const loaderV3IdlPath = path.normalize("./idl/loader-v3.json");
+const loaderV3IdlPath = path.resolve(__dirname, "idl", "loader-v3.json");
 
 const routerIdl = require(routerIdlPath);
 const grothIdl = require(grothIdlPath);

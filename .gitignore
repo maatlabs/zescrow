@@ -22,3 +22,5 @@ test-ledger
 # Output of escrow workflow via the `client`
 templates/escrow_metadata.json
 templates/test_keypair.json
+
+.env

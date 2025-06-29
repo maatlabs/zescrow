@@ -16,7 +16,7 @@ import {
 import { type ParsedVerifyInstruction } from '../instructions';
 
 export const TEST_BAD_VERIFIER_PROGRAM_ADDRESS =
-  'DAkJzHMBpV7k4EMEWXfd6vva9PRM4Fcr413Xqz7FtgXY' as Address<'DAkJzHMBpV7k4EMEWXfd6vva9PRM4Fcr413Xqz7FtgXY'>;
+  'D9PuDGdrNLP9NpH7h7rJi4hHkWv2eAFXfSXaMnoG8c9N' as Address<'D9PuDGdrNLP9NpH7h7rJi4hHkWv2eAFXfSXaMnoG8c9N'>;
 
 export enum TestBadVerifierInstruction {
   Verify,
@@ -43,7 +43,7 @@ export function identifyTestBadVerifierInstruction(
 }
 
 export type ParsedTestBadVerifierInstruction<
-  TProgram extends string = 'DAkJzHMBpV7k4EMEWXfd6vva9PRM4Fcr413Xqz7FtgXY',
+  TProgram extends string = 'D9PuDGdrNLP9NpH7h7rJi4hHkWv2eAFXfSXaMnoG8c9N',
 > = {
   instructionType: TestBadVerifierInstruction.Verify;
 } & ParsedVerifyInstruction<TProgram>;

@@ -2,44 +2,40 @@
 
 1. Set up your local environment for Solana development by installing the [Solana CLI](https://solana.com/docs/intro/installation).
 
-2. In a terminal instance, ensure you are on the Localnet cluster:
+2. In a terminal instance, run the Solana test validator:
 
 ```sh
 # project root
 cd zescrow
+
 solana config set --url localhost
-```
-
-3. In a separate terminal, start the Solana test validator:
-
-```sh
 solana-test-validator -r
 ```
 
-4. Build and deploy the Verifier Router System:
+3. In a separate terminal, build and deploy all programs:
 
 ```sh
-# Go to the Solana adapter programs to build and deploy them locally
-cd adapters/solana
+cd scripts/solana
 
-# Sync keys for local deploy
-anchor keys sync
+# Install dependencies
+yarn install
 
-# Build the programs so that IDLs are generated
-anchor build
+# Configure environment
+cp example.env .env
+# Edit .env with your desired configuration
 
-# Deploy the programs locally
-anchor deploy
+# Deploy all
+yarn run deploy-all
 ```
 
-5. With the programs deployed, you are ready to interact with them via the `client`. First, create a test Solana account that you can use as the `recipient` (or beneficiary) of the escrow. The following command creates and funds an account with 2 SOL using the [create_sol_account.sh](../templates/create_sol_account.sh) file:
+4. With the programs deployed, you are ready to interact with them via the `client`. First, create a test Solana account that you can use as the `recipient` (or beneficiary) of the escrow. The following command creates and funds an account with 2 SOL using the [create_sol_account.sh](../templates/create_sol_account.sh) file:
 
 ```sh
 cd templates
 ./create_sol_account.sh
 ```
 
-6. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
+5. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
 
 An example of how your `escrow_params.json` might look like:
 
@@ -86,23 +82,23 @@ If `has_conditions == true` as specified in your `escrow_params.json`, then ensu
 }
 ```
 
-7. Create an escrow transaction:
+6. Create an escrow transaction:
 
 ```sh
 cd client
-RUST_LOG=info cargo run --release -- create
+RUST_LOG=info cargo run -- create
 ```
 
-8. To release an escrow with `has_conditions == false` execute:
+7. To release an escrow with `has_conditions == false` execute:
 
 ```sh
-RUST_LOG=info cargo run --release -- finish --recipient <KEYPAIR_FILE_PATH>
+RUST_LOG=info cargo run -- finish --recipient <KEYPAIR_FILE_PATH>
 ```
 
 For example, using the `test_keypair.json` created earlier, the above command will be:
 
 ```sh
-RUST_LOG=info cargo run --release -- finish --recipient ../templates/test_keypair.json
+RUST_LOG=info cargo run -- finish --recipient ../templates/test_keypair.json
 ```
 
 To verify that the `recipient` received the funds, you can query the balance on the corresponding address/pubkey:
@@ -112,7 +108,7 @@ To verify that the `recipient` received the funds, you can query the balance on 
 solana balance <RECIPIENT_PUBKEY>
 ```
 
-9. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
+8. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
 
 ```sh
 # project root
@@ -122,9 +118,9 @@ RUST_LOG=info cargo run --release
 
 Then execute the `Finish` command of the `client`, just like in the previous step.
 
-10. To cancel an escrow, execute:
+9. To cancel an escrow, execute:
 
 ```sh
 cd client
-RUST_LOG=info cargo run --release -- cancel
+RUST_LOG=info cargo run -- cancel
 ```
