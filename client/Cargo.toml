@@ -9,7 +9,7 @@ anchor-client = "0.31.1"
 anyhow = "1.0.98"
 async-trait = "0.1.88"
 clap = { version = "4.5.40", features = ["derive"] }
-escrow = { path = "../adapters/solana/programs/escrow", features = [
+escrow = { path = "../adapters/solana/escrow/programs/escrow", features = [
     "no-entrypoint",
 ] }
 ethers = { version = "2.0.14", features = ["rustls"] }
