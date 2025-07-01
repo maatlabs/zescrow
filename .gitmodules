@@ -1,4 +1,0 @@
-[submodule "adapters/solana/programs/risc0-solana"]
-	path = adapters/solana/programs/risc0-solana
-	url = https://github.com/maatlabs/risc0-solana.git
-	branch = pruned
