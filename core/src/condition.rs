@@ -6,6 +6,8 @@
 
 use bincode::{Decode, Encode};
 use ed25519_dalek::{Signature as Ed25519Sig, Verifier, VerifyingKey as Ed25519Pub};
+#[cfg(feature = "json")]
+use hex::serde::{deserialize as hex_deserialize, serialize as hex_serialize};
 use k256::ecdsa::{Signature as Secp256k1Sig, VerifyingKey as Secp256k1Pub};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -31,8 +33,12 @@ pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.
     Preimage {
         /// The expected SHA-256 digest of the preimage.
-        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
+        #[cfg_attr(
+            feature = "json",
+            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
+        )]
         hash: [u8; 32],
+
         /// Secret preimage as UTF-8 string.
         #[cfg_attr(feature = "json", serde(with = "utf8_serde"))]
         preimage: Vec<u8>,
@@ -41,26 +47,48 @@ pub enum Condition {
     /// Ed25519 signature over an arbitrary message.
     Ed25519 {
         /// Public key bytes.
-        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
+        #[cfg_attr(
+            feature = "json",
+            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
+        )]
         public_key: [u8; 32],
+
         /// Signature bytes.
-        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
+        #[cfg_attr(
+            feature = "json",
+            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
+        )]
         signature: Vec<u8>,
+
         /// Original message bytes.
-        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
+        #[cfg_attr(
+            feature = "json",
+            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
+        )]
         message: Vec<u8>,
     },
 
     /// Secp256k1 ECDSA signature over an arbitrary message.
     Secp256k1 {
         /// Compressed SEC1-encoded public key bytes.
-        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
+        #[cfg_attr(
+            feature = "json",
+            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
+        )]
         public_key: Vec<u8>,
+
         /// DER-encoded signature bytes.
-        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
+        #[cfg_attr(
+            feature = "json",
+            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
+        )]
         signature: Vec<u8>,
+
         /// Original message bytes.
-        #[cfg_attr(feature = "json", serde_as(as = "Hex"))]
+        #[cfg_attr(
+            feature = "json",
+            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
+        )]
         message: Vec<u8>,
     },
 
@@ -68,6 +96,7 @@ pub enum Condition {
     Threshold {
         /// Minimum number of valid subconditions required.
         threshold: usize,
+
         /// Subconditions to evaluate.
         subconditions: Vec<Condition>,
     },

@@ -100,6 +100,8 @@ If `has_conditions == true` as specified in your `escrow_params.json`, then ensu
 }
 ```
 
+In step 11 (optional), we show how to generate any of the supported kinds of cryptographic conditions.
+
 7. Create an escrow transaction:
 
 ```sh
@@ -141,4 +143,28 @@ Then execute the `Finish` command of the `client`, just like in the previous ste
 ```sh
 cd client
 RUST_LOG=info cargo run -- cancel
+```
+
+11. (OPTIONAL) Generate a `escrow_conditions.json` file
+
+* _preimage_ condition:
+
+```sh
+# cd client
+RUST_LOG=info cargo run -- generate --preimage "zkEscrow"
+```
+
+* _ed25519_ condition:
+
+```sh
+RUST_LOG=info cargo run -- generate \
+  --ed25519-pubkey DEAD... \
+  --ed25519-sig BEAF... \
+  --ed25519-msg "zkEscrow"
+```
+
+* _threshold_ condition:
+
+```sh
+RUST_LOG=info cargo run -- generate --threshold cond1.json,cond2.json,cond3.json --n 2
 ```
