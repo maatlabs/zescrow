@@ -3,23 +3,22 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;
 use anchor_lang::system_program;
-use verifier_router::cpi::accounts::Verify;
-use verifier_router::program::VerifierRouter as VerifierRouterProgram;
-use verifier_router::state::VerifierRouter;
-
 pub use groth_16_verifier::ID as GROTH16_VERIFIER_ID;
 pub use system_program::ID as SYSTEM_PROGRAM_ID;
+use verifier_router::cpi::accounts::Verify;
+use verifier_router::program::VerifierRouter as VerifierRouterProgram;
 pub use verifier_router::router::Proof;
+use verifier_router::state::{VerifierEntry, VerifierRouter};
 pub use verifier_router::ID as VERIFIER_ROUTER_ID;
 
-declare_id!("6xiTjjE1g9FujuVvR5EGKafMcnekkr2zfskuCKbK1j5v");
+declare_id!("5VwWRGjhF6xv51WgWb1E3iYhWNf63HauSST8AZ5B8zTJ");
 
 /// PDA seed prefix for `escrow` program
 pub const ESCROW: &str = "escrow";
 /// PDA seed prefix for `verifier_router` program
 pub const ROUTER: &str = "router";
 /// PDA seed prefix for `groth_16_verifier` program
-pub const GROTH16: &str = "verifier";
+pub const VERIFIER: &str = "verifier";
 // We assume only one verifier will be used
 pub const SELECTOR: u32 = 1;
 
@@ -68,8 +67,7 @@ pub mod escrow {
         }
 
         if escrow.has_conditions {
-            require!(args.proof_data.is_some(), EscrowError::ConditionNotMet);
-            let proof_data = args.proof_data.unwrap();
+            let proof_data = args.proof_data.ok_or(error!(EscrowError::ProofDataEmpty))?;
 
             let image_id = proof_data.image_id;
             let proof = proof_data.proof;
@@ -83,7 +81,8 @@ pub mod escrow {
             };
             let cpi_ctx = CpiContext::new(ctx.accounts.router.to_account_info(), cpi_accounts);
 
-            verifier_router::cpi::verify(cpi_ctx, SELECTOR, proof, image_id, journal_digest)?;
+            verifier_router::cpi::verify(cpi_ctx, SELECTOR, proof, image_id, journal_digest)
+                .map_err(|_| EscrowError::ConditionNotMet)?;
         }
 
         // // Transfer out lamports and close PDA
@@ -201,6 +200,7 @@ pub struct CreateEscrowArgs {
 }
 
 #[derive(Accounts)]
+#[instruction(args: FinishEscrowArgs)]
 pub struct FinishEscrow<'info> {
     /// Recipient claiming the funds
     #[account(mut)]
@@ -222,8 +222,16 @@ pub struct FinishEscrow<'info> {
     pub router_account: Account<'info, VerifierRouter>,
 
     /// The PDA entry in the router that maps our selector to the actual verifier.
-    /// CHECK: The verifier program checks are handled by the router program
-    pub verifier_entry: UncheckedAccount<'info>,
+    // TODO: Try changing to unchecked account because verifier checks the fields.
+    #[account(
+        seeds = [
+            VERIFIER.as_bytes(),
+            &SELECTOR.to_le_bytes()
+        ],
+        bump,
+        seeds::program = VERIFIER_ROUTER_ID
+    )]
+    pub verifier_entry: Account<'info, VerifierEntry>,
 
     /// The actual Groth16 verifier program that will verify the proof.
     /// CHECK: The verifier program checks are handled by the router program
@@ -282,6 +290,8 @@ pub enum EscrowState {
 pub enum EscrowError {
     #[msg("Too early to finish.")]
     NotReady,
+    #[msg("No proof data given.")]
+    ProofDataEmpty,
     #[msg("Proof verification failed.")]
     ConditionNotMet,
     #[msg("Too early to cancel.")]

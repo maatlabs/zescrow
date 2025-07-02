@@ -12,30 +12,48 @@ solana config set --url localhost
 solana-test-validator -r
 ```
 
-3. In a separate terminal, build and deploy all programs:
+3. In a separate terminal, build and deploy the verifier router system:
 
 ```sh
-cd scripts/solana
+# Go to the Solana verifier programs to deploy them locally
+cd adapters/solana/risc0-solana/solana-verifier
 
-# Install dependencies
+# Install dependencies for the scripts
 yarn install
 
 # Configure environment
 cp example.env .env
 # Edit .env with your desired configuration
 
-# Deploy all
+# Deploy all:
+# anchor keys sync && anchor build && yarn run client && yarn run deploy
 yarn run deploy-all
 ```
 
-4. With the programs deployed, you are ready to interact with them via the `client`. First, create a test Solana account that you can use as the `recipient` (or beneficiary) of the escrow. The following command creates and funds an account with 2 SOL using the [create_sol_account.sh](../templates/create_sol_account.sh) file:
+4. Build and deploy the escrow program:
+
+```sh
+# Go to the Solana escrow program to deploy it locally
+cd ../../escrow
+
+# Sync keys for local deploy
+anchor keys sync
+
+# Build the program
+anchor build
+
+# Deploy the program locally
+anchor deploy
+```
+
+5. With the programs deployed, you are ready to interact with them via the `client`. First, create a test Solana account that you can use as the `recipient` (or beneficiary) of the escrow. The following command creates and funds an account with 2 SOL using the [create_sol_account.sh](../templates/create_sol_account.sh) file:
 
 ```sh
 cd templates
 ./create_sol_account.sh
 ```
 
-5. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
+6. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
 
 An example of how your `escrow_params.json` might look like:
 
@@ -82,14 +100,14 @@ If `has_conditions == true` as specified in your `escrow_params.json`, then ensu
 }
 ```
 
-6. Create an escrow transaction:
+7. Create an escrow transaction:
 
 ```sh
 cd client
 RUST_LOG=info cargo run -- create
 ```
 
-7. To release an escrow with `has_conditions == false` execute:
+8. To release an escrow with `has_conditions == false` execute:
 
 ```sh
 RUST_LOG=info cargo run -- finish --recipient <KEYPAIR_FILE_PATH>
@@ -108,7 +126,7 @@ To verify that the `recipient` received the funds, you can query the balance on 
 solana balance <RECIPIENT_PUBKEY>
 ```
 
-8. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
+9. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
 
 ```sh
 # project root
@@ -118,7 +136,7 @@ RUST_LOG=info cargo run --release
 
 Then execute the `Finish` command of the `client`, just like in the previous step.
 
-9. To cancel an escrow, execute:
+10. To cancel an escrow, execute:
 
 ```sh
 cd client

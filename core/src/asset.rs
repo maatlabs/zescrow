@@ -270,7 +270,7 @@ impl Asset {
         match self {
             Self::Native { chain, amount } => {
                 let s = Self::format_amount(amount, 18)?;
-                Ok(format!("{} {}", s, chain.as_ref()))
+                Ok(format!("{s} {}", chain.as_ref()))
             }
             Self::Token {
                 contract,
@@ -279,11 +279,11 @@ impl Asset {
                 ..
             } => {
                 let s = Self::format_amount(amount, *decimals)?;
-                Ok(format!("{} @{}", s, contract))
+                Ok(format!("{s} @{contract}"))
             }
             Self::Nft {
                 contract, token_id, ..
-            } => Ok(format!("NFT {}@{}", token_id, contract)),
+            } => Ok(format!("NFT {token_id}@{contract}")),
             Self::MultiToken {
                 amount,
                 token_id,
@@ -291,7 +291,7 @@ impl Asset {
                 ..
             } => {
                 let s = Self::format_amount(amount, 0)?;
-                Ok(format!("{}x{}@{}", s, token_id, contract))
+                Ok(format!("{s}x{token_id}@{contract}"))
             }
             Self::PoolShare {
                 share,
@@ -307,7 +307,7 @@ impl Asset {
                     AssetError::Parsing("total supply too large to format".into())
                 })?;
                 let percentage = share / total_supply * 100.0;
-                Ok(format!("{:.4}% of {}", percentage, pool))
+                Ok(format!("{percentage:.4}% of {pool}"))
             }
         }
     }
@@ -326,10 +326,10 @@ impl Asset {
         let mut rem_str = rem.to_str_radix(10);
         let width = decimals as usize;
         if rem_str.len() < width {
-            rem_str = format!("{:0>width$}", rem_str, width = width);
+            rem_str = format!("{rem_str:0>width$}");
         }
 
-        Ok(format!("{}.{}", whole_str, rem_str))
+        Ok(format!("{whole_str}.{rem_str}"))
     }
 
     /// Returns the underlying raw quantity for this asset:

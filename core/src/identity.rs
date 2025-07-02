@@ -184,9 +184,9 @@ impl std::fmt::Display for ID {
     /// - **Bytes**: standard Base64 string of bytes.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Hex(s) => write!(f, "{}", s),
-            Self::Base58(s) => write!(f, "{}", s),
-            Self::Base64(s) => write!(f, "{}", s),
+            Self::Hex(s) => write!(f, "{s}"),
+            Self::Base58(s) => write!(f, "{s}"),
+            Self::Base64(s) => write!(f, "{s}"),
             Self::Bytes(b) => write!(f, "{}", BASE64_STANDARD.encode(b)),
         }
     }

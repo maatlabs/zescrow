@@ -7,7 +7,7 @@ use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::InstructionData;
 use escrow::{
     instruction as escrow_instruction, CreateEscrowArgs, FinishEscrowArgs, Proof, ProofData,
-    ESCROW, GROTH16, GROTH16_VERIFIER_ID, ROUTER, SELECTOR, SYSTEM_PROGRAM_ID, VERIFIER_ROUTER_ID,
+    ESCROW, GROTH16_VERIFIER_ID, ROUTER, SELECTOR, SYSTEM_PROGRAM_ID, VERIFIER, VERIFIER_ROUTER_ID,
 };
 use num_traits::ToPrimitive;
 use solana_client::rpc_client::RpcClient;
@@ -183,7 +183,7 @@ impl Agent for SolanaAgent {
         debug!("Using the address: {router_account} as the Router Account");
 
         let (verifier_entry, _) = Pubkey::find_program_address(
-            &[GROTH16.as_bytes(), &SELECTOR.to_le_bytes()],
+            &[VERIFIER.as_bytes(), &SELECTOR.to_le_bytes()],
             &VERIFIER_ROUTER_ID,
         );
 
