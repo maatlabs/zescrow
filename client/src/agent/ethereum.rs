@@ -13,7 +13,8 @@ use tracing::{debug, info, instrument, trace};
 use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
 use super::Agent;
-use crate::error::{AgentError, ClientError, Result};
+use crate::error::{AgentError, ClientError};
+use crate::Result;
 
 // Factory ABI for encoding/decoding calls and events
 const ESCROW_FACTORY_JSON: &str = include_str!(

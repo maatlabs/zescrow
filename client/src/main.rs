@@ -47,7 +47,7 @@ enum Commands {
                 "secp_pubkey","secp_sig","secp_msg",
                 "threshold"
         ]),
-))]
+    ))]
     Generate {
         /// Preimage condition: supply a UTF-8 string
         #[arg(long, value_name = "PREIMAGE", group = "kind")]

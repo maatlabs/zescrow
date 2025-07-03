@@ -1,7 +1,5 @@
 use thiserror::Error;
 
-pub type Result<T> = std::result::Result<T, ClientError>;
-
 #[derive(Error, Debug)]
 pub enum ClientError {
     #[error("Unsupported chain: {0}")]

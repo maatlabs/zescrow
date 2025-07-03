@@ -3,7 +3,7 @@ use std::path::PathBuf;
 pub use agent::ethereum::EthereumAgent;
 pub use agent::solana::SolanaAgent;
 pub use agent::Agent;
-use error::{ClientError, Result};
+use error::ClientError;
 use ethers::signers::LocalWallet;
 use tracing::{debug, info, instrument};
 use zescrow_core::interface::ChainConfig;
@@ -11,6 +11,8 @@ use zescrow_core::{Chain, EscrowMetadata, EscrowParams};
 
 pub mod agent;
 pub mod error;
+
+pub type Result<T> = std::result::Result<T, ClientError>;
 
 /// Unified client for cross-chain escrow management.
 pub struct ZescrowClient {

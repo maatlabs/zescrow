@@ -22,7 +22,8 @@ use zescrow_core::interface::{
 use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
 use super::{convert_array, Agent};
-use crate::error::{AgentError, ClientError, Result};
+use crate::error::{AgentError, ClientError};
+use crate::Result;
 
 /// Escrow agent for interacting with the Solana network
 pub struct SolanaAgent {
