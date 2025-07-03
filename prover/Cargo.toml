@@ -16,7 +16,7 @@ tracing = "0.1.41"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-groth_16_verifier = { path = "../adapters/solana/risc0-solana/solana-verifier/programs/groth_16_verifier", features = [
+groth_16_verifier = { path = "../agents/solana/risc0-solana/solana-verifier/programs/groth_16_verifier", features = [
     "no-entrypoint",
     "client",
 ] }

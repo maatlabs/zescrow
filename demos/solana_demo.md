@@ -16,7 +16,7 @@ solana-test-validator -r
 
 ```sh
 # Go to the Solana verifier programs to deploy them locally
-cd adapters/solana/risc0-solana/solana-verifier
+cd agents/solana/risc0-solana/solana-verifier
 
 # Install dependencies for the scripts
 yarn install

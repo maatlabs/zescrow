@@ -1,7 +1,7 @@
 [workspace]
 members = ["core", "methods", "prover"]
 
-exclude = ["adapters/solana/*", "client"]
+exclude = ["agents/solana/*", "client"]
 
 resolver = "2"
 

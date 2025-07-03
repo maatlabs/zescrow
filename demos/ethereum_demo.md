@@ -10,17 +10,17 @@
 npm install --global hardhat
 ```
 
-2. Install dependencies in the Ethereum adapter
+2. Install dependencies in the Ethereum agent
 
 ```sh
-cd adapters/ethereum
+cd agents/ethereum
 npm install
 ```
 
 3. Start the local Ethereum network. In one terminal, launch Hardhat’s built-in node:
 
 ```sh
-# in `adapters/ethereum`
+# in `agents/ethereum`
 npx hardhat node
 ```
 
@@ -29,7 +29,7 @@ Hardhat will print a list of pre-funded accounts and their WIF private keys. You
 4. Compile & deploy the `EscrowFactory` and `Verifier` contracts. In a second terminal:
 
 ```sh
-cd adapters/ethereum
+cd agents/ethereum
 npx hardhat compile
 npx hardhat run --network localhost scripts/deploy.ts
 ```
@@ -93,7 +93,7 @@ RUST_LOG=info cargo run -- create
 
 ```sh
 # Connect to the node
-cd adapters/ethereum
+cd agents/ethereum
 npx hardhat console --network localhost
 
 # While in the console, mine as many blocks as you need

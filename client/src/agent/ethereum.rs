@@ -17,7 +17,7 @@ use crate::error::{AgentError, ClientError, Result};
 
 // Factory ABI for encoding/decoding calls and events
 const ESCROW_FACTORY_JSON: &str = include_str!(
-    "../../../adapters/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
+    "../../../agents/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
 );
 
 // On-chain escrow operations.
