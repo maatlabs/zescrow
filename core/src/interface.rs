@@ -226,8 +226,6 @@ pub enum ChainConfig {
         sender_private_key: String,
         /// Address of the `EscrowFactory` smart contract.
         escrow_factory_address: String,
-        /// On-chain ZK verifier contract address.
-        verifier_address: String,
     },
 
     /// Solana network configuration.
@@ -242,14 +240,6 @@ pub enum ChainConfig {
 }
 
 impl ChainConfig {
-    /// Return the RPC URL.
-    pub fn rpc_url(&self) -> String {
-        match self {
-            Self::Ethereum { rpc_url, .. } => rpc_url.into(),
-            Self::Solana { rpc_url, .. } => rpc_url.into(),
-        }
-    }
-
     /// Returns the `Chain` enum corresponding to this variant.
     pub fn chain_id(&self) -> Chain {
         match self {
@@ -271,55 +261,6 @@ impl ChainConfig {
             } => Ok(escrow_factory_address.clone()),
             _ => Err(EscrowError::InvalidChainOp(
                 "Ethereum escrow factory address not applicable".to_string(),
-            )),
-        }
-    }
-
-    /// Get the Ethereum ZK verifier contract address.
-    ///
-    /// # Errors
-    ///
-    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Ethereum variant.
-    pub fn eth_verifier_contract(&self) -> Result<String> {
-        match self {
-            Self::Ethereum {
-                verifier_address, ..
-            } => Ok(verifier_address.clone()),
-            _ => Err(EscrowError::InvalidChainOp(
-                "Ethereum verifier contract not applicable".to_string(),
-            )),
-        }
-    }
-
-    /// Get the Solana escrow program ID.
-    ///
-    /// # Errors
-    ///
-    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Solana variant.
-    pub fn sol_escrow_program(&self) -> Result<String> {
-        match self {
-            Self::Solana {
-                escrow_program_id, ..
-            } => Ok(escrow_program_id.clone()),
-            _ => Err(EscrowError::InvalidChainOp(
-                "Solana escrow program ID not applicable".to_string(),
-            )),
-        }
-    }
-
-    /// Get the Solana payer keypair file path.
-    ///
-    /// # Errors
-    ///
-    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Solana variant.
-    pub fn sol_sender_keypair_path(&self) -> Result<String> {
-        match self {
-            Self::Solana {
-                sender_keypair_path,
-                ..
-            } => Ok(sender_keypair_path.clone()),
-            _ => Err(EscrowError::InvalidChainOp(
-                "Solana sender keypair path not applicable".to_string(),
             )),
         }
     }

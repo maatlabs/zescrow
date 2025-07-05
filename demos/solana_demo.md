@@ -158,7 +158,7 @@ cd agent/solana/escrow
 anchor test --skip-local-validator
 ```
 
-If the Solana test validator is **NOT** running, you can simply do:
+If the Solana test validator is **not** running, you can simply do:
 
 ```sh
 cd agent/solana/escrow

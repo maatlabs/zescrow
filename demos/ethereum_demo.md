@@ -1,4 +1,6 @@
-# End-to-End Flow for Ethereum Escrows
+# Ethereum Demo
+
+## End-to-End Flow for Ethereum Escrows
 
 1. Set up your local environment for Ethereum development:
 
@@ -45,7 +47,6 @@ After deployment completes, note the printed `EscrowFactory` and `Verifier` addr
         "rpc_url": "http://localhost:8545",
         "sender_private_key": "YOUR-WIF-ENCODED-PRIVATE-KEY",
         "escrow_factory_address": "YOUR_ESCROW_FACTORY_CONTRACT_ADDRESS",
-        "verifier_address": "YOUR_VERIFIER_CONTRACT_ADDRESS"
     },
     "asset_type": "native",
     "asset": {
@@ -132,3 +133,21 @@ Then rerun the `Finish` command just like in the previous step.
 cd client
 RUST_LOG=info cargo run -- cancel
 ```
+
+## Testing
+
+1. If you have a local Hardhat node already running (e.g. via `npx hardhat node`), skip spinning up a new one:
+
+```sh
+cd agent/ethereum
+npx hardhat test --network localhost
+```
+
+2. If you do **not** have a node running, let Hardhat start its in-process network automatically:
+
+```sh
+cd agent/ethereum
+npx hardhat test
+```
+
+In both cases, Hardhat will compile, deploy your contracts to the test network, run the full Mocha suite, and then tear down the sandbox node when finished.

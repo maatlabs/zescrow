@@ -16,8 +16,7 @@ contract EscrowFactory {
         address indexed recipient,
         uint256 amount,
         uint256 finishAfter,
-        uint256 cancelAfter,
-        bool hasConditions
+        uint256 cancelAfter
     );
 
     /// @dev Tracks deployed escrow instances
@@ -30,15 +29,11 @@ contract EscrowFactory {
     /// @param recipient Address to receive funds upon successful completion
     /// @param finishAfter Block number after which escrow can be finished
     /// @param cancelAfter Block number after which escrow can be cancelled
-    /// @param hasConditions True if a zero-knowledge proof is required
-    /// @param verifier Address of the `IVerifier` for proof verification
     /// @return escrowAddress Address of the newly minted escrow contract
     function createEscrow(
         address recipient,
         uint256 finishAfter,
-        uint256 cancelAfter,
-        bool hasConditions,
-        address verifier
+        uint256 cancelAfter
     ) external payable returns (address escrowAddress) {
         require(recipient != address(0), "Zescrow factory: invalid recipient");
         require(msg.value > 0, "Zescrow factory: must fund escrow");
@@ -50,20 +45,12 @@ contract EscrowFactory {
             cancelAfter > finishAfter,
             "Zescrow factory: cancelAfter must follow finishAfter"
         );
-        if (hasConditions) {
-            require(
-                verifier != address(0),
-                "Zescrow factory: verifier required"
-            );
-        }
 
         Escrow escrow = new Escrow{value: msg.value}(
             msg.sender,
             recipient,
             finishAfter,
-            cancelAfter,
-            hasConditions,
-            verifier
+            cancelAfter
         );
         escrowAddress = address(escrow);
         isEscrow[escrowAddress] = true;
@@ -75,20 +62,15 @@ contract EscrowFactory {
             recipient,
             msg.value,
             finishAfter,
-            cancelAfter,
-            hasConditions
+            cancelAfter
         );
     }
 
     /// @notice Finish escrow at given address
     /// @param escrowAddress Address of the `Escrow` contract
-    /// @param proof zero-knowledge proof data (if required by escrow)
-    function finishEscrow(
-        address escrowAddress,
-        bytes calldata proof
-    ) external {
+    function finishEscrow(address escrowAddress) external {
         require(isEscrow[escrowAddress], "Zescrow factory: not a valid escrow");
-        Escrow(escrowAddress).finishEscrow(proof);
+        Escrow(escrowAddress).finishEscrow();
     }
 
     /// @notice Cancel escrow at given address

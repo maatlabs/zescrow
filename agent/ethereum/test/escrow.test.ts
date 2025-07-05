@@ -29,8 +29,6 @@ describe("Escrow", () => {
             recipient.address,
             finishAfter,
             cancelAfter,
-            false,
-            ethers.ZeroAddress,
             { value }
         );
         const receipt = await tx.wait();
@@ -42,7 +40,6 @@ describe("Escrow", () => {
             recipient.address,
             undefined,
             undefined,
-            undefined,
             undefined
         );
         const events = await factory.queryFilter(filter, receipt.blockNumber);
@@ -50,7 +47,7 @@ describe("Escrow", () => {
         const escrowAddr = events[0].args.escrowAddress;
 
         // Attempt to finish via factory (msg.sender = factory); should revert as too early
-        await expect(factory.finishEscrow(escrowAddr, "0x")).to.be.revertedWith("Zescrow: too early to finish");
+        await expect(factory.finishEscrow(escrowAddr)).to.be.revertedWith("Zescrow: too early to finish");
 
         // Mine two blocks to reach finishAfter
         await network.provider.send("evm_mine");
@@ -58,7 +55,7 @@ describe("Escrow", () => {
 
         const balBefore = await ethers.provider.getBalance(recipient.address);
         // Finish via factory (no sender restriction)
-        await (await factory.finishEscrow(escrowAddr, "0x")).wait();
+        await (await factory.finishEscrow(escrowAddr)).wait();
         const balAfter = await ethers.provider.getBalance(recipient.address);
         expect(balAfter).to.be.gt(balBefore);
     });
@@ -73,8 +70,6 @@ describe("Escrow", () => {
             recipient.address,
             finishAfter,
             cancelAfter,
-            false,
-            ethers.ZeroAddress,
             { value }
         );
         const receipt = await tx.wait();
@@ -84,7 +79,6 @@ describe("Escrow", () => {
             deployer.address,
             undefined,
             recipient.address,
-            undefined,
             undefined,
             undefined,
             undefined

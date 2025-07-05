@@ -4,12 +4,6 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
-/// @dev Interface to the on-chain verifier contract.
-interface IVerifier {
-    /// @notice Return true iff `proof` verifies.
-    function verify(bytes calldata proof) external view returns (bool);
-}
-
 /// @title Zescrow Escrow Contract
 /// @notice Holds funds until either a time-lock expires or a condition is met
 contract Escrow is ReentrancyGuard {
@@ -27,12 +21,6 @@ contract Escrow is ReentrancyGuard {
     /// @notice Earliest **block number** when escrow can be cancelled
     uint256 public immutable cancelAfter;
 
-    /// @notice Whether this escrow requires an on-chain proof verifcation
-    bool public immutable hasConditions;
-
-    /// @notice Address of the on-chain verifier contract (if `hasConditions`)
-    address public immutable verifier;
-
     /// @notice Address of the factory that deployed this escrow
     address public immutable factory;
 
@@ -42,8 +30,7 @@ contract Escrow is ReentrancyGuard {
     event Created(
         address indexed sender,
         address indexed recipient,
-        uint256 amount,
-        bool hasConditions
+        uint256 amount
     );
     event Released(address indexed recipient, uint256 amount);
     event Cancelled(address indexed sender, uint256 amount);
@@ -52,15 +39,11 @@ contract Escrow is ReentrancyGuard {
     /// @param _recipient Intended beneficiary of escrowed funds
     /// @param _finishAfter Block number after which release is allowed (if no ZK conditions)
     /// @param _cancelAfter Block number after which refund is allowed
-    /// @param _hasConditions If true, must submit a proof instead of waiting for `_finishAfter`
-    /// @param _verifier Address of the verifier contract
     constructor(
         address _depositor,
         address _recipient,
         uint256 _finishAfter,
-        uint256 _cancelAfter,
-        bool _hasConditions,
-        address _verifier
+        uint256 _cancelAfter
     ) payable {
         require(_depositor != address(0), "Zescrow: invalid depositor");
         require(_recipient != address(0), "Zescrow: invalid recipient");
@@ -72,36 +55,21 @@ contract Escrow is ReentrancyGuard {
             _cancelAfter > _finishAfter,
             "Zescrow: cancelAfter block must follow finishAfter block"
         );
-        if (_hasConditions) {
-            require(_verifier != address(0), "Zescrow: verifier required");
-        }
 
         sender = _depositor;
         recipient = _recipient;
         finishAfter = _finishAfter;
         cancelAfter = _cancelAfter;
-        hasConditions = _hasConditions;
-        verifier = _verifier;
         factory = msg.sender;
         amount = msg.value;
 
-        emit Created(sender, recipient, amount, hasConditions);
+        emit Created(sender, recipient, amount);
     }
 
     /// @notice Release escrowed funds to recipient if block number is reachead
-    /// and/or ZK conditions met
-    /// @param proof The ZK proof data (empty if `hasConditions == false`)
-    function finishEscrow(bytes calldata proof) external nonReentrant {
+    function finishEscrow() external nonReentrant {
         require(block.number >= finishAfter, "Zescrow: too early to finish");
         require(amount > 0, "Zescrow: nothing to release");
-
-        if (hasConditions) {
-            require(proof.length > 0, "Zescrow: proof required");
-            require(
-                IVerifier(verifier).verify(proof),
-                "Zescrow: proof verification failed"
-            );
-        }
 
         uint256 payout = amount;
         amount = 0;

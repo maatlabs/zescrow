@@ -7,9 +7,9 @@ use ethers::contract::{Contract, EthEvent, EthLogDecode};
 use ethers::middleware::SignerMiddleware;
 use ethers::providers::{Http, Middleware, Provider};
 use ethers::signers::{LocalWallet, Signer};
-use ethers::types::{Address, Bytes, H256, U256};
+use ethers::types::{Address, H256, U256};
 use serde_json::Value;
-use tracing::{debug, info, instrument, trace};
+use tracing::{debug, info, trace};
 use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
 use super::Agent;
@@ -36,8 +36,7 @@ const CANCEL_ESCROW: &str = "cancelEscrow";
     address indexed recipient,
     uint256 amount,
     uint256 finishAfter,
-    uint256 cancelAfter,
-    bool hasConditions)"
+    uint256 cancelAfter)"
 )]
 struct EscrowCreatedEvent {
     creator: Address,
@@ -46,13 +45,12 @@ struct EscrowCreatedEvent {
     amount: U256,
     finish_after: U256,
     cancel_after: U256,
-    has_conditions: bool,
 }
 
 /// Escrow agent for interacting with the Ethereum network
 pub struct EthereumAgent {
-    // Ethereum JSON-RPC provider
-    provider: Provider<Http>,
+    /// Ethereum JSON-RPC provider
+    pub provider: Provider<Http>,
     // Factory contract
     factory: Contract<SignerMiddleware<Provider<Http>, LocalWallet>>,
 }
@@ -101,17 +99,10 @@ impl EthereumAgent {
 
 #[async_trait::async_trait]
 impl Agent for EthereumAgent {
-    #[instrument(skip(self, params), fields(
-        chain = ?self.provider.get_chainid().await,
-        amount = %params.asset.amount(),
-        has_conditions = params.has_conditions
-    ))]
     async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata> {
         let recipient = Address::from_str(&params.recipient.to_string())?;
         let finish_after = params.finish_after.unwrap_or_default();
         let cancel_after = params.cancel_after.unwrap_or_default();
-        let has_conditions = params.has_conditions;
-        let verifier = Address::from_str(&params.chain_config.eth_verifier_contract()?)?;
         let amount = U256::from_dec_str(&params.asset.amount().to_string())
             .map_err(|_| ClientError::AssetOverflow)?;
 
@@ -119,16 +110,7 @@ impl Agent for EthereumAgent {
         info!("Sending createEscrow(tx) with amount {}", amount);
         let call = self
             .factory
-            .method::<_, H256>(
-                CREATE_ESCROW,
-                (
-                    recipient,
-                    finish_after,
-                    cancel_after,
-                    has_conditions,
-                    verifier,
-                ),
-            )
+            .method::<_, H256>(CREATE_ESCROW, (recipient, finish_after, cancel_after))
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .value(amount);
         let pending_tx = call
@@ -164,7 +146,7 @@ impl Agent for EthereumAgent {
             asset: params.asset.clone(),
             sender: params.sender.clone(),
             recipient: params.recipient.clone(),
-            has_conditions,
+            has_conditions: params.has_conditions,
             chain_data: ChainMetadata::Ethereum {
                 escrow_address: format!("{escrow_addr:#x}"),
             },
@@ -172,32 +154,28 @@ impl Agent for EthereumAgent {
         })
     }
 
-    #[instrument(skip(self, metadata))]
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        info!("Sending finishEscrow transaction");
-        // TODO: set up RISC Zero prover API call
-        let proof_data: Bytes = Vec::new().into();
-
         let escrow_addr = Address::from_str(&metadata.chain_data.get_eth_contract_address()?)?;
+
+        info!("Sending finishEscrow transaction");
         let call = self
             .factory
-            .method::<_, ()>(FINISH_ESCROW, (escrow_addr, proof_data))
+            .method::<_, ()>(FINISH_ESCROW, escrow_addr)
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
-
         call.send()
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
         info!("finishEscrow transaction confirmed");
+
         Ok(())
     }
 
-    #[instrument(skip(self, metadata))]
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        info!("Sending cancelEscrow transaction");
         let escrow_addr = Address::from_str(&metadata.chain_data.get_eth_contract_address()?)?;
 
+        info!("Sending cancelEscrow transaction");
         self.factory
             .method::<_, ()>(CANCEL_ESCROW, escrow_addr)
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
@@ -207,6 +185,7 @@ impl Agent for EthereumAgent {
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
         info!("cancelEscrow transaction confirmed");
+
         Ok(())
     }
 }
