@@ -1,18 +1,57 @@
 use std::path::PathBuf;
 
-pub use agent::ethereum::EthereumAgent;
-pub use agent::solana::SolanaAgent;
-pub use agent::Agent;
 use error::ClientError;
+pub use ethereum::EthereumAgent;
 use ethers::signers::LocalWallet;
-use tracing::{debug, info, instrument};
+pub use solana::SolanaAgent;
+use tracing::{debug, info};
 use zescrow_core::interface::ChainConfig;
 use zescrow_core::{Chain, EscrowMetadata, EscrowParams};
 
-pub mod agent;
 pub mod error;
+pub mod ethereum;
+pub mod solana;
+pub mod util;
 
 pub type Result<T> = std::result::Result<T, ClientError>;
+
+/// Core interface for blockchain-specific escrow operations.
+///
+/// Implementators must provide chain-specific logic for:
+/// - Creating escrow contracts/accounts
+/// - Releasing funds to beneficiaries
+/// - Refunding expired escrows
+#[async_trait::async_trait]
+pub trait Agent: Send + Sync {
+    /// Create a new escrow with specified parameters
+    ///
+    /// # Arguments
+    /// * `params` - Escrow creation parameters including assets and parties
+    ///
+    /// # Returns
+    /// Metadata containing chain-specific identifiers and transaction details
+    async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata>;
+
+    /// Release escrowed funds to beneficiary
+    ///
+    /// # Arguments
+    /// * `metadata` - Escrow metadata from creation
+    ///
+    /// # Preconditions
+    /// - Escrow must be in funded state
+    /// - Current block/slot must be before expiry
+    async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()>;
+
+    /// Refund escrowed funds to depositor
+    ///
+    /// # Arguments
+    /// * `metadata` - Escrow metadata from creation
+    ///
+    /// # Preconditions
+    /// - Escrow must have expired
+    /// - No prior release/refund executed
+    async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()>;
+}
 
 /// Unified client for cross-chain escrow management.
 pub struct ZescrowClient {
@@ -66,7 +105,6 @@ impl ZescrowClientBuilder {
     }
 
     /// Finish building the client, instantiating the appropriate agent.
-    #[instrument(skip_all, fields(chain = ?self.chain))]
     pub async fn build(self) -> Result<ZescrowClient> {
         debug!("Building ZescrowClient with config: {:?}", self.config);
 
@@ -112,7 +150,6 @@ impl ZescrowClientBuilder {
 
 impl ZescrowClient {
     /// Create an escrow on-chain.
-    #[instrument(skip(self, params))]
     pub async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata> {
         let metadata = self.agent.create_escrow(params).await?;
         debug!(?metadata, "Escrow created");
@@ -120,7 +157,6 @@ impl ZescrowClient {
     }
 
     /// Release an existing escrow.
-    #[instrument(skip(self, metadata))]
     pub async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let res = self.agent.finish_escrow(metadata).await;
         if res.is_ok() {
@@ -130,7 +166,6 @@ impl ZescrowClient {
     }
 
     /// Cancel an existing escrow.
-    #[instrument(skip(self, metadata))]
     pub async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let res = self.agent.cancel_escrow(metadata).await;
         if res.is_ok() {

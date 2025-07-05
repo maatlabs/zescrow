@@ -12,14 +12,12 @@ use serde_json::Value;
 use tracing::{debug, info, trace};
 use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
-use super::Agent;
 use crate::error::{AgentError, ClientError};
-use crate::Result;
+use crate::{Agent, Result};
 
 // Factory ABI for encoding/decoding calls and events
-const ESCROW_FACTORY_JSON: &str = include_str!(
-    "../../../agent/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
-);
+const ESCROW_FACTORY_JSON: &str =
+    include_str!("../../agent/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json");
 
 // On-chain escrow operations.
 const CREATE_ESCROW: &str = "createEscrow";
