@@ -84,11 +84,13 @@ If `has_conditions == true` as specified in your `escrow_params.json`, then ensu
 }
 ```
 
+There's a `client` command (`generate`) to help with creating the conditions file...
+
 * To generate a _preimage_ `escrow_conditions.json` file:
 
 ```sh
-# cd client
-RUST_LOG=info cargo run -- generate --preimage "zkEscrow"
+cd client
+RUST_LOG=info cargo run -- generate --preimage "Solana Escrow"
 ```
 
 * To generate an _ed25519_ `escrow_conditions.json` file:
@@ -97,7 +99,7 @@ RUST_LOG=info cargo run -- generate --preimage "zkEscrow"
 RUST_LOG=info cargo run -- generate \
   --ed25519-pubkey DEAD... \
   --ed25519-sig BEAF... \
-  --ed25519-msg "zkEscrow"
+  --ed25519-msg "Solana Escrow"
 ```
 
 * To generate a _threshold_ `escrow_conditions.json` file:
@@ -109,11 +111,10 @@ RUST_LOG=info cargo run -- generate --threshold cond1.json,cond2.json,cond3.json
 6. Create an escrow transaction:
 
 ```sh
-cd client
 RUST_LOG=info cargo run -- create
 ```
 
-7. To release an escrow with `has_conditions == false` execute:
+7. To release an escrow, execute:
 
 ```sh
 RUST_LOG=info cargo run -- finish --recipient <KEYPAIR_FILE_PATH>
@@ -132,26 +133,15 @@ To verify that the `recipient` received the funds, you can query the balance on 
 solana balance <RECIPIENT_PUBKEY>
 ```
 
-8. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
+8. To cancel an escrow, execute:
 
 ```sh
-# project root
-cd zescrow
-RUST_LOG=info cargo run --release
-```
-
-Then execute the `Finish` command of the `client`, just like in the previous step.
-
-9. To cancel an escrow, execute:
-
-```sh
-cd client
 RUST_LOG=info cargo run -- cancel
 ```
 
 ## Testing
 
-To test the escrow program (while the test validator is running in the background), run:
+To test the escrow program (while the test validator is running in the background):
 
 ```sh
 cd agent/solana/escrow

@@ -83,10 +83,34 @@ If `has_conditions == true` as specified in your `escrow_params.json`, then ensu
 }
 ```
 
-6. To create an escrow transaction:
+There's a `client` command (`generate`) to help with creating the conditions file...
+
+* To generate a _preimage_ `escrow_conditions.json` file:
 
 ```sh
 cd client
+RUST_LOG=info cargo run -- generate --preimage "Ethereum Escrow"
+```
+
+* To generate an _ed25519_ `escrow_conditions.json` file:
+
+```sh
+RUST_LOG=info cargo run -- generate \
+  --ed25519-pubkey DEAD... \
+  --ed25519-sig BEAF... \
+  --ed25519-msg "Ethereum Escrow"
+```
+
+* To generate a _threshold_ `escrow_conditions.json` file:
+
+```sh
+RUST_LOG=info cargo run -- generate --threshold cond1.json,cond2.json,cond3.json --n 2
+```
+
+6. Create an escrow transaction:
+
+```sh
+# From the `client` directory:
 RUST_LOG=info cargo run -- create
 ```
 
@@ -102,7 +126,7 @@ npx hardhat console --network localhost
 await ethers.provider.send("evm_mine", []);
 ```
 
-8. To finish (release) an escrow with `has_conditions == false`:
+8. To finish (release) an escrow:
 
 ```sh
 # From the `client` directory:
@@ -116,21 +140,10 @@ const balance = await ethers.provider.getBalance("0xRECIPIENT_ADDRESS")
 ethers.formatEther(balance)
 ```
 
-9. To finish an escrow with `has_conditions == true`...
-First, generate the zero-knowledge proof:
+9. To cancel an escrow:
 
 ```sh
-# project root
-cd zescrow
-RUST_LOG=info cargo run --release
-```
-
-Then rerun the `Finish` command just like in the previous step.
-
-10. To cancel an escrow:
-
-```sh
-cd client
+# From the `client` directory:
 RUST_LOG=info cargo run -- cancel
 ```
 

@@ -14,30 +14,26 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 
 ## Core Features  
 
-- ZK-proof of valid state transitions (initialized → funded → released/disputed)  
-- Confidential amounts & participant identities via commitments  
-- Chain-agnostic verification via RISC Zero zkVM proofs  
-- Solana programs and EVM smart contracts in `/agent`
+- ZK proving/verification of cryptographic conditions e.g., hash-lock, Ed25519 signature over a message, etc.
+- Chain-agnostic ZK verification via RISC Zero receipts.
+- Solana programs and EVM smart contracts in `/agent`.
 
 ## Architecture
 
 ### Project Structure
 
-- `agent` (Chain-specific escrow and ZK verifier programs/smart contracts)
-- `client` (The CLI tool for creating, finishing, and/or cancelling escrows; interacts with `agent`)
-- `core` (The main library that exposes types and business logic for ZK computations)
-- `prover` (The RISC Zero host/zkVM)
-- `methods` (The RISC Zero guest)
-- `templates` (Contains `escrow_params.json`, `escrow_metadata.json`, `escrow_conditions.json`; these are files that specify escrow parameters/inputs, escrow transaction output, and optional cryptographic conditions for "Release", respectively.)
+- `agent` (Chain-specific escrow programs/smart contracts)
+- `client` (Contains the RISC Zero guest and host, and mechanism for executing on-chain `agent` actions)
+- `core` (Main library that exposes types and functionality for the `client`)
+- `templates` (Contains `escrow_params.json`, `escrow_metadata.json`, `escrow_conditions.json`; these are files that specify escrow parameters/inputs, escrow transaction output, and optional cryptographic conditions for the "Finish" command, respectively.)
 
 ### High-Level Flow
 
 1. Build and deploy a chain-specific agent (via the `/agent`).
-2. Specify the parameters of the escrow (via the `./templates/escrow_params.json`).
+2. Specify the parameters of the escrow (via the `/templates/escrow_params.json`).
 3. `Create` an escrow transaction (via the `client`).
-4. To release an escrow with `has_conditions == false` (i.e., with no cryptographic conditions), execute the `Finish` command of the `client`.
-To release an escrow that `has_conditions`, first run the `prover` to generate a valid `receipt` (zero-knowledge proof) and then execute `Finish` command of the `client`.
-5. To cancel/refund an escrow, execute `Cancel` via the `client`.
+4. To release an escrow, execute the `Finish` command of the `client`.
+5. To cancel/refund an escrow, execute the `Cancel` command of the `client`.
 
 ![Zescrow architecture diagram](./assets/zescrow-arch.png)
 
@@ -59,14 +55,8 @@ automatically install the correct version.
 1. Clone the repository:
 
 ```sh
-# unified command
-git clone --recursive-submodules https://github.com/maatlabs/zescrow.git
-
-# or if you prefer to clone first and then update submodules
 git clone https://github.com/maatlabs/zescrow.git
-
 cd zescrow
-git submodule update --init --recursive
 ```
 
 2. To create an escrow end-to-end on Ethereum (and other EVM-compatible chains), please follow the [ethereum-demo][ethereum-demo].
