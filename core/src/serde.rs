@@ -6,6 +6,7 @@ pub mod biguint_serde {
     use num_bigint::BigUint;
     use serde::{de, Deserialize, Deserializer, Serializer};
 
+    /// Serialize a [BigUint] as a &str.
     pub fn serialize<S>(value: &BigUint, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -13,6 +14,7 @@ pub mod biguint_serde {
         s.serialize_str(&value.to_str_radix(10))
     }
 
+    /// Deserialize into a [BigUint].
     pub fn deserialize<'de, D>(d: D) -> Result<BigUint, D::Error>
     where
         D: Deserializer<'de>,
@@ -30,6 +32,7 @@ pub mod utf8_serde {
 
     use serde::{ser, Deserialize, Deserializer, Serializer};
 
+    /// Convert a byte slice into a &str and serialize.
     pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -39,6 +42,7 @@ pub mod utf8_serde {
         serializer.serialize_str(s)
     }
 
+    /// Deserialize into string and convert into bytes.
     pub fn deserialize<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
     where
         D: Deserializer<'de>,

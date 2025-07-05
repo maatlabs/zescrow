@@ -1,4 +1,6 @@
-# End-to-End Flow for Solana Escrows
+# Solana Demo
+
+## End-to-End Flow for Solana Escrows
 
 1. Set up your local environment for Solana development by installing the [Solana CLI](https://solana.com/docs/intro/installation).
 
@@ -12,29 +14,11 @@ solana config set --url localhost
 solana-test-validator -r
 ```
 
-3. In a separate terminal, build and deploy the verifier router system:
-
-```sh
-# Go to the Solana verifier programs to deploy them locally
-cd agents/solana/risc0-solana/solana-verifier
-
-# Install dependencies for the scripts
-yarn install
-
-# Configure environment
-cp example.env .env
-# Edit .env with your desired configuration
-
-# Deploy all:
-# anchor keys sync && anchor build && yarn run client && yarn run deploy
-yarn run deploy-all
-```
-
-4. Build and deploy the escrow program:
+3. In a separate terminal, build and deploy the escrow program:
 
 ```sh
 # Go to the Solana escrow program to deploy it locally
-cd ../../escrow
+cd agent/solana/escrow
 
 # Sync keys for local deploy
 anchor keys sync
@@ -46,14 +30,14 @@ anchor build
 anchor deploy
 ```
 
-5. With the programs deployed, you are ready to interact with them via the `client`. First, create a test Solana account that you can use as the `recipient` (or beneficiary) of the escrow. The following command creates and funds an account with 2 SOL using the [create_sol_account.sh](../templates/create_sol_account.sh) file:
+4. With the programs deployed, you are ready to interact with them via the `client`. First, create a test Solana account that you can use as the `recipient` (or beneficiary) of the escrow. The following command creates and funds an account with 2 SOL using the [create_sol_account.sh](/templates/create_sol_account.sh) file:
 
 ```sh
 cd templates
 ./create_sol_account.sh
 ```
 
-6. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
+5. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
 
 An example of how your `escrow_params.json` might look like:
 
@@ -122,14 +106,14 @@ RUST_LOG=info cargo run -- generate \
 RUST_LOG=info cargo run -- generate --threshold cond1.json,cond2.json,cond3.json --n 2
 ```
 
-7. Create an escrow transaction:
+6. Create an escrow transaction:
 
 ```sh
 cd client
 RUST_LOG=info cargo run -- create
 ```
 
-8. To release an escrow with `has_conditions == false` execute:
+7. To release an escrow with `has_conditions == false` execute:
 
 ```sh
 RUST_LOG=info cargo run -- finish --recipient <KEYPAIR_FILE_PATH>
@@ -148,7 +132,7 @@ To verify that the `recipient` received the funds, you can query the balance on 
 solana balance <RECIPIENT_PUBKEY>
 ```
 
-9. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
+8. To release an escrow with `has_conditions == true`, first run the `prover` to generate a valid receipt for the execution of the cryptographic conditions:
 
 ```sh
 # project root
@@ -158,9 +142,25 @@ RUST_LOG=info cargo run --release
 
 Then execute the `Finish` command of the `client`, just like in the previous step.
 
-10. To cancel an escrow, execute:
+9. To cancel an escrow, execute:
 
 ```sh
 cd client
 RUST_LOG=info cargo run -- cancel
+```
+
+## Testing
+
+To test the escrow program (while the test validator is running in the background), run:
+
+```sh
+cd agent/solana/escrow
+anchor test --skip-local-validator
+```
+
+If the Solana test validator is **NOT** running, you can simply do:
+
+```sh
+cd agent/solana/escrow
+anchor test
 ```

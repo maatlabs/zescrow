@@ -2,13 +2,9 @@ use std::fs;
 use std::time::Instant;
 
 use bincode::config::standard;
-use groth_16_verifier::client::receipt_to_proof;
-use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts};
+use risc0_zkvm::{default_prover, ExecutorEnv};
 use tracing::{debug, error, info};
-use zescrow_core::interface::{
-    save_escrow_data, ExecutionResult, Groth16Proof, ProofData, ESCROW_METADATA_PATH,
-    PROOF_DATA_PATH,
-};
+use zescrow_core::interface::{ExecutionResult, ESCROW_METADATA_PATH};
 use zescrow_core::{Escrow, EscrowMetadata, ExecutionState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
 
@@ -39,15 +35,9 @@ fn main() {
     info!("Starting zkVM proof generation");
     let start = Instant::now();
     let receipt = default_prover()
-        .prove_with_opts(env, ZESCROW_GUEST_ELF, &ProverOpts::groth16())
+        .prove(env, ZESCROW_GUEST_ELF)
         .expect("Proof generation failed")
         .receipt;
-
-    let groth16_receipt = receipt
-        .inner
-        .groth16()
-        .expect("Unable to get Groth16 proof from main receipt");
-
     let dur = start.elapsed();
     info!(
         "Proof generated in {:?} (journal {} bytes)",
@@ -61,32 +51,12 @@ fn main() {
     }
     info!("Receipt verified successfully");
 
-    debug!("Converting Groth16 receipt to Groth16 Proof");
-    let proof =
-        receipt_to_proof(groth16_receipt).expect("Unable to generate proof from Groth16 Receipt");
-
-    let output = receipt.journal.bytes;
-
-    debug!("Decoding journal ({} bytes)", output.len());
-    let (result, _) =
-        bincode::decode_from_slice(&output, standard()).expect("Failed to decode journal");
-
+    debug!("Decoding journal ({} bytes)", receipt.journal.bytes.len());
+    let (result, _) = bincode::decode_from_slice(&receipt.journal.bytes, standard())
+        .expect("Failed to decode journal");
     match result {
         ExecutionResult::Ok(ExecutionState::ConditionsMet) => {
             println!("\nEscrow conditions fulfilled!\n");
-
-            let proof_data = ProofData {
-                image_id: ZESCROW_GUEST_ID,
-                proof: Groth16Proof {
-                    pi_a: proof.pi_a,
-                    pi_b: proof.pi_b,
-                    pi_c: proof.pi_c,
-                },
-                output,
-            };
-            // save proof data for on-chain verification
-            save_escrow_data(PROOF_DATA_PATH, &proof_data)
-                .expect("Failed to write proof data to JSON");
         }
         ExecutionResult::Ok(state) => {
             println!("\nInvalid escrow state: {:?}\n", state);

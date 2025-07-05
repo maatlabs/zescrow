@@ -12,8 +12,6 @@ use bincode::{Decode, Encode};
 use serde::de::DeserializeOwned;
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "json")]
-use serde_big_array::BigArray;
 
 use crate::{Asset, EscrowError, Party, Result};
 
@@ -95,35 +93,6 @@ where
     let file = File::create(path).with_context(|| format!("creating file {:?}", path))?;
     serde_json::to_writer_pretty(file, data)
         .with_context(|| format!("serializing to JSON to {:?}", path))
-}
-
-/// Values necessary for verification of RISC Zero ZK proofs.
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[derive(Clone, PartialEq, Eq)]
-pub struct ProofData {
-    /// RISC Zero guest program ID
-    pub image_id: [u32; 8],
-    /// Groth16 proof
-    pub proof: Groth16Proof,
-    /// Journal (public) output
-    pub output: Vec<u8>,
-}
-
-/// Groth16 proof elements on BN254 curve.
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[derive(Clone, PartialEq, Eq)]
-pub struct Groth16Proof {
-    /// - pi_a: must be a point in G1
-    #[cfg_attr(feature = "json", serde(with = "BigArray"))]
-    pub pi_a: [u8; 64],
-
-    /// - pi_b: must be a point in G2
-    #[cfg_attr(feature = "json", serde(with = "BigArray"))]
-    pub pi_b: [u8; 128],
-
-    /// - pi_c: must be a point in G1
-    #[cfg_attr(feature = "json", serde(with = "BigArray"))]
-    pub pi_c: [u8; 64],
 }
 
 /// State of escrow execution in the host (`prover`).

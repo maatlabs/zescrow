@@ -1,4 +1,7 @@
 #![forbid(unsafe_code)]
+#![warn(missing_docs)]
+#![deny(rustdoc::invalid_html_tags, rustdoc::broken_intra_doc_links)]
+
 //! Zescrow Core Library
 //!
 //! # Overview
@@ -21,9 +24,6 @@
 //! - Error handling (`error.rs`): Comprehensive, well-structured error types covering
 //!   identity parsing, asset validation, condition verification, parameter checks, and
 //!   chain-specific operations.
-//!
-#![warn(missing_docs)]
-#![deny(rustdoc::invalid_html_tags, rustdoc::broken_intra_doc_links)]
 
 /// Chain-agnostic asset representations and utilities.
 pub mod asset;
@@ -46,9 +46,9 @@ pub mod identity;
 /// Types for JSON (de)serialization, parameter/metadata schemas, and chain configurations.
 pub mod interface;
 
-// Helpers for (de)serializing with [serde].
-#[cfg_attr(feature = "json", doc(hidden))]
-pub(crate) mod serde;
+/// Helpers for (de)serializing with [serde].
+#[cfg(feature = "json")]
+pub mod serde;
 
 pub use asset::Asset;
 pub use bignum::BigNumber;

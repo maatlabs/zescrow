@@ -3,25 +3,19 @@ use std::path::PathBuf;
 
 use anchor_client::solana_sdk::instruction::Instruction;
 use anchor_lang::prelude::AccountMeta;
-use anchor_lang::solana_program::hash::hashv;
 use anchor_lang::InstructionData;
-use escrow::{
-    instruction as escrow_instruction, CreateEscrowArgs, FinishEscrowArgs, Proof, ProofData,
-    ESCROW, GROTH16_VERIFIER_ID, ROUTER, SELECTOR, SYSTEM_PROGRAM_ID, VERIFIER, VERIFIER_ROUTER_ID,
-};
+use escrow::{instruction as escrow_instruction, CreateEscrowArgs, ESCROW};
 use num_traits::ToPrimitive;
 use solana_client::rpc_client::RpcClient;
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
 use solana_sdk::signer::Signer;
 use solana_sdk::transaction::Transaction;
-use tracing::{debug, info, instrument, trace};
-use zescrow_core::interface::{
-    load_escrow_data, ChainConfig, ProofData as ZKProof, PROOF_DATA_PATH,
-};
+use tracing::{debug, info, trace};
+use zescrow_core::interface::ChainConfig;
 use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
 
-use super::{convert_array, Agent};
+use super::Agent;
 use crate::error::{AgentError, ClientError};
 use crate::Result;
 
@@ -39,7 +33,6 @@ pub struct SolanaAgent {
 
 impl SolanaAgent {
     /// Create a new SolanaAgent, reading keypairs and program ID.
-    #[instrument(skip_all, fields(rpc_url = %config.rpc_url(), program_id = %config.sol_escrow_program()?))]
     pub async fn new(
         config: &ChainConfig,
         recipient_keypair_path: Option<PathBuf>,
@@ -84,14 +77,6 @@ impl SolanaAgent {
 
 #[async_trait::async_trait]
 impl Agent for SolanaAgent {
-    #[instrument(skip(self, params), fields(
-        sender = %params.sender,
-        recipient = %params.recipient,
-        amount = %params.asset.amount(),
-        finish_after = ?params.finish_after,
-        cancel_after = ?params.cancel_after,
-        has_conditions = %params.has_conditions
-    ))]
     async fn create_escrow(&self, params: &EscrowParams) -> Result<EscrowMetadata> {
         let sender = Pubkey::from_str(&params.sender.to_string())?;
         if sender != self.sender_keypair.pubkey() {
@@ -121,14 +106,12 @@ impl Agent for SolanaAgent {
                 AccountMeta::new(sender, true),
                 AccountMeta::new_readonly(recipient, false),
                 AccountMeta::new(escrow_account, false),
-                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             ],
             data: InstructionData::data(&escrow_instruction::CreateEscrow {
                 args: CreateEscrowArgs {
                     amount,
                     finish_after: params.finish_after,
                     cancel_after: params.cancel_after,
-                    has_conditions: params.has_conditions,
                 },
             }),
         };
@@ -158,7 +141,6 @@ impl Agent for SolanaAgent {
         })
     }
 
-    #[instrument(skip(self, metadata))]
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let sender = Pubkey::from_str(&metadata.sender.to_string())?;
 
@@ -179,51 +161,13 @@ impl Agent for SolanaAgent {
         );
         debug!("Using the address: {escrow_account} as the Escrow Account");
 
-        let (router_account, _) =
-            Pubkey::find_program_address(&[ROUTER.as_bytes()], &VERIFIER_ROUTER_ID);
-        debug!("Using the address: {router_account} as the Router Account");
-
-        let (verifier_entry, _) = Pubkey::find_program_address(
-            &[VERIFIER.as_bytes(), &SELECTOR.to_le_bytes()],
-            &VERIFIER_ROUTER_ID,
-        );
-
-        let proof_data = if metadata.has_conditions {
-            // load proof data
-            let data: ZKProof =
-                load_escrow_data(PROOF_DATA_PATH).map_err(|e| AgentError::Solana(e.to_string()))?;
-
-            let image_id = convert_array(data.image_id);
-            let proof = Proof {
-                pi_a: data.proof.pi_a,
-                pi_b: data.proof.pi_b,
-                pi_c: data.proof.pi_c,
-            };
-            let journal_digest = hashv(&[data.output.as_slice()]).to_bytes();
-
-            Some(ProofData {
-                image_id,
-                proof,
-                journal_digest,
-            })
-        } else {
-            None
-        };
-
         let ix = Instruction {
             program_id: self.escrow_program_id,
             accounts: vec![
                 AccountMeta::new(recipient, true),
                 AccountMeta::new(escrow_account, false),
-                AccountMeta::new_readonly(VERIFIER_ROUTER_ID, false),
-                AccountMeta::new_readonly(router_account, false),
-                AccountMeta::new_readonly(verifier_entry, false),
-                AccountMeta::new_readonly(GROTH16_VERIFIER_ID, false),
-                AccountMeta::new_readonly(SYSTEM_PROGRAM_ID, false),
             ],
-            data: InstructionData::data(&escrow_instruction::FinishEscrow {
-                args: FinishEscrowArgs { proof_data },
-            }),
+            data: InstructionData::data(&escrow_instruction::FinishEscrow {}),
         };
         debug!("FinishEscrow instruction built");
 
@@ -235,10 +179,10 @@ impl Agent for SolanaAgent {
             recent_hash,
         );
         self.client.send_and_confirm_transaction(&tx)?;
+
         Ok(())
     }
 
-    #[instrument(skip(self, metadata))]
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let sender = Pubkey::from_str(&metadata.sender.to_string())?;
         let recipient = Pubkey::from_str(&metadata.recipient.to_string())?;
@@ -266,6 +210,7 @@ impl Agent for SolanaAgent {
             recent_hash,
         );
         self.client.send_and_confirm_transaction(&tx)?;
+
         Ok(())
     }
 }

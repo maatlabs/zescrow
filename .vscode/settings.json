@@ -1,7 +1,6 @@
 {
     "rust-analyzer.linkedProjects": [
-        "agents/solana/escrow/programs/escrow/Cargo.toml",
-        // "agents/solana/risc0-solana/solana-verifier/Cargo.toml",
+        "agent/solana/escrow/programs/escrow/Cargo.toml",
         "client/Cargo.toml"
     ],
     "rust-analyzer.check.overrideCommand": [

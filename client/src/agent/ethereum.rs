@@ -18,7 +18,7 @@ use crate::Result;
 
 // Factory ABI for encoding/decoding calls and events
 const ESCROW_FACTORY_JSON: &str = include_str!(
-    "../../../agents/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
+    "../../../agent/ethereum/artifacts/contracts/EscrowFactory.sol/EscrowFactory.json"
 );
 
 // On-chain escrow operations.

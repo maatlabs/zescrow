@@ -17,14 +17,14 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 - ZK-proof of valid state transitions (initialized → funded → released/disputed)  
 - Confidential amounts & participant identities via commitments  
 - Chain-agnostic verification via RISC Zero zkVM proofs  
-- Solana programs and EVM smart contracts in `/agents`
+- Solana programs and EVM smart contracts in `/agent`
 
 ## Architecture
 
 ### Project Structure
 
-- `agents` (Chain-specific escrow and ZK verifier programs/smart contracts)
-- `client` (The CLI tool for creating, finishing, and/or cancelling escrows; interacts with `agents`)
+- `agent` (Chain-specific escrow and ZK verifier programs/smart contracts)
+- `client` (The CLI tool for creating, finishing, and/or cancelling escrows; interacts with `agent`)
 - `core` (The main library that exposes types and business logic for ZK computations)
 - `prover` (The RISC Zero host/zkVM)
 - `methods` (The RISC Zero guest)
@@ -32,7 +32,7 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 
 ### High-Level Flow
 
-1. Build and deploy a chain-specific agent (via the `/agents`).
+1. Build and deploy a chain-specific agent (via the `/agent`).
 2. Specify the parameters of the escrow (via the `./templates/escrow_params.json`).
 3. `Create` an escrow transaction (via the `client`).
 4. To release an escrow with `has_conditions == false` (i.e., with no cryptographic conditions), execute the `Finish` command of the `client`.
@@ -41,7 +41,7 @@ To release an escrow that `has_conditions`, first run the `prover` to generate a
 
 ![Zescrow architecture diagram](./assets/zescrow-arch.png)
 
-Zooming in on the proof generation routine, here's the interaction between the `prover` and the on-chain `agents`:
+Zooming in on the proof generation routine, here's the interaction between the `prover` and the on-chain `agent`:
 
 ![Proof generation flow diagram](./assets/proof-gen-flow.png)
 
