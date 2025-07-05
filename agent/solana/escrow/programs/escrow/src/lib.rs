@@ -111,6 +111,8 @@ pub struct CreateEscrow<'info> {
     ///
     /// CHECK: we enforce correctness via PDA seeds
     pub recipient: UncheckedAccount<'info>,
+
+    /// PDA holding the escrow.
     #[account(
         init,
         seeds = [

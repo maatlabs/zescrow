@@ -1,7 +1,7 @@
 use clap::{ArgGroup, Parser, Subcommand};
 use sha2::{Digest, Sha256};
-use tracing::{debug, info};
-use zescrow_client::{Recipient, ZescrowClient};
+use tracing::info;
+use zescrow_client::{prover, Recipient, ZescrowClient};
 use zescrow_core::interface::{
     load_escrow_data, save_escrow_data, ESCROW_CONDITIONS_PATH, ESCROW_METADATA_PATH,
     ESCROW_PARAMS_PATH,
@@ -88,15 +88,14 @@ async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
     info!("Starting command handling");
 
-    run(cli.command).await
+    execute(cli.command).await
 }
 
-async fn run(command: Commands) -> anyhow::Result<()> {
+async fn execute(command: Commands) -> anyhow::Result<()> {
     match command {
         Commands::Create => {
             info!("Loading escrow parameters from {}", ESCROW_PARAMS_PATH);
             let params: EscrowParams = load_escrow_data(ESCROW_PARAMS_PATH)?;
-            debug!("EscrowParams: {:#?}", params);
 
             info!("Building ZescrowClient");
             let client = ZescrowClient::builder(*params.asset.chain(), params.chain_config.clone())
@@ -105,7 +104,6 @@ async fn run(command: Commands) -> anyhow::Result<()> {
             info!("Creating escrow on-chain");
             let metadata = client.create_escrow(&params).await?;
             info!("Escrow created!");
-            debug!("EscrowMetadata: {:#?}", metadata);
 
             info!("Saving metadata to {}", ESCROW_METADATA_PATH);
             save_escrow_data(ESCROW_METADATA_PATH, &metadata)?;
@@ -114,7 +112,6 @@ async fn run(command: Commands) -> anyhow::Result<()> {
         Commands::Finish { recipient } => {
             info!("Loading escrow metadata from {}", ESCROW_METADATA_PATH);
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
-            debug!("EscrowMetadata: {:#?}", metadata);
 
             info!("Building ZescrowClient for `finish`");
             let client = ZescrowClient::builder(
@@ -125,6 +122,11 @@ async fn run(command: Commands) -> anyhow::Result<()> {
             .build()
             .await?;
 
+            // Invoke the prover if escrow has cryptographic conditions
+            if metadata.has_conditions {
+                prover::run().await?;
+            }
+
             info!("Finishing escrow");
             client.finish_escrow(&metadata).await?;
             info!("Escrow completed and released successfully");
@@ -133,7 +135,6 @@ async fn run(command: Commands) -> anyhow::Result<()> {
         Commands::Cancel => {
             info!("Loading escrow metadata from {}", ESCROW_METADATA_PATH);
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
-            debug!("EscrowMetadata: {:#?}", metadata);
 
             info!("Building ZescrowClient for `cancel`");
             let client = ZescrowClient::builder(
@@ -192,6 +193,5 @@ async fn run(command: Commands) -> anyhow::Result<()> {
             save_escrow_data(ESCROW_CONDITIONS_PATH, &condition)?;
         }
     }
-
     Ok(())
 }

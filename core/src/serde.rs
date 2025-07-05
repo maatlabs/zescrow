@@ -21,7 +21,7 @@ pub mod biguint_serde {
     {
         let s = String::deserialize(d)?;
         BigUint::parse_bytes(s.as_bytes(), 10)
-            .ok_or_else(|| de::Error::custom(format!("invalid BigUint: {}", s)))
+            .ok_or_else(|| de::Error::custom(format!("invalid BigUint: {s}")))
     }
 }
 
@@ -37,8 +37,8 @@ pub mod utf8_serde {
     where
         S: Serializer,
     {
-        let s = str::from_utf8(bytes)
-            .map_err(|e| ser::Error::custom(format!("invalid UTF-8: {}", e)))?;
+        let s =
+            str::from_utf8(bytes).map_err(|e| ser::Error::custom(format!("invalid UTF-8: {e}")))?;
         serializer.serialize_str(s)
     }
 

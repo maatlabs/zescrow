@@ -208,7 +208,7 @@ impl std::fmt::Display for Condition {
     /// Serialize the condition to compact JSON for logging or write formats.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let json = serde_json::to_string(self).map_err(|_| std::fmt::Error)?;
-        write!(f, "{}", json)
+        write!(f, "{json}")
     }
 }
 

@@ -1,3 +1,5 @@
+//! The RISC Zero guest
+
 use bincode::config::standard;
 use risc0_zkvm::guest::env;
 use zescrow_core::interface::ExecutionResult;

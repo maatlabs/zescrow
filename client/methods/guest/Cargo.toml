@@ -11,6 +11,6 @@ risc0-zkvm = { version = "2.1.0", default-features = false, features = [
     'std',
     "unstable",
 ] }
-zescrow-core = { path = "../../core", default-features = false, features = [
+zescrow-core = { path = "../../../core", default-features = false, features = [
     "bincode",
 ] }

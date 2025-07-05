@@ -1,42 +1,44 @@
+//! The RISC Zero host (zkVM)
+
 use std::fs;
 use std::time::Instant;
 
+use anyhow::Context;
 use bincode::config::standard;
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use zescrow_core::interface::{ExecutionResult, ESCROW_METADATA_PATH};
 use zescrow_core::{Escrow, EscrowMetadata, ExecutionState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
 
-fn main() {
-    // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
+/// Runs the zero-knowledge proof workflow for an escrow.
+pub async fn run() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
         .init();
 
     info!("Reading escrow metadata from {}", ESCROW_METADATA_PATH);
-    let json =
-        fs::read_to_string(ESCROW_METADATA_PATH).expect("Failed to read escrow metadata JSON file");
-    debug!("Read metadata JSON ({} bytes)", json.len());
+    let json = fs::read_to_string(ESCROW_METADATA_PATH)
+        .with_context(|| "failed to read escrow metadata JSON file")?;
 
     let metadata: EscrowMetadata =
-        serde_json::from_str(&json).expect("Invalid escrow metadata JSON");
-    debug!(?metadata, "Parsed EscrowMetadata");
+        serde_json::from_str(&json).with_context(|| "invalid escrow metadata JSON")?;
 
-    let escrow = Escrow::from_metadata(metadata).expect("Failed to build Escrow from metadata");
-    let escrow_bin = bincode::encode_to_vec(&escrow, standard()).expect("Failed to encode escrow");
-    debug!("Encoded Escrow via bincode ({} bytes)", escrow_bin.len());
+    let escrow =
+        Escrow::from_metadata(metadata).with_context(|| "failed to build Escrow from metadata")?;
+    let escrow_bin =
+        bincode::encode_to_vec(&escrow, standard()).with_context(|| "failed to encode escrow")?;
 
     let env = ExecutorEnv::builder()
         .write_frame(&escrow_bin)
         .build()
-        .expect("Failed to build ExecutorEnv");
+        .with_context(|| "failed to build ExecutorEnv")?;
 
     info!("Starting zkVM proof generation");
     let start = Instant::now();
     let receipt = default_prover()
         .prove(env, ZESCROW_GUEST_ELF)
-        .expect("Proof generation failed")
+        .with_context(|| "Proof generation failed")?
         .receipt;
     let dur = start.elapsed();
     info!(
@@ -51,18 +53,18 @@ fn main() {
     }
     info!("Receipt verified successfully");
 
-    debug!("Decoding journal ({} bytes)", receipt.journal.bytes.len());
     let (result, _) = bincode::decode_from_slice(&receipt.journal.bytes, standard())
-        .expect("Failed to decode journal");
+        .with_context(|| "Failed to decode journal")?;
     match result {
         ExecutionResult::Ok(ExecutionState::ConditionsMet) => {
-            println!("\nEscrow conditions fulfilled!\n");
+            info!("\nEscrow conditions fulfilled!\n");
         }
         ExecutionResult::Ok(state) => {
-            println!("\nInvalid escrow state: {:?}\n", state);
+            info!("\nInvalid escrow state: {state:?}\n");
         }
         ExecutionResult::Err(err) => {
-            println!("\nExecution failed: {}\n", err);
+            info!("\nExecution failed: {err}\n");
         }
     }
+    Ok(())
 }

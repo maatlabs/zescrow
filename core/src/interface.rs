@@ -60,9 +60,9 @@ where
     T: DeserializeOwned,
 {
     let path = path.as_ref();
-    let content = std::fs::read_to_string(path)
-        .with_context(|| format!("loading escrow data: {:?}", path))?;
-    serde_json::from_str(&content).with_context(|| format!("parsing JSON from {:?}", path))
+    let content =
+        std::fs::read_to_string(path).with_context(|| format!("loading escrow data: {path:?}"))?;
+    serde_json::from_str(&content).with_context(|| format!("parsing JSON from {path:?}"))
 }
 
 /// Writes `data` (serializable) as pretty-printed JSON to the given `path`.
@@ -90,9 +90,9 @@ where
     T: Serialize,
 {
     let path = path.as_ref();
-    let file = File::create(path).with_context(|| format!("creating file {:?}", path))?;
+    let file = File::create(path).with_context(|| format!("creating file {path:?}"))?;
     serde_json::to_writer_pretty(file, data)
-        .with_context(|| format!("serializing to JSON to {:?}", path))
+        .with_context(|| format!("serializing to JSON to {path:?}"))
 }
 
 /// State of escrow execution in the host (`prover`).

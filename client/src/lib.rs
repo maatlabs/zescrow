@@ -10,6 +10,7 @@ use zescrow_core::{Chain, EscrowMetadata, EscrowParams};
 
 pub mod error;
 pub mod ethereum;
+pub mod prover;
 pub mod solana;
 pub mod util;
 

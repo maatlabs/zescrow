@@ -1,7 +1,5 @@
 [workspace]
-members = ["core", "methods", "prover"]
-
-exclude = ["agent/solana/*", "client"]
+members = ["client", "core", "agent/solana/escrow/programs/escrow"]
 
 resolver = "2"
 
