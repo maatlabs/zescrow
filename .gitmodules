@@ -1,3 +1,0 @@
-[submodule "agents/solana/risc0-solana"]
-	path = agents/solana/risc0-solana
-	url = https://github.com/maatlabs/risc0-solana.git
