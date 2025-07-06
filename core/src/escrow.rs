@@ -1,5 +1,3 @@
-//! Escrow state machine with optional cryptographic conditions.
-//!
 //! This module provides the `Escrow` type, representing an escrow instance with its
 //! asset, parties, state, and optional conditions.
 

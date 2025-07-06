@@ -37,7 +37,7 @@ pub mod condition;
 /// Error types used throughout the `zescrow_core` crate.
 pub mod error;
 
-/// off-chain escrow context for executing/verifying cryptographic conditions in zero-knowledge.
+/// Off-chain escrow context for executing/verifying cryptographic conditions in zero-knowledge.
 pub mod escrow;
 
 /// Chain-agnostic identity types (hex/Base58/Base64/raw bytes) for escrow parties.

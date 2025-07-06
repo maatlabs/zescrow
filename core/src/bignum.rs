@@ -1,6 +1,6 @@
-//! [BigNumber] — a wrapper around [BigUint] that supports:
+//! The module provides support for:
 //!  - JSON (de)serialization under the `json` feature,
-//!  - Bincode Encode/Decode for the `prover`,
+//!  - Bincode Encode/Decode for the `client/prover`,
 //!  - Generic conversion from numeric types,
 //!  - TryFrom<String> parsing, and
 //!  - Display as decimal string.

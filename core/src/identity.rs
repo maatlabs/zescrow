@@ -1,5 +1,3 @@
-//! Chain-agnostic identity types for escrow participants.
-
 use std::str::FromStr;
 
 use base64::prelude::*;
@@ -108,12 +106,8 @@ impl ID {
     ///
     /// # Errors
     ///
-    /// - `Err(EscrowError::Identity(_))` if decoding fails, or is empty.
+    /// - `EscrowError::Identity` if decoding fails, or is empty.
     pub fn validate(&self) -> Result<()> {
-        // self.to_bytes()?
-        //     .is_empty()
-        //     .then(|| ())
-        //     .ok_or_else(|| IdentityError::EmptyIdentity.into())
         let id_bytes = self.to_bytes()?;
         if id_bytes.is_empty() {
             return Err(IdentityError::EmptyIdentity.into());

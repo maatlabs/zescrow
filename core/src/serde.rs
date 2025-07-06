@@ -1,5 +1,3 @@
-//! Helper modules for all things `serde`.
-
 /// Serde helper to (de)serialize [BigUint] as strings.
 #[cfg(feature = "json")]
 pub mod biguint_serde {

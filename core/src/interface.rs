@@ -1,5 +1,3 @@
-//! Core types and interface for JSON (de)serialization of escrow parameters and metadata.
-
 #[cfg(feature = "json")]
 use std::fs::File;
 #[cfg(feature = "json")]

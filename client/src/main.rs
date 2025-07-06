@@ -124,7 +124,7 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
 
             // Invoke the prover if escrow has cryptographic conditions
             if metadata.has_conditions {
-                prover::run().await?;
+                prover::run()?;
             }
 
             info!("Finishing escrow");

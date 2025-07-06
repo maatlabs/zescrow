@@ -10,7 +10,7 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 
 1. **Privacy-Preserving** - Reveal only necessary transaction details to counterparties  
 2. **Chain-Agnostic** - Deploy same escrow logic across L1s/L2s via lightweight agents  
-3. **Dispute Minimization** - Cryptographic proof of condition fulfillment preempts 90%+ conflicts  
+3. **Dispute Minimization** - Cryptographic proof of condition fulfillment preempts conflicts  
 
 ## Core Features  
 
@@ -22,8 +22,8 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 
 ### Project Structure
 
-- `agent` (Chain-specific escrow programs/smart contracts)
-- `client` (Contains the RISC Zero guest and host, and mechanism for executing on-chain `agent` actions)
+- `agent` (Contains chain-specific escrow programs/smart contracts)
+- `client` (Contains the RISC Zero guest and host, as well as mechanisms for executing on-chain `agent` actions)
 - `core` (Main library that exposes types and functionality for the `client`)
 - `templates` (Contains `escrow_params.json`, `escrow_metadata.json`, `escrow_conditions.json`; these are files that specify escrow parameters/inputs, escrow transaction output, and optional cryptographic conditions for the "Finish" command, respectively.)
 
@@ -73,9 +73,9 @@ Thank you for considering contributing to this project! All contributions large 
 
 ## License
 
-Licensed under [Apache License, Version 2.0](./LICENSE).
+Licensed under either of [Apache License, Version 2.0](./LICENSE-APACHE) or [MIT license](./LICENSE-MIT) at your option.
 
-Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this codebase by you, as defined in the Apache-2.0 license, shall be licensed as above, without any additional terms or conditions.
+Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in this codebase by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
 
 [ethereum-demo]: demos/ethereum_demo.md
 [risc0-toolchain]: https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain
