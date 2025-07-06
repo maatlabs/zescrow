@@ -35,11 +35,7 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 4. To release an escrow, execute the `Finish` command of the `client`.
 5. To cancel/refund an escrow, execute the `Cancel` command of the `client`.
 
-![Zescrow architecture diagram](./assets/zescrow-arch.png)
-
-Zooming in on the proof generation routine, here's the interaction between the `prover` and the on-chain `agent`:
-
-![Proof generation flow diagram](./assets/proof-gen-flow.png)
+![Zescrow architecture diagram](/assets/zescrow-arch.png)
 
 ## Usage
 
