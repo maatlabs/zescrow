@@ -50,10 +50,10 @@ automatically install the correct version.
 
 1. Clone the repository:
 
-```sh
-git clone https://github.com/maatlabs/zescrow.git
-cd zescrow
-```
+    ```sh
+    git clone https://github.com/maatlabs/zescrow.git
+    cd zescrow
+    ```
 
 2. To create an escrow end-to-end on Ethereum (and other EVM-compatible chains), please follow the [ethereum-demo][ethereum-demo].
 
