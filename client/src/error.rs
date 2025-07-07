@@ -46,6 +46,9 @@ pub enum ClientError {
 
     #[error("Zescrow core: {0}")]
     ZescrowCore(String),
+
+    #[error("RISC Zero prover/verifier: {0}")]
+    ZkProver(String),
 }
 
 #[derive(Error, Debug)]

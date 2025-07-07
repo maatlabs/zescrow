@@ -1,23 +1,28 @@
 [package]
 name = "zescrow-client"
 version = "0.1.0"
+description = "The Zescrow client CLI and RISC Zero zkVM (prover)"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/maatlabs/zescrow"
+homepage = "https://github.com/maatlabs/zescrow"
+readme = "README.md"
 edition = "2021"
 
 [dependencies]
-anchor-lang = "0.31.1"
-anchor-client = "0.31.1"
 anyhow = "1.0.98"
 async-trait = "0.1.88"
+anchor-client = "0.31.1"
+anchor-lang = "0.31.1"
 bincode = { version = "2.0.1", features = ["derive"] }
 clap = { version = "4.5.40", features = ["derive"] }
-escrow = { path = "../agent/solana/escrow/programs/escrow", features = [
-    "no-entrypoint",
-] }
 ethers = { version = "2.0.14", features = ["rustls"] }
+hex = { version = "0.4.3", features = ["serde"] }
+num-traits = "0.2.19"
 risc0-zkvm = { version = "2.1.0", features = ["unstable"] }
 rustc-hex = "2.1.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
+sha2 = "0.10.9"
 solana-client = "2.2.7"
 solana-sdk = "2.2.2"
 thiserror = "2.0.12"
@@ -25,11 +30,15 @@ tokio = { version = "1.46.1", features = ["full"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 url = { version = "2.5.4", features = ["std"] }
-zescrow-core = { path = "../core", default-features = false, features = [
-    "bincode",
-    "json",
-] }
-zescrow-methods = { path = "methods" }
-num-traits = "0.2.19"
-sha2 = "0.10.9"
-hex = { version = "0.4.3", features = ["serde"] }
+
+[dependencies.zescrow-core]
+path = "../core"
+default-features = false
+features = ["bincode", "json"]
+
+[dependencies.zescrow-methods]
+path = "methods"
+
+[dependencies.escrow]
+path = "../agent/solana/escrow/programs/escrow"
+features = ["no-entrypoint"]

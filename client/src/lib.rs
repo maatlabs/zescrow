@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use error::ClientError;
+pub use error::ClientError;
 pub use ethereum::EthereumAgent;
 use ethers::signers::LocalWallet;
 pub use solana::SolanaAgent;
@@ -12,7 +12,6 @@ pub mod error;
 pub mod ethereum;
 pub mod prover;
 pub mod solana;
-pub mod util;
 
 pub type Result<T> = std::result::Result<T, ClientError>;
 
@@ -70,21 +69,6 @@ pub struct ZescrowClientBuilder {
 pub enum Recipient {
     Ethereum(LocalWallet),
     Solana(PathBuf),
-}
-
-impl std::str::FromStr for Recipient {
-    type Err = ClientError;
-
-    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        if s.strip_prefix("0x").is_some() {
-            let wallet = s
-                .parse::<LocalWallet>()
-                .map_err(|e| ClientError::Keypair(e.to_string()))?;
-            Ok(Self::Ethereum(wallet))
-        } else {
-            Ok(Self::Solana(PathBuf::from(s)))
-        }
-    }
 }
 
 impl ZescrowClient {
@@ -173,5 +157,20 @@ impl ZescrowClient {
             debug!("Escrow cancelled");
         }
         res
+    }
+}
+
+impl std::str::FromStr for Recipient {
+    type Err = ClientError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        if s.strip_prefix("0x").is_some() {
+            let wallet = s
+                .parse::<LocalWallet>()
+                .map_err(|e| ClientError::Keypair(e.to_string()))?;
+            Ok(Self::Ethereum(wallet))
+        } else {
+            Ok(Self::Solana(PathBuf::from(s)))
+        }
     }
 }

@@ -41,12 +41,11 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 
 ### Prerequisites
 
-1. Please ensure that [rustup] is installed. The [`rust-toolchain.toml`][rust-toolchain] file will be used by `cargo` to
-automatically install the correct version.
+1. Please ensure that [rustup] is installed. The [`rust-toolchain.toml`][rust-toolchain] file will be used by `cargo` to automatically install the correct version.
 
-2. If you intend to create escrows with cryptographic conditions then the [risc0-toolchain] must be installed, since the `zescrow-prover` requires it.
+2. Install the [risc0-toolchain], since the prover of the `zescrow-client` requires it.
 
-### End-to-End
+### End-to-End Demo
 
 1. Clone the repository:
 

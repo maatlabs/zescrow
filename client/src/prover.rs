@@ -6,12 +6,14 @@ use std::time::Instant;
 use anyhow::Context;
 use bincode::config::standard;
 use risc0_zkvm::{default_prover, ExecutorEnv};
-use tracing::{error, info};
+use tracing::info;
 use zescrow_core::interface::{ExecutionResult, ESCROW_METADATA_PATH};
 use zescrow_core::{Escrow, EscrowMetadata, ExecutionState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
 
-/// Runs the zero-knowledge proof workflow for an escrow.
+use crate::ClientError;
+
+/// Executes the zero-knowledge proof workflow for an escrow transaction.
 pub fn run() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
@@ -42,29 +44,30 @@ pub fn run() -> anyhow::Result<()> {
         .receipt;
     let dur = start.elapsed();
     info!(
-        "Proof generated in {:?} (journal {} bytes)",
+        "Proof generated in {:?} (journal: {} bytes)",
         dur,
         receipt.journal.bytes.len()
     );
 
-    if let Err(e) = receipt.verify(ZESCROW_GUEST_ID) {
-        error!("Receipt verification failed: {}", e);
-        std::process::exit(1);
-    }
+    info!("Verifying receipt");
+    receipt
+        .verify(ZESCROW_GUEST_ID)
+        .map_err(|e| ClientError::ZkProver(e.to_string()))?;
     info!("Receipt verified successfully");
 
     let (result, _) = bincode::decode_from_slice(&receipt.journal.bytes, standard())
         .with_context(|| "Failed to decode journal")?;
+
     match result {
         ExecutionResult::Ok(ExecutionState::ConditionsMet) => {
             info!("\nEscrow conditions fulfilled!\n");
+            Ok(())
         }
         ExecutionResult::Ok(state) => {
-            info!("\nInvalid escrow state: {state:?}\n");
+            Err(ClientError::ZkProver(format!("Invalid escrow state: {state:?}")).into())
         }
         ExecutionResult::Err(err) => {
-            info!("\nExecution failed: {err}\n");
+            Err(ClientError::ZkProver(format!("Escrow conditions not fulfilled: {err:?}")).into())
         }
     }
-    Ok(())
 }

@@ -36,7 +36,7 @@ enum Commands {
     /// Reads `templates/escrow_metadata.json`.
     Cancel,
 
-    /// Generate a cryptographic condition JSON for `escrow_conditions.json`.
+    /// Generate a cryptographic condition file (`escrow_conditions.json`).
     #[command(
     group(
         ArgGroup::new("kind")
