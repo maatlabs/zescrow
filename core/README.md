@@ -30,7 +30,9 @@ zescrow-core = { version = "0.1", features = ["json"] }
 ```
 
 ```rust
-use zescrow_core::{Asset, Condition, Escrow, ExecutionState, ID, Party, Result};
+use zescrow_core::{
+    Asset, Condition, Escrow, EscrowError, ExecutionState, ID, Party, Result
+};
 use num_bigint::BigUint;
 use sha2::{Digest, Sha256};
 
@@ -41,22 +43,23 @@ fn execute_escrow() -> Result<()> {
     let asset = Asset::Token {
         chain: Chain::Ethereum,
         contract: ID::from_str("0xdeadbeef")?,
-        amount: BigUint::from(1000u64).into(),
+        amount: BigUint::from(1_000u64).into(),
         decimals: 18,
     };
 
-    let condition = Condition::preimage(Sha256::digest(b"secret").into(), b"secret".to_vec());
+    let preimage = b"secret".to_vec();
+    let hash = Sha256::digest(&preimage);
+    let condition = Condition::preimage(hash.into(), preimage);
 
-    let mut escrow = Escrow {
-        asset,
-        recipient,
-        sender,
-        condition: Some(condition),
-        state: ExecutionState::Funded,
-    };
+    let mut escrow = Escrow::new(sender, recipient, asset, Some(condition));
+    escrow.state = ExecutionState::Funded; // Advance execution state
 
-    assert_eq!(escrow.execute()?, ExecutionState::ConditionsMet);
-    assert_eq!(escrow.state, ExecutionState::ConditionsMet);
+    let exec_state = escrow.execute()?;
+    if exec_state != ExecutionState::ConditionsMet {
+        return Err(EscrowError::InvalidState);
+    }
+
+    Ok(())
 }
 ```
 

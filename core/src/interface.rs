@@ -93,18 +93,22 @@ where
         .with_context(|| format!("serializing to JSON to {path:?}"))
 }
 
-/// State of escrow execution in the host (`prover`).
+/// State of escrow execution in the `client`.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, Encode, Decode, PartialEq, Eq)]
 pub enum ExecutionState {
+    /// Escrow object created.
+    Initialized,
+
     /// Funds have been deposited; awaiting release or cancellation.
     Funded,
+
     /// Conditions (if any) have been fulfilled;
     /// funds will be released to the recipient if the proof verifies on-chain.
     ConditionsMet,
 }
 
-/// Result of escrow execution in the guest (`methods`).
+/// Result of escrow execution in the `client`.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum ExecutionResult {
@@ -170,7 +174,7 @@ pub struct EscrowMetadata {
     #[cfg_attr(feature = "json", serde(flatten))]
     pub chain_data: ChainMetadata,
 
-    /// State of escrow execution in the prover (zkVM).
+    /// State of escrow execution in the `client`.
     pub state: ExecutionState,
 }
 

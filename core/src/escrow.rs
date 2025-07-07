@@ -28,6 +28,22 @@ pub struct Escrow {
 }
 
 impl Escrow {
+    /// Creates a new [Escrow].
+    pub fn new(
+        sender: Party,
+        recipient: Party,
+        asset: Asset,
+        condition: Option<Condition>,
+    ) -> Self {
+        Self {
+            asset,
+            recipient,
+            sender,
+            condition,
+            state: ExecutionState::Initialized,
+        }
+    }
+
     /// Attempts to execute (release) the escrow, performing all necessary checks.
     ///
     /// - Ensures current `state` is `Funded`.
@@ -49,6 +65,7 @@ impl Escrow {
         self.sender.verify_identity()?;
         self.recipient.verify_identity()?;
         self.asset.validate()?;
+
         if let Some(condition) = &self.condition {
             condition.verify()?;
         }
@@ -114,8 +131,7 @@ mod tests {
     use sha2::{Digest as _, Sha256};
 
     use super::*;
-    use crate::identity::ID;
-    use crate::Chain;
+    use crate::{Chain, ID};
 
     #[test]
     fn execute_escrow() {
@@ -125,22 +141,18 @@ mod tests {
         let asset = Asset::Token {
             chain: Chain::Ethereum,
             contract: ID::from_str("0xdeadbeef").unwrap(),
-            amount: BigUint::from(1000u64).into(),
+            amount: BigUint::from(1_000u64).into(),
             decimals: 18,
         };
 
-        let condition = Condition::preimage(Sha256::digest(b"secret").into(), b"secret".to_vec());
-        let mut escrow = Escrow {
-            asset,
-            recipient: recipient.clone(),
-            sender: sender.clone(),
-            condition: Some(condition),
-            state: ExecutionState::Funded,
-        };
+        let preimage = b"secret".to_vec();
+        let hash = Sha256::digest(&preimage);
+        let condition = Condition::preimage(hash.into(), preimage);
 
+        let mut escrow = Escrow::new(sender.clone(), recipient.clone(), asset, Some(condition));
+        escrow.state = ExecutionState::Funded;
         assert_eq!(escrow.execute().unwrap(), ExecutionState::ConditionsMet);
         assert_eq!(escrow.state, ExecutionState::ConditionsMet);
-
         // Ensure re-execution is not allowed
         assert!(escrow.execute().is_err());
 
@@ -152,14 +164,8 @@ mod tests {
             decimals: 18,
         };
 
-        let mut invalid_escrow = Escrow {
-            asset: invalid_asset,
-            recipient,
-            sender,
-            condition: None,
-            state: ExecutionState::Funded,
-        };
-
+        let mut invalid_escrow = Escrow::new(sender, recipient, invalid_asset, None);
+        invalid_escrow.state = ExecutionState::Funded;
         assert!(invalid_escrow.execute().is_err(),);
     }
 }
