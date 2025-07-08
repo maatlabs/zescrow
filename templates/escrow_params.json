@@ -2,13 +2,13 @@
     "chain_config": {
         "chain": "solana",
         "rpc_url": "http://localhost:8899",
-        "sender_keypair_path": "absolute/path/to/user/.config/solana/id.json",
-        "escrow_program_id": "EscrowProgramID"
+        "sender_private_id": "absolute/path/to/user/.config/solana/id.json",
+        "agent_id": "EscrowProgramID"
     },
     "asset": {
         "kind": "native",
         "id": null,
-        "program_id": null,
+        "agent_id": null,
         "amount": "1000000000",
         "decimals": null,
         "total_supply": null

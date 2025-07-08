@@ -91,7 +91,7 @@ impl ZescrowClientBuilder {
     pub async fn build(self) -> Result<ZescrowClient> {
         debug!("Building ZescrowClient with config: {:?}", self.config);
 
-        let agent: Box<dyn Agent> = match &self.config.chain_id() {
+        let agent: Box<dyn Agent> = match &self.config.chain {
             Chain::Ethereum => {
                 let wallet = match &self.recipient {
                     Some(Recipient::Ethereum(w)) => Some(w.clone()),

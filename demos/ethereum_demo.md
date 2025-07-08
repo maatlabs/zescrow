@@ -45,15 +45,15 @@
         "chain_config": {
             "chain": "ethereum",
             "rpc_url": "http://localhost:8545",
-            "sender_private_key": "SENDER_ETHEREUM_PRIVATE_KEY (WIF)",
-            "escrow_factory_address": "0xFactoryContractAddress",
+            "sender_private_id": "SENDER_ETHEREUM_PRIVATE_KEY (WIF)",
+            "agent_id": "0xFactoryContractAddress",
         },
         "asset": {
             "kind": "token",
             "id": {
                 "hex": "0xTokenContractAddress"
             },
-            "program_id": null,
+            "agent_id": null,
             "amount": "1000000000000000000", // (1 ETH == 1_000_000_000_000_000_000 wei)
             "decimals": 18,
             "total_supply": null

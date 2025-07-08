@@ -14,10 +14,9 @@ use serde::{Deserialize, Serialize};
 use serde_json;
 
 use crate::error::AssetError;
-use crate::identity::ID;
 #[cfg(feature = "json")]
 use crate::EscrowError;
-use crate::{BigNumber, Result};
+use crate::{BigNumber, Result, ID};
 
 /// Represents an on-chain asset.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
@@ -31,7 +30,7 @@ pub struct Asset {
     pub id: Option<ID>,
 
     /// Associated on-chain program ID or contract address of the asset.
-    pub program_id: Option<ID>,
+    pub agent_id: Option<ID>,
 
     /// Amount in the smallest unit (e.g., wei, lamports).
     pub amount: BigNumber,
@@ -66,7 +65,7 @@ impl Asset {
         Self {
             kind: AssetKind::Native,
             id: None,
-            program_id: None,
+            agent_id: None,
             amount,
             decimals: None,
             total_supply: None,
@@ -78,7 +77,7 @@ impl Asset {
         Self {
             kind: AssetKind::Token,
             id: None,
-            program_id: Some(contract),
+            agent_id: Some(contract),
             amount,
             decimals: Some(decimals),
             total_supply: Some(total_supply),
@@ -90,7 +89,7 @@ impl Asset {
         Self {
             kind: AssetKind::Nft,
             id: Some(token_id),
-            program_id: Some(contract),
+            agent_id: Some(contract),
             amount: BigNumber::from(1u64),
             decimals: None,
             total_supply: None,
@@ -102,7 +101,7 @@ impl Asset {
         Self {
             kind: AssetKind::MultiToken,
             id: Some(token_id),
-            program_id: Some(contract),
+            agent_id: Some(contract),
             amount,
             decimals: None,
             total_supply: None,
@@ -119,7 +118,7 @@ impl Asset {
         Self {
             kind: AssetKind::LpShare,
             id: Some(pool_id),
-            program_id: None,
+            agent_id: None,
             amount: share,
             decimals: Some(decimals),
             total_supply: Some(total_supply),
@@ -142,13 +141,13 @@ impl Asset {
             AssetKind::Native => Ok(()),
 
             AssetKind::Token => self
-                .program_id
+                .agent_id
                 .as_ref()
                 .ok_or(AssetError::MissingId)?
                 .validate(),
 
             AssetKind::Nft | AssetKind::MultiToken => {
-                self.program_id
+                self.agent_id
                     .as_ref()
                     .ok_or(AssetError::MissingId)?
                     .validate()?;
@@ -294,9 +293,8 @@ mod tests {
         assert!(token.validate().is_ok());
 
         // empty program ID
-        let empty_program_id =
-            Asset::token(ID::from(Vec::new()), to_bignum(100), to_bignum(100), 9);
-        assert!(empty_program_id.validate().is_err());
+        let empty_agent_id = Asset::token(ID::from(Vec::new()), to_bignum(100), to_bignum(100), 9);
+        assert!(empty_agent_id.validate().is_err());
 
         // zero amount
         let zero_token = Asset::token(ID::from(vec![1, 2, 3]), to_bignum(0), to_bignum(100), 6);

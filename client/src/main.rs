@@ -112,13 +112,13 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
 
             info!("Building ZescrowClient for `finish`");
-            let client = ZescrowClient::builder(&metadata.chain_config)
+            let client = ZescrowClient::builder(&metadata.params.chain_config)
                 .recipient(recipient)
                 .build()
                 .await?;
 
             // Invoke the prover if escrow has cryptographic conditions
-            if metadata.has_conditions {
+            if metadata.params.has_conditions {
                 prover::run()?;
             }
 
@@ -132,7 +132,7 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
 
             info!("Building ZescrowClient for `cancel`");
-            let client = ZescrowClient::builder(&metadata.chain_config)
+            let client = ZescrowClient::builder(&metadata.params.chain_config)
                 .build()
                 .await?;
 

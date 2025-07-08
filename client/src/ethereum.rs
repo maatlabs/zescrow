@@ -55,14 +55,12 @@ pub struct EthereumAgent {
 
 impl EthereumAgent {
     pub async fn new(config: &ChainConfig, recipient: Option<LocalWallet>) -> Result<Self> {
-        let ChainConfig::Ethereum {
+        let ChainConfig {
             rpc_url,
-            sender_private_key,
+            sender_private_id,
+            agent_id,
             ..
-        } = config
-        else {
-            return Err(ClientError::ConfigMismatch);
-        };
+        } = config;
 
         let provider = Provider::<Http>::try_from(rpc_url)?;
         let chain_id = provider
@@ -72,7 +70,7 @@ impl EthereumAgent {
             .as_u64();
         debug!(%chain_id, "Connected to Ethereum");
 
-        let sender = sender_private_key
+        let sender = sender_private_id
             .parse::<LocalWallet>()?
             .with_chain_id(chain_id);
         let recipient = recipient.map(|w| w.with_chain_id(chain_id));
@@ -88,7 +86,7 @@ impl EthereumAgent {
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
 
         let client = Arc::new(SignerMiddleware::new(provider.clone(), sender));
-        let factory_addr = Address::from_str(&config.eth_escrow_factory_contract()?)?;
+        let factory_addr = Address::from_str(&agent_id)?;
         let factory = Contract::new(factory_addr, abi, client);
 
         Ok(Self { provider, factory })
@@ -140,18 +138,13 @@ impl Agent for EthereumAgent {
         }
 
         Ok(EscrowMetadata {
-            chain_config: params.chain_config.clone(),
-            asset: params.asset.clone(),
-            sender: params.sender.clone(),
-            recipient: params.recipient.clone(),
-            has_conditions: params.has_conditions,
-            agent_id: format!("{escrow_addr:#x}"),
+            params: params.clone(),
             state: ExecutionState::Funded,
         })
     }
 
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        let escrow_addr = Address::from_str(&metadata.chain_config.eth_escrow_factory_contract()?)?;
+        let escrow_addr = Address::from_str(&metadata.params.chain_config.agent_id)?;
 
         info!("Sending finishEscrow transaction");
         let call = self
@@ -169,7 +162,7 @@ impl Agent for EthereumAgent {
     }
 
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        let escrow_addr = Address::from_str(&metadata.chain_config.eth_escrow_factory_contract()?)?;
+        let escrow_addr = Address::from_str(&metadata.params.chain_config.agent_id)?;
 
         info!("Sending cancelEscrow transaction");
         self.factory

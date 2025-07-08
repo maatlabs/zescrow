@@ -11,7 +11,7 @@ use serde::de::DeserializeOwned;
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-use crate::{Asset, EscrowError, Party, Result};
+use crate::{Asset, EscrowError, Party};
 
 /// Default path to escrow params template.
 pub const ESCROW_PARAMS_PATH: &str = concat!(
@@ -118,7 +118,17 @@ pub enum ExecutionResult {
     Err(String),
 }
 
-/// Parameters required to **create** an escrow on-chain.
+/// Metadata returned from on-chain escrow creation.
+#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
+#[derive(Debug, Clone, Encode, Decode)]
+pub struct EscrowMetadata {
+    /// The parameters that were specified during escrow creation.
+    pub params: EscrowParams,
+    /// State of escrow execution in the `client`.
+    pub state: ExecutionState,
+}
+
+/// Parameters required to create an escrow on-chain.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct EscrowParams {
@@ -128,7 +138,7 @@ pub struct EscrowParams {
     /// Exactly which asset to lock (native, token, NFT, pool-share, etc).
     pub asset: Asset,
 
-    /// Who is funding (locking) the escrow.
+    /// Who is funding the escrow.
     pub sender: Party,
 
     /// Who will receive the funds once conditions pass.
@@ -146,83 +156,21 @@ pub struct EscrowParams {
     pub has_conditions: bool,
 }
 
-/// Metadata **returned** from on-chain escrow creation.
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, Encode, Decode)]
-pub struct EscrowMetadata {
-    /// Chain-specific network configuration.
-    pub chain_config: ChainConfig,
-
-    /// Exactly which asset got locked.
-    pub asset: Asset,
-
-    /// The party who funded the escrow.
-    pub sender: Party,
-
-    /// The party who will receive the funds.
-    pub recipient: Party,
-
-    /// Denotes whether this escrow is subject to cryptographic conditions.
-    pub has_conditions: bool,
-
-    /// Escrow program ID or contract address.
-    pub agent_id: String,
-
-    /// State of escrow execution in the `client`.
-    pub state: ExecutionState,
-}
-
 /// Chain-specific network configuration for creating or querying escrows.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "json", serde(tag = "chain", rename_all = "lowercase"))]
 #[derive(Debug, Clone, Encode, Decode)]
-pub enum ChainConfig {
-    /// Ethereum network configuration.
-    Ethereum {
-        /// JSON-RPC endpoint URL.
-        rpc_url: String,
-        /// Sender's private key in wallet import format (WIF) or hex.
-        sender_private_key: String,
-        /// Address of the `EscrowFactory` smart contract.
-        escrow_factory_address: String,
-    },
-
-    /// Solana network configuration.
-    Solana {
-        /// JSON-RPC endpoint URL.
-        rpc_url: String,
-        /// Path to payer keypair file (e.g., `~/.config/solana/id.json`).
-        sender_keypair_path: String,
-        /// On-chain escrow program ID (base58 string).
-        escrow_program_id: String,
-    },
-}
-
-impl ChainConfig {
-    /// Returns the `Chain` enum corresponding to this variant.
-    pub fn chain_id(&self) -> Chain {
-        match self {
-            Self::Ethereum { .. } => Chain::Ethereum,
-            Self::Solana { .. } => Chain::Solana,
-        }
-    }
-
-    /// Get the Ethereum `EscrowFactory` contract address.
+pub struct ChainConfig {
+    /// Network identifier.
+    pub chain: Chain,
+    /// JSON-RPC endpoint URL.
+    pub rpc_url: String,
+    /// Sender's private key and/or keypair path.
     ///
-    /// # Errors
-    ///
-    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Ethereum variant.
-    pub fn eth_escrow_factory_contract(&self) -> Result<String> {
-        match self {
-            Self::Ethereum {
-                escrow_factory_address,
-                ..
-            } => Ok(escrow_factory_address.clone()),
-            _ => Err(EscrowError::InvalidChainOp(
-                "Ethereum escrow factory address not applicable".to_string(),
-            )),
-        }
-    }
+    /// For Ethereum, a wallet import format (WIF) or hex is expected.
+    /// For Solana, a path to a keypair file (e.g., `~/.config/solana/id.json`).
+    pub sender_private_id: String,
+    /// On-chain escrow program ID (Solana) or smart contract address (Ethereum).
+    pub agent_id: String,
 }
 
 /// Supported blockchain networks.
@@ -248,11 +196,7 @@ impl AsRef<str> for Chain {
 impl std::str::FromStr for Chain {
     type Err = EscrowError;
 
-    /// Parses a string into a `Chain` enum (case-insensitive).
-    ///
-    /// Acceptable values:
-    /// - "ethereum" or "eth" => `Chain::Ethereum`
-    /// - "solana" or "sol" => `Chain::Solana`
+    /// Parses a string ID into a `Chain` enum (case-insensitive).
     ///
     /// # Errors
     ///

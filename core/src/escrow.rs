@@ -86,16 +86,7 @@ impl Escrow {
     /// - JSON parsing error when decoding the condition.
     #[cfg(feature = "json")]
     pub fn from_metadata(metadata: EscrowMetadata) -> Result<Self> {
-        let EscrowMetadata {
-            asset,
-            sender,
-            recipient,
-            state,
-            has_conditions,
-            ..
-        } = metadata;
-
-        let condition = if has_conditions {
+        let condition = if metadata.params.has_conditions {
             let content = std::fs::read_to_string(ESCROW_CONDITIONS_PATH)?;
             let cond: Condition = serde_json::from_str(&content)?;
             Some(cond)
@@ -104,11 +95,11 @@ impl Escrow {
         };
 
         Ok(Self {
-            asset,
-            recipient,
-            sender,
+            asset: metadata.params.asset,
+            recipient: metadata.params.recipient,
+            sender: metadata.params.sender,
             condition,
-            state,
+            state: metadata.state,
         })
     }
 }

@@ -37,17 +37,14 @@ impl SolanaAgent {
         config: &ChainConfig,
         recipient_keypair_path: Option<PathBuf>,
     ) -> Result<Self> {
-        let ChainConfig::Solana {
+        let ChainConfig {
             rpc_url,
-            sender_keypair_path,
-            escrow_program_id,
+            sender_private_id,
+            agent_id,
             ..
-        } = config
-        else {
-            return Err(ClientError::ConfigMismatch);
-        };
+        } = config;
 
-        let sender_keypair = read_keypair_file(sender_keypair_path)
+        let sender_keypair = read_keypair_file(sender_private_id)
             .map_err(|e| ClientError::Keypair(e.to_string()))?;
         debug!(sender = %sender_keypair.pubkey(), "Loaded sender keypair");
 
@@ -63,7 +60,7 @@ impl SolanaAgent {
 
         // Parse program ID
         let escrow_program_id =
-            Pubkey::from_str(escrow_program_id).map_err(|e| AgentError::Solana(e.to_string()))?;
+            Pubkey::from_str(&agent_id).map_err(|e| AgentError::Solana(e.to_string()))?;
         info!("Using escrow program {}", escrow_program_id);
 
         Ok(Self {
@@ -129,20 +126,15 @@ impl Agent for SolanaAgent {
         self.client.send_and_confirm_transaction(&tx)?;
 
         Ok(EscrowMetadata {
-            chain_config: params.chain_config.clone(),
-            asset: params.asset.clone(),
-            sender: params.sender.clone(),
-            recipient: params.recipient.clone(),
-            has_conditions: params.has_conditions,
-            agent_id: self.escrow_program_id.to_string(),
+            params: params.clone(),
             state: ExecutionState::Funded,
         })
     }
 
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        let sender = Pubkey::from_str(&metadata.sender.to_string())?;
+        let sender = Pubkey::from_str(&metadata.params.sender.to_string())?;
 
-        let recipient = Pubkey::from_str(&metadata.recipient.to_string())?;
+        let recipient = Pubkey::from_str(&metadata.params.recipient.to_string())?;
         let recipient_keypair = self
             .recipient_keypair
             .as_ref()
@@ -182,8 +174,8 @@ impl Agent for SolanaAgent {
     }
 
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        let sender = Pubkey::from_str(&metadata.sender.to_string())?;
-        let recipient = Pubkey::from_str(&metadata.recipient.to_string())?;
+        let sender = Pubkey::from_str(&metadata.params.sender.to_string())?;
+        let recipient = Pubkey::from_str(&metadata.params.recipient.to_string())?;
 
         let (escrow_account, _) = Pubkey::find_program_address(
             &[ESCROW.as_bytes(), sender.as_ref(), recipient.as_ref()],
