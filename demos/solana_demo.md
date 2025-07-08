@@ -43,31 +43,32 @@
 
     ```json
     {
-        "network": "solana",
         "chain_config": {
-            "rpc_url": "http://localhost:8899",
-            "sender_keypair_path": "absolute/path/to/your/own/.config/solana/id.json",
-            "escrow_program_id": "ESCROW_PROGRAM_ID"
-        },
-        "asset_type": "native",
-        "asset": {
             "chain": "solana",
-            "amount": "1000000000" // (1 SOL == 1_000_000_000 lamports)
+            "rpc_url": "http://localhost:8899",
+            "sender_keypair_path": "absolute/path/to/user/.config/solana/id.json",
+            "escrow_program_id": "EscrowProgramID"
+        },
+        "asset": {
+            "kind": "native",
+            "id": null,
+            "program_id": null,
+            "amount": "1000000000", // (1 SOL == 1_000_000_000 lamports)
+            "decimals": null,
+            "total_supply": null
         },
         "sender": {
             "identity": {
-                "encoding": "base58",
-                "value": "SENDER_PUBKEY"
+                "base58": "SenderSolanaPublicKey"
             }
         },
         "recipient": {
             "identity": {
-                "encoding": "base58",
-                "value": "RECIPIENT_PUBKEY"
+                "base58": "RecipientSolanaPublicKey"
             }
         },
-        "finish_after": 1000, // finish_after slot
-        "cancel_after": 1200, // cancel_after slot
+        "finish_after": 1000, // release escrow after this slot
+        "cancel_after": 1200, // cancel escrow after this slot
         "has_conditions": false
     }
     ```

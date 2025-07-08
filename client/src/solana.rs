@@ -13,7 +13,7 @@ use solana_sdk::signer::Signer;
 use solana_sdk::transaction::Transaction;
 use tracing::{debug, info, trace};
 use zescrow_core::interface::ChainConfig;
-use zescrow_core::{ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
+use zescrow_core::{EscrowMetadata, EscrowParams, ExecutionState};
 
 use super::Agent;
 use crate::error::{AgentError, ClientError};
@@ -134,9 +134,7 @@ impl Agent for SolanaAgent {
             sender: params.sender.clone(),
             recipient: params.recipient.clone(),
             has_conditions: params.has_conditions,
-            chain_data: ChainMetadata::Solana {
-                escrow_program_id: self.escrow_program_id.to_string(),
-            },
+            agent_id: self.escrow_program_id.to_string(),
             state: ExecutionState::Funded,
         })
     }

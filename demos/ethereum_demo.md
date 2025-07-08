@@ -42,31 +42,34 @@
 
     ```json
     {
-        "network": "ethereum",
         "chain_config": {
-            "rpc_url": "http://localhost:8545",
-            "sender_private_key": "YOUR-WIF-ENCODED-PRIVATE-KEY",
-            "escrow_factory_address": "YOUR_ESCROW_FACTORY_CONTRACT_ADDRESS",
-        },
-        "asset_type": "native",
-        "asset": {
             "chain": "ethereum",
-            "amount": "100000000000000000000" // 100 ETH
+            "rpc_url": "http://localhost:8545",
+            "sender_private_key": "SENDER_ETHEREUM_PRIVATE_KEY (WIF)",
+            "escrow_factory_address": "0xFactoryContractAddress",
+        },
+        "asset": {
+            "kind": "token",
+            "id": {
+                "hex": "0xTokenContractAddress"
+            },
+            "program_id": null,
+            "amount": "1000000000000000000", // (1 ETH == 1_000_000_000_000_000_000 wei)
+            "decimals": 18,
+            "total_supply": null
         },
         "sender": {
             "identity": {
-                "encoding": "hex",
-                "value": "0xSENDER_ADDRESS"
+                "hex": "0xSenderEthereumAddress"
             }
         },
         "recipient": {
             "identity": {
-                "encoding": "hex",
-                "value": "0xRECIPIENT_ADDRESS"
+                "hex": "0xRecipientEthereumAddress"
             }
         },
-        "finish_after": 4, // finishAfter block
-        "cancel_after": 12, // cancelAfter block
+        "finish_after": 4, // finish escrow after this block
+        "cancel_after": 12, // cancel escrow after this block
         "has_conditions": false
     }
     ```

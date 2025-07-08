@@ -123,11 +123,9 @@ pub enum ExecutionResult {
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct EscrowParams {
     /// Chain-specific network configuration.
-    #[cfg_attr(feature = "json", serde(flatten))]
     pub chain_config: ChainConfig,
 
     /// Exactly which asset to lock (native, token, NFT, pool-share, etc).
-    #[cfg_attr(feature = "json", serde(flatten))]
     pub asset: Asset,
 
     /// Who is funding (locking) the escrow.
@@ -153,11 +151,9 @@ pub struct EscrowParams {
 #[derive(Debug, Clone, Encode, Decode)]
 pub struct EscrowMetadata {
     /// Chain-specific network configuration.
-    #[cfg_attr(feature = "json", serde(flatten))]
     pub chain_config: ChainConfig,
 
     /// Exactly which asset got locked.
-    #[cfg_attr(feature = "json", serde(flatten))]
     pub asset: Asset,
 
     /// The party who funded the escrow.
@@ -169,55 +165,16 @@ pub struct EscrowMetadata {
     /// Denotes whether this escrow is subject to cryptographic conditions.
     pub has_conditions: bool,
 
-    /// Chain-specific on-chain accounts/programs
-    /// used to finish or cancel the escrow.
-    #[cfg_attr(feature = "json", serde(flatten))]
-    pub chain_data: ChainMetadata,
+    /// Escrow program ID or contract address.
+    pub agent_id: String,
 
     /// State of escrow execution in the `client`.
     pub state: ExecutionState,
 }
 
-/// Chain-specific on-chain escrow metadata.
-#[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "json", serde(untagged))]
-#[derive(Debug, Clone, Encode, Decode)]
-pub enum ChainMetadata {
-    /// Data relating to an escrow on Etherum (and/or any EVM chain).
-    Ethereum {
-        /// The escrow smart-contract address.
-        escrow_address: String,
-    },
-
-    /// Data relating to an escrow on Solana.
-    Solana {
-        /// Escrow program’s ID.
-        escrow_program_id: String,
-    },
-}
-
-impl ChainMetadata {
-    /// Get the Ethereum contract address for the escrow contract.
-    ///
-    /// # Errors
-    ///
-    /// Returns an `EscrowError::InvalidChainOp` if called on a non-Ethereum variant.
-    pub fn get_eth_contract_address(&self) -> Result<String> {
-        match self {
-            Self::Ethereum { escrow_address, .. } => Ok(escrow_address.clone()),
-            _ => Err(EscrowError::InvalidChainOp(
-                "Ethereum contract address applicable".to_string(),
-            )),
-        }
-    }
-}
-
 /// Chain-specific network configuration for creating or querying escrows.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[cfg_attr(
-    feature = "json",
-    serde(tag = "network", content = "chain_config", rename_all = "snake_case")
-)]
+#[cfg_attr(feature = "json", serde(tag = "chain", rename_all = "lowercase"))]
 #[derive(Debug, Clone, Encode, Decode)]
 pub enum ChainConfig {
     /// Ethereum network configuration.

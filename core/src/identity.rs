@@ -10,7 +10,7 @@ use crate::error::IdentityError;
 use crate::{EscrowError, Result};
 
 /// Maximum allowed length of the input string before decoding.
-/// Prevents an attacker from feeding an arbitrarily‐long Base58/hex/base64 blob.
+/// Prevents arbitrarily‐long Base58/hex/base64 blobs.
 const MAX_ID_LEN: usize = 256;
 
 /// A participant in the escrow protocol, wrapping a chain-agnostic [`ID`].
@@ -22,15 +22,12 @@ const MAX_ID_LEN: usize = 256;
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Hash)]
 pub struct Party {
     /// The participant’s on-chain identity.
-    pub identity: ID,
+    identity: ID,
 }
 
 /// Supported encoding formats for on-chain identities.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[cfg_attr(
-    feature = "json",
-    serde(tag = "encoding", content = "value", rename_all = "lowercase")
-)]
+#[cfg_attr(feature = "json", serde(rename_all = "lowercase"))]
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Hash)]
 pub enum ID {
     /// Hex-encoded string.

@@ -98,9 +98,7 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
             let params: EscrowParams = load_escrow_data(ESCROW_PARAMS_PATH)?;
 
             info!("Building ZescrowClient");
-            let client = ZescrowClient::builder(*params.asset.chain(), params.chain_config.clone())
-                .build()
-                .await?;
+            let client = ZescrowClient::builder(&params.chain_config).build().await?;
             info!("Creating escrow on-chain");
             let metadata = client.create_escrow(&params).await?;
             info!("Escrow created!");
@@ -114,13 +112,10 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
 
             info!("Building ZescrowClient for `finish`");
-            let client = ZescrowClient::builder(
-                metadata.chain_config.chain_id(),
-                metadata.chain_config.clone(),
-            )
-            .recipient(recipient)
-            .build()
-            .await?;
+            let client = ZescrowClient::builder(&metadata.chain_config)
+                .recipient(recipient)
+                .build()
+                .await?;
 
             // Invoke the prover if escrow has cryptographic conditions
             if metadata.has_conditions {
@@ -137,12 +132,9 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
             let metadata: EscrowMetadata = load_escrow_data(ESCROW_METADATA_PATH)?;
 
             info!("Building ZescrowClient for `cancel`");
-            let client = ZescrowClient::builder(
-                metadata.chain_config.chain_id(),
-                metadata.chain_config.clone(),
-            )
-            .build()
-            .await?;
+            let client = ZescrowClient::builder(&metadata.chain_config)
+                .build()
+                .await?;
 
             info!("Cancelling escrow");
             client.cancel_escrow(&metadata).await?;

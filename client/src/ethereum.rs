@@ -10,7 +10,7 @@ use ethers::signers::{LocalWallet, Signer};
 use ethers::types::{Address, H256, U256};
 use serde_json::Value;
 use tracing::{debug, info, trace};
-use zescrow_core::{ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState};
+use zescrow_core::{ChainConfig, EscrowMetadata, EscrowParams, ExecutionState};
 
 use crate::error::{AgentError, ClientError};
 use crate::{Agent, Result};
@@ -145,15 +145,13 @@ impl Agent for EthereumAgent {
             sender: params.sender.clone(),
             recipient: params.recipient.clone(),
             has_conditions: params.has_conditions,
-            chain_data: ChainMetadata::Ethereum {
-                escrow_address: format!("{escrow_addr:#x}"),
-            },
+            agent_id: format!("{escrow_addr:#x}"),
             state: ExecutionState::Funded,
         })
     }
 
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        let escrow_addr = Address::from_str(&metadata.chain_data.get_eth_contract_address()?)?;
+        let escrow_addr = Address::from_str(&metadata.chain_config.eth_escrow_factory_contract()?)?;
 
         info!("Sending finishEscrow transaction");
         let call = self
@@ -171,7 +169,7 @@ impl Agent for EthereumAgent {
     }
 
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
-        let escrow_addr = Address::from_str(&metadata.chain_data.get_eth_contract_address()?)?;
+        let escrow_addr = Address::from_str(&metadata.chain_config.eth_escrow_factory_contract()?)?;
 
         info!("Sending cancelEscrow transaction");
         self.factory

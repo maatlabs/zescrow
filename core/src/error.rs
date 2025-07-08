@@ -105,15 +105,24 @@ pub enum AssetError {
     #[error("could not parse asset: {0}")]
     Parsing(String),
 
-    /// A fungible or multi-token amount was zero, which is not allowed.
+    /// A fungible or multi-token amount and/or total supply was zero, which is not allowed.
     #[error("amount must be non-zero")]
     ZeroAmount,
 
-    /// The provided token ID of an NFT or multi-token is invalid or empty.
-    #[error("provided token ID is invalid or empty")]
-    InvalidTokenId,
+    /// ID for asset, program, or contract not provided.
+    #[error("missing ID for asset, program, or contract")]
+    MissingId,
 
-    /// A liquidity pool share was invalid (must be > 0 and <= total supply).
+    /// Total supply of token not provided.
+    #[error("missing `total_supply` for specified token")]
+    MissingTotalSupply,
+
+    /// Invalid ID for asset, program, or contract.
+    #[error("inalid ID for asset, program, or contract")]
+    InvalidId,
+
+    /// A liquidity pool share was invalid;
+    /// `share` must be > 0 and <= total supply.
     #[error("share must be non-zero and <= total supply (share={0}, total={1})")]
     InvalidShare(BigNumber, BigNumber),
 

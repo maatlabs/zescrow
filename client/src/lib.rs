@@ -60,7 +60,6 @@ pub struct ZescrowClient {
 
 /// Builder for `ZescrowClient`.
 pub struct ZescrowClientBuilder {
-    chain: Chain,
     config: ChainConfig,
     recipient: Option<Recipient>,
 }
@@ -73,10 +72,9 @@ pub enum Recipient {
 
 impl ZescrowClient {
     /// Begin constructing a new client.
-    pub fn builder(chain: Chain, config: ChainConfig) -> ZescrowClientBuilder {
+    pub fn builder(config: &ChainConfig) -> ZescrowClientBuilder {
         ZescrowClientBuilder {
-            chain,
-            config,
+            config: config.clone(),
             recipient: None,
         }
     }
@@ -93,7 +91,7 @@ impl ZescrowClientBuilder {
     pub async fn build(self) -> Result<ZescrowClient> {
         debug!("Building ZescrowClient with config: {:?}", self.config);
 
-        let agent: Box<dyn Agent> = match &self.chain {
+        let agent: Box<dyn Agent> = match &self.config.chain_id() {
             Chain::Ethereum => {
                 let wallet = match &self.recipient {
                     Some(Recipient::Ethereum(w)) => Some(w.clone()),

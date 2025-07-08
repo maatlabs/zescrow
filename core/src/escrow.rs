@@ -124,26 +124,22 @@ impl std::fmt::Display for Escrow {
 
 #[cfg(test)]
 mod tests {
-
-    use core::str::FromStr as _;
-
-    use num_bigint::BigUint;
     use sha2::{Digest as _, Sha256};
 
     use super::*;
-    use crate::{Chain, ID};
+    use crate::{BigNumber, ID};
 
     #[test]
     fn execute_escrow() {
-        let sender = Party::from_str("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045").unwrap();
-        let recipient = Party::from_str("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8").unwrap();
+        let sender = Party::new("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045").unwrap();
+        let recipient = Party::new("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8").unwrap();
 
-        let asset = Asset::Token {
-            chain: Chain::Ethereum,
-            contract: ID::from_str("0xdeadbeef").unwrap(),
-            amount: BigUint::from(1_000u64).into(),
-            decimals: 18,
-        };
+        let asset = Asset::token(
+            ID::from("0xdeadbeef".as_bytes()),
+            BigNumber::from(1_000u64),
+            BigNumber::from(2_000u64),
+            18,
+        );
 
         let preimage = b"secret".to_vec();
         let hash = Sha256::digest(&preimage);
@@ -156,13 +152,12 @@ mod tests {
         // Ensure re-execution is not allowed
         assert!(escrow.execute().is_err());
 
-        // Asset validation failure test
-        let invalid_asset = Asset::Token {
-            chain: Chain::Ethereum,
-            contract: ID::from_str("0xdeadbeef").unwrap(),
-            amount: BigUint::from(0u64).into(), // invalid zero amount
-            decimals: 18,
-        };
+        let invalid_asset = Asset::token(
+            ID::from("0xdeadbeef".as_bytes()),
+            BigNumber::from(0u64), // zero amount
+            BigNumber::from(2_000u64),
+            18,
+        );
 
         let mut invalid_escrow = Escrow::new(sender, recipient, invalid_asset, None);
         invalid_escrow.state = ExecutionState::Funded;

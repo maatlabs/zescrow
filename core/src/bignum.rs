@@ -23,6 +23,13 @@ use {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub struct BigNumber(#[cfg_attr(feature = "json", serde(with = "biguint_serde"))] pub BigUint);
 
+impl BigNumber {
+    /// [BigNumber] from 0.
+    pub fn zero() -> BigNumber {
+        BigUint::from(0u64).into()
+    }
+}
+
 impl<T> From<T> for BigNumber
 where
     BigUint: From<T>,

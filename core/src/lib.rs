@@ -28,15 +28,13 @@ pub mod interface;
 #[cfg(feature = "json")]
 pub mod serde;
 
-pub use asset::Asset;
+pub use asset::{Asset, AssetKind};
 pub use bignum::BigNumber;
 pub use condition::Condition;
 pub use error::EscrowError;
 pub use escrow::Escrow;
 pub use identity::{Party, ID};
-pub use interface::{
-    Chain, ChainConfig, ChainMetadata, EscrowMetadata, EscrowParams, ExecutionState,
-};
+pub use interface::{Chain, ChainConfig, EscrowMetadata, EscrowParams, ExecutionState};
 
 /// `Result` type for all core operations.
 pub type Result<T> = std::result::Result<T, EscrowError>;
