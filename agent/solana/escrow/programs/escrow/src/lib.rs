@@ -48,6 +48,7 @@ pub mod escrow {
         let escrow = &ctx.accounts.escrow_account;
         let current_slot = Clock::get()?.slot;
 
+        // Must be past finish_after to release funds
         if let Some(finish_after) = escrow.finish_after {
             require!(current_slot >= finish_after, EscrowError::NotReady);
         }
@@ -67,13 +68,10 @@ pub mod escrow {
         let escrow = &ctx.accounts.escrow_account;
         let current_slot = Clock::get()?.slot;
 
-        // Must be past cancel_after to reclaim
-        require!(
-            escrow
-                .cancel_after
-                .is_some_and(|cancel_after| current_slot >= cancel_after),
-            EscrowError::NotExpired
-        );
+        // Must be past cancel_after to reclaim funds
+        if let Some(cancel_after) = escrow.cancel_after {
+            require!(current_slot >= cancel_after, EscrowError::NotExpired);
+        }
 
         emit!(EscrowEvent {
             sender: escrow.sender,
@@ -140,7 +138,11 @@ pub struct CreateEscrow<'info> {
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateEscrowArgs {
     pub amount: u64,
+    /// Optional slot after which "release" is allowed.
+    /// Must be `None` or less than `cancel_after` if both are set.
     pub finish_after: Option<u64>,
+    /// Optional slot after which "cancel" is allowed.
+    /// Must be `None` or greater than `finish_after` if both are set.
     pub cancel_after: Option<u64>,
 }
 

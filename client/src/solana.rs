@@ -2,8 +2,8 @@ use core::str::FromStr;
 use std::path::PathBuf;
 
 use anchor_client::solana_sdk::instruction::Instruction;
-use anchor_lang::prelude::AccountMeta;
 use anchor_lang::InstructionData;
+use anchor_lang::{prelude::AccountMeta, system_program};
 use escrow::{instruction as escrow_instruction, CreateEscrowArgs, ESCROW};
 use num_traits::ToPrimitive;
 use solana_client::rpc_client::RpcClient;
@@ -103,6 +103,7 @@ impl Agent for SolanaAgent {
                 AccountMeta::new(sender, true),
                 AccountMeta::new_readonly(recipient, false),
                 AccountMeta::new(escrow_account, false),
+                AccountMeta::new_readonly(system_program::ID, false),
             ],
             data: InstructionData::data(&escrow_instruction::CreateEscrow {
                 args: CreateEscrowArgs {
