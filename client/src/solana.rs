@@ -2,8 +2,8 @@ use core::str::FromStr;
 use std::path::PathBuf;
 
 use anchor_client::solana_sdk::instruction::Instruction;
-use anchor_lang::InstructionData;
-use anchor_lang::{prelude::AccountMeta, system_program};
+use anchor_lang::prelude::AccountMeta;
+use anchor_lang::{system_program, InstructionData};
 use escrow::{instruction as escrow_instruction, CreateEscrowArgs, ESCROW};
 use num_traits::ToPrimitive;
 use solana_client::rpc_client::RpcClient;
@@ -92,7 +92,7 @@ impl Agent for SolanaAgent {
         trace!("Computed amount: {}", amount);
 
         let (escrow_account, _) = Pubkey::find_program_address(
-            &[ESCROW.as_bytes(), sender.as_ref(), recipient.as_ref()],
+            &[ESCROW, sender.as_ref(), recipient.as_ref()],
             &self.escrow_program_id,
         );
         info!(pda = %escrow_account, "Derived pda");
@@ -147,7 +147,7 @@ impl Agent for SolanaAgent {
         }
 
         let (escrow_account, _) = Pubkey::find_program_address(
-            &[ESCROW.as_bytes(), sender.as_ref(), recipient.as_ref()],
+            &[ESCROW, sender.as_ref(), recipient.as_ref()],
             &self.escrow_program_id,
         );
         debug!("Using the address: {escrow_account} as the Escrow Account");
@@ -179,7 +179,7 @@ impl Agent for SolanaAgent {
         let recipient = Pubkey::from_str(&metadata.params.recipient.to_string())?;
 
         let (escrow_account, _) = Pubkey::find_program_address(
-            &[ESCROW.as_bytes(), sender.as_ref(), recipient.as_ref()],
+            &[ESCROW, sender.as_ref(), recipient.as_ref()],
             &self.escrow_program_id,
         );
 
