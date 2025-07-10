@@ -4,7 +4,7 @@
         "threshold": 2,
         "subconditions": [
             {
-                "condition": "preimage",
+                "condition": "hashlock",
                 "fulfillment": {
                     "hash": "SHA-256 digest of preimage",
                     "preimage": "Your secret UTF-8 (human-readable) string"

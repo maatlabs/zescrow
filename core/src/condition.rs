@@ -3,101 +3,49 @@
 //! conditions) and provides deterministic verification.
 
 use bincode::{Decode, Encode};
-use ed25519_dalek::{Signature as Ed25519Sig, Verifier, VerifyingKey as Ed25519Pub};
-#[cfg(feature = "json")]
-use hex::serde::{deserialize as hex_deserialize, serialize as hex_serialize};
-use k256::ecdsa::{Signature as Secp256k1Sig, VerifyingKey as Secp256k1Pub};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
-#[cfg(feature = "json")]
-use serde_with::serde_as;
-use sha2::{Digest, Sha256};
-use subtle::ConstantTimeEq;
 
 use crate::error::ConditionError;
-#[cfg(feature = "json")]
-use crate::serde::utf8_serde;
 use crate::Result;
 
+/// Ed25519 signature over an arbitrary message.
+pub mod ed25519;
+/// XRPL-style hashlock: SHA-256(preimage) == hash.
+pub mod hashlock;
+/// Secp256k1 ECDSA signature over an arbitrary message.
+pub mod secp256k1;
+/// Threshold condition: at least `threshold` subconditions must hold.
+pub mod threshold;
+
+use ed25519::Ed25519;
+use hashlock::Hashlock;
+use secp256k1::Secp256k1;
+use threshold::Threshold;
+
 /// A cryptographic condition that can be deterministically verified.
-#[cfg_attr(feature = "json", serde_as)]
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 #[cfg_attr(
     feature = "json",
     serde(tag = "condition", content = "fulfillment", rename_all = "lowercase")
 )]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.
-    Preimage {
-        /// The expected SHA-256 digest of the preimage.
-        #[cfg_attr(
-            feature = "json",
-            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
-        )]
-        hash: [u8; 32],
-
-        /// Secret preimage as UTF-8 string.
-        #[cfg_attr(feature = "json", serde(with = "utf8_serde"))]
-        preimage: Vec<u8>,
-    },
+    #[cfg_attr(feature = "json", serde(rename = "hashlock"))]
+    Hashlock(Hashlock),
 
     /// Ed25519 signature over an arbitrary message.
-    Ed25519 {
-        /// Public key bytes.
-        #[cfg_attr(
-            feature = "json",
-            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
-        )]
-        public_key: [u8; 32],
-
-        /// Signature bytes.
-        #[cfg_attr(
-            feature = "json",
-            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
-        )]
-        signature: Vec<u8>,
-
-        /// Original message bytes.
-        #[cfg_attr(
-            feature = "json",
-            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
-        )]
-        message: Vec<u8>,
-    },
+    #[cfg_attr(feature = "json", serde(rename = "ed25519"))]
+    Ed25519(Ed25519),
 
     /// Secp256k1 ECDSA signature over an arbitrary message.
-    Secp256k1 {
-        /// Compressed SEC1-encoded public key bytes.
-        #[cfg_attr(
-            feature = "json",
-            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
-        )]
-        public_key: Vec<u8>,
-
-        /// DER-encoded signature bytes.
-        #[cfg_attr(
-            feature = "json",
-            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
-        )]
-        signature: Vec<u8>,
-
-        /// Original message bytes.
-        #[cfg_attr(
-            feature = "json",
-            serde(serialize_with = "hex_serialize", deserialize_with = "hex_deserialize")
-        )]
-        message: Vec<u8>,
-    },
+    #[cfg_attr(feature = "json", serde(rename = "secp256k1"))]
+    Secp256k1(Secp256k1),
 
     /// Threshold condition: at least `threshold` subconditions must hold.
-    Threshold {
-        /// Minimum number of valid subconditions required.
-        threshold: usize,
-
-        /// Subconditions to evaluate.
-        subconditions: Vec<Condition>,
-    },
+    #[cfg_attr(feature = "json", serde(rename = "threshold"))]
+    Threshold(Threshold),
 }
 
 impl Condition {
@@ -107,97 +55,48 @@ impl Condition {
     ///
     /// Returns `EscrowError::Condition` under any of the following circumstances:
     /// - **Preimage**: SHA-256(preimage) does not match.
-    /// - **Ed25519/Secp256k1**: public key parsing or signature verification fails.
+    /// - **Ed25519/Secp256k1**: public key parsing or signature parsing/verification fails.
     /// - **Threshold**: fewer than `threshold` subconditions succeed.
+    #[inline]
     pub fn verify(&self) -> Result<()> {
         match self {
-            Self::Preimage { hash, preimage } => {
-                let computed = Sha256::digest(preimage);
-                if computed.as_slice().ct_eq(hash).unwrap_u8() == 1 {
-                    Ok(())
-                } else {
-                    Err(ConditionError::PreimageMismatch.into())
-                }
-            }
-
-            Self::Ed25519 {
-                public_key,
-                signature,
-                message,
-            } => {
-                let pk = Ed25519Pub::from_bytes(public_key)
-                    .map_err(ConditionError::PubkeyOrSigVerification)?;
-                let sig = Ed25519Sig::from_slice(signature)
-                    .map_err(ConditionError::PubkeyOrSigVerification)?;
-                pk.verify(message, &sig)
-                    .map_err(|e| ConditionError::PubkeyOrSigVerification(e).into())
-            }
-
-            Self::Secp256k1 {
-                public_key,
-                signature,
-                message,
-            } => {
-                let vk = Secp256k1Pub::from_sec1_bytes(public_key)
-                    .map_err(ConditionError::PubkeyOrSigVerification)?;
-                let sig = Secp256k1Sig::from_der(signature)
-                    .map_err(ConditionError::PubkeyOrSigVerification)?;
-                vk.verify(message, &sig)
-                    .map_err(|e| ConditionError::PubkeyOrSigVerification(e).into())
-            }
-
-            Self::Threshold {
-                threshold,
-                subconditions,
-            } => {
-                // zero threshold always satisfied
-                if *threshold == 0 {
-                    return Ok(());
-                }
-
-                let valid = subconditions.iter().filter(|c| c.verify().is_ok()).count();
-                if valid >= *threshold {
-                    Ok(())
-                } else {
-                    Err(ConditionError::ThresholdNotMet {
-                        threshold: *threshold,
-                        valid,
-                    }
-                    .into())
-                }
-            }
+            Self::Hashlock(c) => c.verify().map_err(ConditionError::Hashlock)?,
+            Self::Ed25519(c) => c.verify().map_err(ConditionError::Ed25519)?,
+            Self::Secp256k1(c) => c.verify().map_err(ConditionError::Secp256k1)?,
+            Self::Threshold(c) => c.verify().map_err(ConditionError::Threshold)?,
         }
+        Ok(())
     }
 
     /// Construct a hashlock (preimage) condition.
-    pub fn preimage(hash: [u8; 32], preimage: Vec<u8>) -> Self {
-        Self::Preimage { hash, preimage }
+    pub fn hashlock(hash: [u8; 32], preimage: Vec<u8>) -> Self {
+        Self::Hashlock(Hashlock { hash, preimage })
     }
 
     /// Construct an Ed25519 signature condition.
     pub fn ed25519(public_key: [u8; 32], message: Vec<u8>, signature: Vec<u8>) -> Self {
-        Self::Ed25519 {
+        Self::Ed25519(Ed25519 {
             public_key,
             signature,
             message,
-        }
+        })
     }
 
     /// Construct a Secp256k1 signature condition.
     pub fn secp256k1(public_key: Vec<u8>, message: Vec<u8>, signature: Vec<u8>) -> Self {
-        Self::Secp256k1 {
+        Self::Secp256k1(Secp256k1 {
             public_key,
             signature,
             message,
-        }
+        })
     }
 
     /// Construct a threshold condition.
     pub fn threshold(threshold: usize, subconditions: Vec<Self>) -> Self {
-        Self::Threshold {
+        Self::Threshold(Threshold {
             threshold,
             subconditions,
-        }
+        })
     }
 }
 
@@ -213,17 +112,19 @@ impl std::fmt::Display for Condition {
 #[cfg(test)]
 mod tests {
 
+    use sha2::{Digest, Sha256};
+
     use super::*;
 
     #[test]
     fn preimage() {
         let preimage = b"secret".to_vec();
         let hash = Sha256::digest(&preimage).into();
-        let cond = Condition::preimage(hash, preimage);
+        let cond = Condition::hashlock(hash, preimage);
         assert!(cond.verify().is_ok());
 
         // invalid preimage
-        let cond = Condition::preimage(hash, b"wrong-secret".to_vec());
+        let cond = Condition::hashlock(hash, b"wrong-secret".to_vec());
         assert!(cond.verify().is_err());
     }
 
@@ -276,8 +177,8 @@ mod tests {
     fn nonzero_threshold() {
         // two trivial subconditions: one succeeds, one fails
         let hash = Sha256::digest(b"zkEscrow").into();
-        let correct = Condition::preimage(hash, b"zkEscrow".to_vec());
-        let wrong = Condition::preimage(hash, b"wrong-preimage".to_vec());
+        let correct = Condition::hashlock(hash, b"zkEscrow".to_vec());
+        let wrong = Condition::hashlock(hash, b"wrong-preimage".to_vec());
 
         // threshold == 1 should pass
         let cond = Condition::threshold(1, vec![correct.clone(), wrong.clone()]);
@@ -301,7 +202,7 @@ mod tests {
         // threshold == 0 with subconditions should also pass
         let preimage = b"zkEscrow".to_vec();
         let hash = Sha256::digest(&preimage).into();
-        let subcond = Condition::preimage(hash, preimage);
+        let subcond = Condition::hashlock(hash, preimage);
         let cond = Condition::threshold(0, vec![subcond]);
         assert!(cond.verify().is_ok());
     }
@@ -310,7 +211,7 @@ mod tests {
     fn nested_thresholds() {
         let preimage = b"zkEscrow".to_vec();
         let hash = Sha256::digest(&preimage).into();
-        let leaf = Condition::preimage(hash, preimage);
+        let leaf = Condition::hashlock(hash, preimage);
 
         // inner threshold: need 1 of `leaf`
         let inner = Condition::threshold(1, vec![leaf.clone()]);
@@ -319,7 +220,7 @@ mod tests {
         assert!(outer.verify().is_ok());
 
         // if `leaf` wrong, `inner` fails, and so does `outer`
-        let wrong_leaf = Condition::preimage(hash, b"wrong-preimage".to_vec());
+        let wrong_leaf = Condition::hashlock(hash, b"wrong-preimage".to_vec());
         let inner2 = Condition::threshold(1, vec![wrong_leaf]);
         let outer2 = Condition::threshold(1, vec![inner2]);
         assert!(outer2.verify().is_err());

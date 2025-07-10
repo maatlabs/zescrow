@@ -42,7 +42,7 @@ enum Commands {
         ArgGroup::new("kind")
             .required(true)
             .args(&[
-                "preimage",
+                "hashlock",
                 "ed25519_pubkey","ed25519_sig","ed25519_msg",
                 "secp_pubkey","secp_sig","secp_msg",
                 "threshold"
@@ -51,7 +51,7 @@ enum Commands {
     Generate {
         /// Preimage condition: supply a UTF-8 string
         #[arg(long, value_name = "PREIMAGE", group = "kind")]
-        preimage: Option<String>,
+        hashlock: Option<String>,
 
         /// Ed25519 condition: hex pubkey and hex signature over message
         #[arg(long, value_name = "PUBKEY", group = "kind")]
@@ -142,7 +142,7 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
         }
 
         Commands::Generate {
-            preimage,
+            hashlock,
             ed25519_pubkey,
             ed25519_sig,
             ed25519_msg,
@@ -152,9 +152,9 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
             threshold,
             subconditions,
         } => {
-            let condition = if let Some(p) = preimage {
-                let hash = Sha256::digest(p.as_bytes());
-                Condition::preimage(hash.into(), p.into_bytes())
+            let condition = if let Some(preimage) = hashlock {
+                let hash = Sha256::digest(preimage.as_bytes());
+                Condition::hashlock(hash.into(), preimage.into_bytes())
             } else if let (Some(pk), Some(sig), Some(msg)) =
                 (ed25519_pubkey, ed25519_sig, ed25519_msg)
             {

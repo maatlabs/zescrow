@@ -134,7 +134,7 @@ mod tests {
 
         let preimage = b"secret".to_vec();
         let hash = Sha256::digest(&preimage);
-        let condition = Condition::preimage(hash.into(), preimage);
+        let condition = Condition::hashlock(hash.into(), preimage);
 
         let mut escrow = Escrow::new(sender.clone(), recipient.clone(), asset, Some(condition));
         escrow.state = ExecutionState::Funded;

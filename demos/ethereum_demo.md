@@ -78,7 +78,7 @@
 
     ```json
     {
-    "condition": "preimage",
+    "condition": "hashlock",
     "fulfillment": {
         "hash": "<hex-encoded SHA-256 digest of the preimage>",
         "preimage": "<the actual preimage value, as a UTF-8 string>"
@@ -88,11 +88,11 @@
 
     There's a `client` command (`generate`) to help with creating the conditions file...
 
-    * To generate a _preimage_ `escrow_conditions.json` file:
+    * To generate a _hashlock_ `escrow_conditions.json` file:
 
     ```sh
     cd client
-    RUST_LOG=info cargo run -- generate --preimage "Ethereum Escrow"
+    RUST_LOG=info cargo run -- generate --hashlock "Ethereum Escrow"
     ```
 
     * To generate an _ed25519_ `escrow_conditions.json` file:

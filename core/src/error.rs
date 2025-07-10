@@ -43,22 +43,21 @@ pub enum EscrowError {
 /// Errors related to cryptographic condition verification.
 #[derive(Debug, Error)]
 pub enum ConditionError {
-    /// The provided preimage did not hash to the expected value.
-    #[error("preimage mismatch")]
-    PreimageMismatch,
+    /// Hashlock error
+    #[error("preimage (hashlock) failed: {0}")]
+    Hashlock(#[from] crate::condition::hashlock::Error),
 
-    /// Public key parsing or signature verification failed.
-    #[error("public key or signature verification failed: {0}")]
-    PubkeyOrSigVerification(#[from] ed25519_dalek::SignatureError),
+    /// Ed25519 error
+    #[error("ed25519 signature failed: {0}")]
+    Ed25519(#[from] crate::condition::ed25519::Error),
 
-    /// Fewer than the required number of subconditions were satisfied.
-    #[error("threshold not met: required {threshold}, valid {valid}")]
-    ThresholdNotMet {
-        /// Minimum number of valid subconditions required.
-        threshold: usize,
-        /// Number of verified subconditions.
-        valid: usize,
-    },
+    /// Secp256k1 error
+    #[error("secp256k1 signature failed: {0}")]
+    Secp256k1(#[from] crate::condition::secp256k1::Error),
+
+    /// Threshold error
+    #[error("threshold check failed: {0}")]
+    Threshold(#[from] crate::condition::threshold::Error),
 }
 
 /// Errors related to identity parsing and validation.
