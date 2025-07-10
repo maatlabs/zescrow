@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title Zescrow Escrow Contract
-/// @notice Holds funds until either a time-lock expires or a condition is met
+/// @notice Holds funds until a time-lock expires or explicit cancellation
 contract Escrow is ReentrancyGuard {
     using Address for address payable;
 
@@ -15,10 +15,10 @@ contract Escrow is ReentrancyGuard {
     /// @notice The party to receive funds on successful completion
     address public immutable recipient;
 
-    /// @notice Earliest **block number** when escrow can be finished
+    /// @notice Earliest block when escrow can be released
     uint256 public immutable finishAfter;
 
-    /// @notice Earliest **block number** when escrow can be cancelled
+    /// @notice Earliest block when escrow can be cancelled
     uint256 public immutable cancelAfter;
 
     /// @notice Address of the factory that deployed this escrow
@@ -26,6 +26,19 @@ contract Escrow is ReentrancyGuard {
 
     /// @notice Remaining amount locked in escrow
     uint256 public amount;
+
+    bool private settled;
+
+    error InvalidSender();
+    error InvalidRecipient();
+    error MustSpecifyPath();
+    error InvalidTimeOrder();
+    error AmountZero();
+    error TooEarlyToFinish();
+    error TooEarlyToCancel();
+    error CancelNotAllowed();
+    error AlreadySettled();
+    error Unauthorized();
 
     event Created(
         address indexed sender,
@@ -35,28 +48,30 @@ contract Escrow is ReentrancyGuard {
     event Released(address indexed recipient, uint256 amount);
     event Cancelled(address indexed sender, uint256 amount);
 
-    /// @param _depositor Party creating the escrow
-    /// @param _recipient Intended beneficiary of escrowed funds
-    /// @param _finishAfter Block number after which release is allowed (if no ZK conditions)
-    /// @param _cancelAfter Block number after which refund is allowed
+    /// @param _sender Depositor of the escrowed funds
+    /// @param _recipient Intended beneficiary of escrow
+    /// @param _finishAfter Block when release is allowed (0 = immediate)
+    /// @param _cancelAfter Block when refund is allowed (0 = disabled)
     constructor(
-        address _depositor,
+        address _sender,
         address _recipient,
         uint256 _finishAfter,
         uint256 _cancelAfter
     ) payable {
-        require(_depositor != address(0), "Zescrow: invalid depositor");
-        require(_recipient != address(0), "Zescrow: invalid recipient");
-        require(
-            _finishAfter > block.number,
-            "Zescrow: finishAfter block must be future"
-        );
-        require(
-            _cancelAfter > _finishAfter,
-            "Zescrow: cancelAfter block must follow finishAfter block"
-        );
+        if (_sender == address(0)) revert InvalidSender();
+        if (_recipient == address(0)) revert InvalidRecipient();
 
-        sender = _depositor;
+        if (_finishAfter == 0 && _cancelAfter == 0) revert MustSpecifyPath();
+        if (_finishAfter != 0 && _finishAfter <= block.number)
+            revert InvalidTimeOrder();
+
+        if (_cancelAfter != 0) {
+            uint256 base = _finishAfter != 0 ? _finishAfter : block.number;
+            if (_cancelAfter <= base) revert InvalidTimeOrder();
+        }
+        if (msg.value == 0) revert AmountZero();
+
+        sender = _sender;
         recipient = _recipient;
         finishAfter = _finishAfter;
         cancelAfter = _cancelAfter;
@@ -66,25 +81,29 @@ contract Escrow is ReentrancyGuard {
         emit Created(sender, recipient, amount);
     }
 
-    /// @notice Release escrowed funds to recipient if block number is reachead
+    /// @notice Release escrowed funds to `recipient`
     function finishEscrow() external nonReentrant {
-        require(block.number >= finishAfter, "Zescrow: too early to finish");
-        require(amount > 0, "Zescrow: nothing to release");
+        if (settled) revert AlreadySettled();
+        if (finishAfter != 0 && block.number < finishAfter)
+            revert TooEarlyToFinish();
 
+        settled = true;
         uint256 payout = amount;
         amount = 0;
         emit Released(recipient, payout);
         payable(recipient).sendValue(payout);
     }
 
-    /// @notice Cancel the escrow and refund the `sender` after `cancelAfter`
+    /// @notice Cancel the escrow and refund the `sender`
     function cancelEscrow() external nonReentrant {
-        require(
-            msg.sender == sender || msg.sender == factory,
-            "Zescrow: only sender can cancel"
-        );
-        require(block.number >= cancelAfter, "Zescrow: too early to cancel");
+        if (settled) revert AlreadySettled();
+        if (msg.sender != sender && msg.sender != factory)
+            revert Unauthorized();
 
+        if (cancelAfter == 0) revert CancelNotAllowed();
+        if (block.number < cancelAfter) revert TooEarlyToCancel();
+
+        settled = true;
         uint256 refund = amount;
         amount = 0;
         emit Cancelled(sender, refund);

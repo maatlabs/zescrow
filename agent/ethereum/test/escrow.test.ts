@@ -47,7 +47,8 @@ describe("Escrow", () => {
         const escrowAddr = events[0].args.escrowAddress;
 
         // Attempt to finish via factory (msg.sender = factory); should revert as too early
-        await expect(factory.finishEscrow(escrowAddr)).to.be.revertedWith("Zescrow: too early to finish");
+        const escrow = await ethers.getContractAt("Escrow", escrowAddr);
+        await expect(factory.finishEscrow(escrowAddr)).to.be.revertedWithCustomError(escrow, "TooEarlyToFinish");
 
         // Mine two blocks to reach finishAfter
         await network.provider.send("evm_mine");
@@ -87,10 +88,9 @@ describe("Escrow", () => {
         if (events.length === 0) throw new Error("EscrowCreated event not found");
         const escrowAddr = events[0].args.escrowAddress;
 
-        // const escrow = Escrow__factory.connect(escrowAddr, deployer as unknown as Signer);
-
         // Attempt to cancel before cancelAfter (msg.sender = factory); should revert as too early
-        await expect(factory.cancelEscrow(escrowAddr)).to.be.revertedWith("Zescrow: too early to cancel");
+        const escrow = await ethers.getContractAt("Escrow", escrowAddr);
+        await expect(factory.cancelEscrow(escrowAddr)).to.be.revertedWithCustomError(escrow, "TooEarlyToCancel");
 
         // Mine three blocks to reach cancelAfter
         await network.provider.send("evm_mine");

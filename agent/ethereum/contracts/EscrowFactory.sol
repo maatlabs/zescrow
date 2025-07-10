@@ -2,13 +2,10 @@
 pragma solidity ^0.8.28;
 
 import "./Escrow.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title Zescrow Escrow Factory
 /// @notice Deploy and manage multiple `Escrow` instances
 contract EscrowFactory {
-    using Address for address payable;
-
     /// @notice Emitted when a new escrow is created
     event EscrowCreated(
         address indexed creator,
@@ -19,33 +16,42 @@ contract EscrowFactory {
         uint256 cancelAfter
     );
 
-    /// @dev Tracks deployed escrow instances
+    /// @notice Indicates whether an address is a valid escrow instance
     mapping(address => bool) public isEscrow;
 
-    /// @dev Lists escrows per creator
+    /// @notice Maps each escrow instance to its creator
+    mapping(address => address) public escrowToCreator;
+
+    /// @notice Lists escrows deployed by each creator
     mapping(address => address[]) private escrowsByCreator;
 
-    /// @notice Create a new escrow instance
-    /// @param recipient Address to receive funds upon successful completion
-    /// @param finishAfter Block number after which escrow can be finished
-    /// @param cancelAfter Block number after which escrow can be cancelled
-    /// @return escrowAddress Address of the newly minted escrow contract
+    error InvalidRecipient();
+    error InvalidTimeOrder();
+    error MustSpecifyPath();
+    error NotAnEscrow();
+    error Unauthorized();
+    error AmountZero();
+    error TransferFailed();
+
+    /// @notice Deploys a new escrow contract:
+    /// - Must set at least one of `finishAfter` or `cancelAfter`
+    /// - If both set, `finishAfter < cancelAfter`
+    /// @param recipient Beneficiary of the escrow
+    /// @param finishAfter Block when release is allowed (0 = immediate)
+    /// @param cancelAfter Block when refund is allowed (0 = disabled)
+    /// @return escrowAddress Address of the newly created escrow contract
     function createEscrow(
         address recipient,
         uint256 finishAfter,
         uint256 cancelAfter
     ) external payable returns (address escrowAddress) {
-        require(recipient != address(0), "Zescrow factory: invalid recipient");
-        require(msg.value > 0, "Zescrow factory: must fund escrow");
-        require(
-            finishAfter > block.number,
-            "Zescrow factory: finishAfter must be future"
-        );
-        require(
-            cancelAfter > finishAfter,
-            "Zescrow factory: cancelAfter must follow finishAfter"
-        );
+        if (recipient == address(0)) revert InvalidRecipient();
+        if (finishAfter == 0 && cancelAfter == 0) revert MustSpecifyPath();
+        if (finishAfter != 0 && cancelAfter != 0 && finishAfter >= cancelAfter)
+            revert InvalidTimeOrder();
+        if (msg.value == 0) revert AmountZero();
 
+        // Deploy child escrow, forwarding ETH
         Escrow escrow = new Escrow{value: msg.value}(
             msg.sender,
             recipient,
@@ -53,7 +59,10 @@ contract EscrowFactory {
             cancelAfter
         );
         escrowAddress = address(escrow);
+
+        // Register escrow
         isEscrow[escrowAddress] = true;
+        escrowToCreator[escrowAddress] = msg.sender;
         escrowsByCreator[msg.sender].push(escrowAddress);
 
         emit EscrowCreated(
@@ -66,23 +75,24 @@ contract EscrowFactory {
         );
     }
 
-    /// @notice Finish escrow at given address
+    /// @notice Finalizes the escrow, releasing funds if time-lock conditions are met
     /// @param escrowAddress Address of the `Escrow` contract
     function finishEscrow(address escrowAddress) external {
-        require(isEscrow[escrowAddress], "Zescrow factory: not a valid escrow");
+        if (!isEscrow[escrowAddress]) revert NotAnEscrow();
         Escrow(escrowAddress).finishEscrow();
     }
 
-    /// @notice Cancel escrow at given address
+    /// @notice Cancels the escrow, refunding the creator if time-lock conditions are met
     /// @param escrowAddress Address of the `Escrow` contract
     function cancelEscrow(address escrowAddress) external {
-        require(isEscrow[escrowAddress], "Zescrow factory: not a valid escrow");
+        if (!isEscrow[escrowAddress]) revert NotAnEscrow();
+        if (msg.sender != escrowToCreator[escrowAddress]) revert Unauthorized();
         Escrow(escrowAddress).cancelEscrow();
     }
 
-    /// @notice Retrieve all escrows created by a specific address
-    /// @param creator Address of the escrow creator
-    /// @return List of escrow contract addresses
+    /// @notice Returns all escrows created by a given address
+    /// @param creator The depositor whose escrows to fetch
+    /// @return Array of escrow contract addresses
     function getEscrowsByCreator(
         address creator
     ) external view returns (address[] memory) {

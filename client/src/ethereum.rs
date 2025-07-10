@@ -103,7 +103,7 @@ impl Agent for EthereumAgent {
             .map_err(|_| ClientError::AssetOverflow)?;
 
         // Send `createEscrow` transaction, funding with `amount`
-        info!("Sending createEscrow(tx) with amount {}", amount);
+        info!("Sending {CREATE_ESCROW} with amount {}", amount);
         let call = self
             .factory
             .method::<_, H256>(CREATE_ESCROW, (recipient, finish_after, cancel_after))
@@ -136,6 +136,7 @@ impl Agent for EthereumAgent {
         if escrow_addr.is_zero() {
             return Err(ClientError::MissingEvent("EscrowCreated".into()));
         }
+        info!("{CREATE_ESCROW} transaction confirmed");
 
         Ok(EscrowMetadata {
             params: params.clone(),
@@ -146,7 +147,7 @@ impl Agent for EthereumAgent {
     async fn finish_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let escrow_addr = Address::from_str(&metadata.params.chain_config.agent_id)?;
 
-        info!("Sending finishEscrow transaction");
+        info!("Sending {FINISH_ESCROW} transaction");
         let call = self
             .factory
             .method::<_, ()>(FINISH_ESCROW, escrow_addr)
@@ -156,7 +157,7 @@ impl Agent for EthereumAgent {
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
-        info!("finishEscrow transaction confirmed");
+        info!("{FINISH_ESCROW} transaction confirmed");
 
         Ok(())
     }
@@ -164,7 +165,7 @@ impl Agent for EthereumAgent {
     async fn cancel_escrow(&self, metadata: &EscrowMetadata) -> Result<()> {
         let escrow_addr = Address::from_str(&metadata.params.chain_config.agent_id)?;
 
-        info!("Sending cancelEscrow transaction");
+        info!("Sending {CANCEL_ESCROW} transaction");
         self.factory
             .method::<_, ()>(CANCEL_ESCROW, escrow_addr)
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
@@ -173,7 +174,7 @@ impl Agent for EthereumAgent {
             .map_err(|e| AgentError::Ethereum(e.to_string()))?
             .await
             .map_err(|e| AgentError::Ethereum(e.to_string()))?;
-        info!("cancelEscrow transaction confirmed");
+        info!("{CANCEL_ESCROW} transaction confirmed");
 
         Ok(())
     }

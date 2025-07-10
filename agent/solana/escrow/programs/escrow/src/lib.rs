@@ -100,10 +100,7 @@ pub mod escrow {
             EscrowError::Unauthorized
         );
         // Must have set a `cancel_after`
-        require!(
-            escrow.cancel_after.is_some(),
-            EscrowError::CancelNotSupported
-        );
+        require!(escrow.cancel_after.is_some(), EscrowError::CancelNotAllowed);
         let t = escrow.cancel_after.unwrap();
         require!(current_slot >= t, EscrowError::NotExpired);
 
@@ -265,8 +262,8 @@ pub enum EscrowError {
     NotReady,
 
     /// `cancel_after` not specified; cannot cancel escrow.
-    #[msg("Cancel not supported (no cancel_after).")]
-    CancelNotSupported,
+    #[msg("Cancel not allowed (no cancel_after).")]
+    CancelNotAllowed,
 
     /// `cancel_after` not yet reached.
     #[msg("Too early to cancel.")]
