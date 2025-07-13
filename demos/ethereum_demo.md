@@ -86,28 +86,44 @@
     }
     ```
 
-    There's a `client` command (`generate`) to help with creating the conditions file...
-
-    * To generate a _hashlock_ `escrow_conditions.json` file:
+    There's a `client` command (`generate`) to help with creating the conditions file... The default `--output` path is always `./templates/escrow_conditions.json`.
 
     ```sh
     cd client
-    RUST_LOG=info cargo run -- generate --hashlock "Ethereum Escrow"
+
+    # Generate a hashlock condition JSON
+
+    cargo run -- generate hashlock --preimage <PATH> [--output <PATH>]
+
+    # Generate an Ed25519 signature condition JSON
+
+    cargo run -- generate ed25519 --pubkey <PUBKEY> --msg <MSG> --sig <SIG> [--output <PATH>]
+
+    # Generate a Secp256k1 signature condition JSON
+
+    cargo run -- generate secp256k1 --pubkey <PUBKEY> --msg <MSG> --sig <SIG> [--output <PATH>]
+
+    # Generate a threshold condition JSON
+
+    cargo run -- generate threshold --subconditions file1.json file2.json file3.json --threshold <N> [--output <PATH>]
     ```
 
-    * To generate an _ed25519_ `escrow_conditions.json` file:
+    As an example, if you run the `hashlock` subcommand with the `rustfmt.toml` file (at project root) as the `preimage` file:
 
     ```sh
-    RUST_LOG=info cargo run -- generate \
-    --ed25519-pubkey DEAD... \
-    --ed25519-sig BEAF... \
-    --ed25519-msg "Ethereum Escrow"
+    cargo run -- generate hashlock --preimage ../rustfmt.toml
     ```
 
-    * To generate a _threshold_ `escrow_conditions.json` file:
+    The output of the above command will be a `/templates/escrow_conditions.json` file with the following content:
 
-    ```sh
-    RUST_LOG=info cargo run -- generate --threshold cond1.json,cond2.json,cond3.json --n 2
+    ```json
+    {
+        "condition": "hashlock",
+        "fulfillment": {
+            "hash": "485b6baec8c0d6304648c3b924399835fdd09c8df9be1b65d169b07ded2237f9",
+            "preimage": "# Run with `cargo +nightly fmt`\n\nimports_granularity = \"Module\"\ngroup_imports = \"StdExternalCrate\"\n"
+        }
+    }
     ```
 
 6. Create an escrow transaction:

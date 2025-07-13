@@ -1,8 +1,5 @@
 //! The RISC Zero host (zkVM)
 
-use std::fs;
-use std::time::Instant;
-
 use anyhow::Context;
 use bincode::config::standard;
 use risc0_zkvm::{default_prover, ExecutorEnv};
@@ -15,12 +12,8 @@ use crate::ClientError;
 
 /// Executes the zero-knowledge proof workflow for an escrow transaction.
 pub fn run() -> anyhow::Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
-        .init();
-
     info!("Reading escrow metadata from {}", ESCROW_METADATA_PATH);
-    let json = fs::read_to_string(ESCROW_METADATA_PATH)
+    let json = std::fs::read_to_string(ESCROW_METADATA_PATH)
         .with_context(|| "failed to read escrow metadata JSON file")?;
 
     let metadata: EscrowMetadata =
@@ -37,7 +30,7 @@ pub fn run() -> anyhow::Result<()> {
         .with_context(|| "failed to build ExecutorEnv")?;
 
     info!("Starting zkVM proof generation");
-    let start = Instant::now();
+    let start = std::time::Instant::now();
     let receipt = default_prover()
         .prove(env, ZESCROW_GUEST_ELF)
         .with_context(|| "Proof generation failed")?

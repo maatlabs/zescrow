@@ -32,19 +32,12 @@ use threshold::Threshold;
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub enum Condition {
     /// XRPL-style hashlock: SHA-256(preimage) == hash.
-    #[cfg_attr(feature = "json", serde(rename = "hashlock"))]
     Hashlock(Hashlock),
-
     /// Ed25519 signature over an arbitrary message.
-    #[cfg_attr(feature = "json", serde(rename = "ed25519"))]
     Ed25519(Ed25519),
-
     /// Secp256k1 ECDSA signature over an arbitrary message.
-    #[cfg_attr(feature = "json", serde(rename = "secp256k1"))]
     Secp256k1(Secp256k1),
-
     /// Threshold condition: at least `threshold` subconditions must hold.
-    #[cfg_attr(feature = "json", serde(rename = "threshold"))]
     Threshold(Threshold),
 }
 
@@ -60,10 +53,10 @@ impl Condition {
     #[inline]
     pub fn verify(&self) -> Result<()> {
         match self {
-            Self::Hashlock(c) => c.verify().map_err(ConditionError::Hashlock)?,
-            Self::Ed25519(c) => c.verify().map_err(ConditionError::Ed25519)?,
-            Self::Secp256k1(c) => c.verify().map_err(ConditionError::Secp256k1)?,
-            Self::Threshold(c) => c.verify().map_err(ConditionError::Threshold)?,
+            Self::Hashlock(hashlock) => hashlock.verify().map_err(ConditionError::Hashlock)?,
+            Self::Ed25519(ed25519) => ed25519.verify().map_err(ConditionError::Ed25519)?,
+            Self::Secp256k1(secp256k1) => secp256k1.verify().map_err(ConditionError::Secp256k1)?,
+            Self::Threshold(threshold) => threshold.verify().map_err(ConditionError::Threshold)?,
         }
         Ok(())
     }

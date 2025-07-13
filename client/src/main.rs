@@ -1,4 +1,7 @@
-use clap::{ArgGroup, Parser, Subcommand};
+use std::path::PathBuf;
+
+use anyhow::{anyhow, Context};
+use clap::{value_parser, Parser, Subcommand};
 use sha2::{Digest, Sha256};
 use tracing::info;
 use zescrow_client::{prover, Recipient, ZescrowClient};
@@ -36,45 +39,108 @@ enum Commands {
     /// Reads `templates/escrow_metadata.json`.
     Cancel,
 
-    /// Generate a cryptographic condition file (`escrow_conditions.json`).
-    #[command(
-    group(
-        ArgGroup::new("kind")
-            .required(true)
-            .args(&[
-                "hashlock",
-                "ed25519_pubkey","ed25519_sig","ed25519_msg",
-                "secp_pubkey","secp_sig","secp_msg",
-                "threshold"
-        ]),
-    ))]
-    Generate {
-        /// Preimage condition: supply a UTF-8 string
-        #[arg(long, value_name = "PREIMAGE", group = "kind")]
-        hashlock: Option<String>,
+    /// Generate a cryptographic condition JSON file.
+    Generate(GenerateOpts),
+}
 
-        /// Ed25519 condition: hex pubkey and hex signature over message
-        #[arg(long, value_name = "PUBKEY", group = "kind")]
-        ed25519_pubkey: Option<String>,
-        #[arg(long, value_name = "SIG", group = "kind")]
-        ed25519_sig: Option<String>,
-        #[arg(long, value_name = "MSG", group = "kind")]
-        ed25519_msg: Option<String>,
+/// Options for `generate` command
+#[derive(Parser, Debug)]
+struct GenerateOpts {
+    #[command(subcommand)]
+    condition: GenerateCmd,
+}
 
-        /// Secp256k1 condition: hex pubkey, hex signature, and hex message
-        #[arg(long, value_name = "PUBKEY", group = "kind")]
-        secp_pubkey: Option<String>,
-        #[arg(long, value_name = "SIG", group = "kind")]
-        secp_sig: Option<String>,
-        #[arg(long, value_name = "MSG", group = "kind")]
-        secp_msg: Option<String>,
+#[derive(Subcommand, Debug)]
+enum GenerateCmd {
+    /// Hashlock: SHA256(preimage) == hash
+    Hashlock {
+        /// Read preimage from file
+        #[arg(
+            long,
+            value_parser = value_parser!(PathBuf),
+            help = "Path to preimage file"
+        )]
+        preimage: PathBuf,
 
-        /// Threshold condition: comma-separated list of child condition files
-        #[arg(long, value_name = "FILES", group = "kind")]
-        threshold: Option<String>,
+        /// Output path for condition JSON
+        #[arg(
+            long,
+            default_value = ESCROW_CONDITIONS_PATH,
+            value_parser = value_parser!(PathBuf)
+        )]
+        output: PathBuf,
+    },
+
+    /// Ed25519 signature over a message
+    Ed25519 {
+        /// Hex-encoded public key
+        #[arg(long, value_name = "PUBKEY", help = "Hex-encoded public key")]
+        pubkey: String,
+
+        /// Hex-encoded message
+        #[arg(long, value_name = "MSG", help = "Hex-encoded message")]
+        msg: String,
+
+        /// Hex-encoded signature
+        #[arg(long, value_name = "SIG", help = "Hex-encoded signature")]
+        sig: String,
+
+        /// Output path for condition JSON
+        #[arg(
+            long,
+            default_value = ESCROW_CONDITIONS_PATH,
+            value_parser = value_parser!(PathBuf)
+        )]
+        output: PathBuf,
+    },
+
+    /// Secp256k1 signature over a message
+    Secp256k1 {
+        /// Hex-encoded public key
+        #[arg(long, value_name = "PUBKEY", help = "Hex-encoded public key")]
+        pubkey: String,
+
+        /// Hex-encoded message
+        #[arg(long, value_name = "MSG", help = "Hex-encoded message")]
+        msg: String,
+
+        /// Hex-encoded signature
+        #[arg(long, value_name = "SIG", help = "Hex-encoded signature")]
+        sig: String,
+
+        /// Output path for condition JSON
+        #[arg(
+            long,
+            default_value = ESCROW_CONDITIONS_PATH,
+            value_parser = value_parser!(PathBuf)
+        )]
+        output: PathBuf,
+    },
+
+    /// Threshold condition: at least `threshold` of the given
+    /// subconditions must hold
+    Threshold {
+        /// One or more JSON files containing child conditions
+        #[arg(
+            long,
+            value_name = "FILES...",
+            value_parser = value_parser!(PathBuf),
+            num_args = 1..,
+            help = "Comma- or space-separated list of condition JSON files"
+        )]
+        subconditions: Vec<PathBuf>,
+
         /// Minimum number of child conditions required
-        #[arg(long, value_name = "N")]
-        subconditions: Option<usize>,
+        #[arg(long, help = "Number of conditions to satisfy")]
+        threshold: usize,
+
+        /// Output path for condition JSON
+        #[arg(
+            long,
+            default_value = ESCROW_CONDITIONS_PATH,
+            value_parser = value_parser!(PathBuf)
+        )]
+        output: PathBuf,
     },
 }
 
@@ -141,48 +207,65 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
             info!("Escrow cancelled and refunded successfully");
         }
 
-        Commands::Generate {
-            hashlock,
-            ed25519_pubkey,
-            ed25519_sig,
-            ed25519_msg,
-            secp_pubkey,
-            secp_sig,
-            secp_msg,
-            threshold,
-            subconditions,
-        } => {
-            let condition = if let Some(preimage) = hashlock {
-                let hash = Sha256::digest(preimage.as_bytes());
-                Condition::hashlock(hash.into(), preimage.into_bytes())
-            } else if let (Some(pk), Some(sig), Some(msg)) =
-                (ed25519_pubkey, ed25519_sig, ed25519_msg)
-            {
-                let pk: [u8; 32] = hex::decode(pk)?
-                    .try_into()
-                    .expect("Failed to convert array");
-                let sig = hex::decode(sig)?;
-                let msg = hex::decode(msg)?;
-                Condition::ed25519(pk, msg, sig)
-            } else if let (Some(pk), Some(sig), Some(msg)) = (secp_pubkey, secp_sig, secp_msg) {
-                let pk = hex::decode(pk)?;
-                let sig = hex::decode(sig)?;
-                let msg = hex::decode(msg)?;
-                Condition::secp256k1(pk, msg, sig)
-            } else if let Some(files) = threshold {
-                let n = subconditions.expect("Minimum number of valid subconditions required.");
-                let mut subconds = Vec::new();
-                for f in files.split(',') {
-                    let cond: Condition = load_escrow_data(f)?;
-                    subconds.push(cond);
-                }
-                Condition::threshold(n, subconds)
-            } else {
-                unreachable!("This shouldn't happen!");
-            };
+        Commands::Generate(opts) => {
+            info!("Generating a new conditions JSON file");
+            handle_generate_cmd(opts)?;
+        }
+    }
+    Ok(())
+}
 
-            info!("Generating a new `templates/escrow_conditions.json`");
-            save_escrow_data(ESCROW_CONDITIONS_PATH, &condition)?;
+fn handle_generate_cmd(opts: GenerateOpts) -> anyhow::Result<()> {
+    match opts.condition {
+        GenerateCmd::Hashlock { preimage, output } => {
+            let preimage = std::fs::read_to_string(&preimage)
+                .with_context(|| format!("reading preimage file {preimage:?}"))?;
+            let hash = Sha256::digest(preimage.as_bytes());
+            let cond = Condition::hashlock(hash.into(), preimage.into_bytes());
+            save_escrow_data(output, &cond)?;
+        }
+
+        GenerateCmd::Ed25519 {
+            pubkey,
+            msg,
+            sig,
+            output,
+        } => {
+            let pk: [u8; 32] = hex::decode(&pubkey)?
+                .as_slice()
+                .try_into()
+                .map_err(|_| anyhow!("pubkey wrong length"))?;
+            let message = hex::decode(msg)?;
+            let signature = hex::decode(sig)?;
+            let cond = Condition::ed25519(pk, message, signature);
+            save_escrow_data(output, &cond)?;
+        }
+
+        GenerateCmd::Secp256k1 {
+            pubkey,
+            msg,
+            sig,
+            output,
+        } => {
+            let pk = hex::decode(&pubkey)?;
+            let message = hex::decode(msg)?;
+            let signature = hex::decode(sig)?;
+            let cond = Condition::secp256k1(pk, message, signature);
+            save_escrow_data(output, &cond)?;
+        }
+
+        GenerateCmd::Threshold {
+            subconditions,
+            threshold,
+            output,
+        } => {
+            let mut subs = Vec::with_capacity(subconditions.len());
+            for path in subconditions {
+                let c: Condition = load_escrow_data(&path)?;
+                subs.push(c);
+            }
+            let cond = Condition::threshold(threshold, subs);
+            save_escrow_data(output, &cond)?;
         }
     }
     Ok(())
