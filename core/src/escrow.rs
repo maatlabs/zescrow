@@ -1,6 +1,3 @@
-//! This module provides the `Escrow` type, representing an escrow instance with its
-//! asset, parties, state, and optional conditions.
-
 use bincode::{Decode, Encode};
 #[cfg(feature = "json")]
 use {

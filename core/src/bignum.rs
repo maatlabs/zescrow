@@ -1,10 +1,3 @@
-//! The module provides support for:
-//!  - JSON (de)serialization under the `json` feature,
-//!  - Bincode Encode/Decode for the `client/prover`,
-//!  - Generic conversion from numeric types,
-//!  - TryFrom<String> parsing, and
-//!  - Display as decimal string.
-
 use bincode::de::{BorrowDecoder, Decoder};
 use bincode::enc::Encoder;
 use bincode::error::{DecodeError, EncodeError};

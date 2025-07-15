@@ -1,7 +1,3 @@
-//! This module defines the various asset kinds supported (native coins,
-//! fungible tokens, non-fungible tokens, multi-tokens, and liquidity pool shares),
-//! along with validation, human-readable formatting, and (de)serialization logic.
-
 #[cfg(feature = "json")]
 use std::str::FromStr;
 

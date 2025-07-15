@@ -1,7 +1,3 @@
-//! This module defines the `Condition` enum, representing on-chain and off-chain
-//! cryptographic conditions (e.g., hashlocks, digital signatures, and threshold
-//! conditions) and provides deterministic verification.
-
 use bincode::{Decode, Encode};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
