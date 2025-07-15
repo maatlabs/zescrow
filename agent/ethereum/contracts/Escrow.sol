@@ -2,111 +2,143 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
-/// @title Zescrow Escrow Contract
+/// @title Zescrow Escrow Manager
 /// @notice Holds funds until a time-lock expires or explicit cancellation
 contract Escrow is ReentrancyGuard {
-    using Address for address payable;
+    /// @dev Represents a single escrow's state
+    struct EscrowDB {
+        address sender; // depositor
+        address recipient; // beneficiary
+        uint256 amount; // locked ETH
+        uint256 finishAfter; // unlock block (0 = immediate)
+        uint256 cancelAfter; // refund block (0 = disabled)
+        bool settled; // prevents reuse
+    }
 
-    /// @notice The party who funded the escrow
-    address public immutable sender;
+    /// @dev Auto-incrementing escrow ID; we start at 1 on creation
+    uint256 private _nextEscrowId = 0;
 
-    /// @notice The party to receive funds on successful completion
-    address public immutable recipient;
+    /// @dev Maps escrow IDs to their state data
+    mapping(uint256 => EscrowDB) private _escrows;
 
-    /// @notice Earliest block when escrow can be released
-    uint256 public immutable finishAfter;
+    error InvalidRecipient(); // recipient must be non-zero
+    error InsufficientValue(); // msg.value > 0
+    error TimeLockUnset(); // neither finishAfter nor cancelAfter set
+    error InvalidTimeOrder(); // finishAfter >= cancelAfter
+    error EscrowNotExists(); // no escrow for given ID
+    error OnlyRecipient(); // finishEscrow caller mismatch
+    error OnlySender(); // cancelEscrow caller mismatch
+    error AlreadySettled(); // escrow already released (finished) or cancelled (refunded)
+    error TooEarlyToFinish(); // block.number < finishAfter
+    error TooEarlyToCancel(); // block.number < cancelAfter
+    error CancelDisabled(); // cancelAfter == 0
+    error TransferFailed(); // low-level payable call (transfer) returned false
 
-    /// @notice Earliest block when escrow can be cancelled
-    uint256 public immutable cancelAfter;
-
-    /// @notice Address of the factory that deployed this escrow
-    address public immutable factory;
-
-    /// @notice Remaining amount locked in escrow
-    uint256 public amount;
-
-    bool private settled;
-
-    error InvalidSender();
-    error InvalidRecipient();
-    error MustSpecifyPath();
-    error InvalidTimeOrder();
-    error AmountZero();
-    error TooEarlyToFinish();
-    error TooEarlyToCancel();
-    error CancelNotAllowed();
-    error AlreadySettled();
-    error Unauthorized();
-
-    event Created(
+    event EscrowCreated(
+        uint256 indexed escrowId,
         address indexed sender,
+        address indexed recipient,
+        uint256 amount,
+        uint256 finishAfter,
+        uint256 cancelAfter
+    );
+    event EscrowFinished(
+        uint256 indexed escrowId,
         address indexed recipient,
         uint256 amount
     );
-    event Released(address indexed recipient, uint256 amount);
-    event Cancelled(address indexed sender, uint256 amount);
+    event EscrowCancelled(
+        uint256 indexed escrowId,
+        address indexed sender,
+        uint256 amount
+    );
 
-    /// @param _sender Depositor of the escrowed funds
-    /// @param _recipient Intended beneficiary of escrow
-    /// @param _finishAfter Block when release is allowed (0 = immediate)
-    /// @param _cancelAfter Block when refund is allowed (0 = disabled)
-    constructor(
-        address _sender,
-        address _recipient,
-        uint256 _finishAfter,
-        uint256 _cancelAfter
-    ) payable {
-        if (_sender == address(0)) revert InvalidSender();
-        if (_recipient == address(0)) revert InvalidRecipient();
-
-        if (_finishAfter == 0 && _cancelAfter == 0) revert MustSpecifyPath();
-        if (_finishAfter != 0 && _finishAfter <= block.number)
+    /// @notice Create a new escrow
+    /// - Must set at least one of `finishAfter` or `cancelAfter`
+    /// - If both set, `finishAfter < cancelAfter`
+    /// @param recipient The address to receive funds upon release
+    /// @param finishAfter Absolute block number after which finish/release is allowed
+    /// @param cancelAfter Absolute block number after which cancel/refund is allowed
+    /// @return escrowId A unique identifier for the new escrow
+    function createEscrow(
+        address recipient,
+        uint256 finishAfter,
+        uint256 cancelAfter
+    ) external payable returns (uint256 escrowId) {
+        if (recipient == address(0)) revert InvalidRecipient();
+        if (msg.value == 0) revert InsufficientValue();
+        if (finishAfter == 0 && cancelAfter == 0) revert TimeLockUnset();
+        if (finishAfter != 0 && cancelAfter != 0 && finishAfter >= cancelAfter)
             revert InvalidTimeOrder();
 
-        if (_cancelAfter != 0) {
-            uint256 base = _finishAfter != 0 ? _finishAfter : block.number;
-            if (_cancelAfter <= base) revert InvalidTimeOrder();
-        }
-        if (msg.value == 0) revert AmountZero();
+        escrowId = ++_nextEscrowId;
 
-        sender = _sender;
-        recipient = _recipient;
-        finishAfter = _finishAfter;
-        cancelAfter = _cancelAfter;
-        factory = msg.sender;
-        amount = msg.value;
+        _escrows[escrowId] = EscrowDB({
+            sender: msg.sender,
+            recipient: recipient,
+            amount: msg.value,
+            finishAfter: finishAfter,
+            cancelAfter: cancelAfter,
+            settled: false
+        });
 
-        emit Created(sender, recipient, amount);
+        emit EscrowCreated(
+            escrowId,
+            msg.sender,
+            recipient,
+            msg.value,
+            finishAfter,
+            cancelAfter
+        );
     }
 
-    /// @notice Release escrowed funds to `recipient`
-    function finishEscrow() external nonReentrant {
-        if (settled) revert AlreadySettled();
-        if (finishAfter != 0 && block.number < finishAfter)
+    /// @notice Release an existing escrow (callable only by recipient)
+    /// @param escrowId The ID of the escrow to finish/complete
+    function finishEscrow(uint256 escrowId) external nonReentrant {
+        EscrowDB storage escrow = _escrows[escrowId];
+        if (escrow.sender == address(0)) revert EscrowNotExists();
+        if (msg.sender != escrow.recipient) revert OnlyRecipient();
+        if (escrow.settled) revert AlreadySettled();
+        if (escrow.finishAfter != 0 && block.number < escrow.finishAfter)
             revert TooEarlyToFinish();
 
-        settled = true;
-        uint256 payout = amount;
-        amount = 0;
-        emit Released(recipient, payout);
-        payable(recipient).sendValue(payout);
+        escrow.settled = true;
+        uint256 payout = escrow.amount;
+        escrow.amount = 0;
+        emit EscrowFinished(escrowId, escrow.recipient, payout);
+
+        (bool success, ) = payable(escrow.recipient).call{value: payout}("");
+        if (!success) revert TransferFailed();
     }
 
-    /// @notice Cancel the escrow and refund the `sender`
-    function cancelEscrow() external nonReentrant {
-        if (settled) revert AlreadySettled();
-        if (msg.sender != sender && msg.sender != factory)
-            revert Unauthorized();
+    /// @notice Cancel and refund an existing escrow (callable only by sender)
+    /// @param escrowId The ID of the escrow to cancel/refund
+    function cancelEscrow(uint256 escrowId) external nonReentrant {
+        EscrowDB storage escrow = _escrows[escrowId];
+        if (escrow.sender == address(0)) revert EscrowNotExists();
+        if (msg.sender != escrow.sender) revert OnlySender();
+        if (escrow.settled) revert AlreadySettled();
+        if (escrow.cancelAfter == 0) revert CancelDisabled();
+        if (block.number < escrow.cancelAfter) revert TooEarlyToCancel();
 
-        if (cancelAfter == 0) revert CancelNotAllowed();
-        if (block.number < cancelAfter) revert TooEarlyToCancel();
+        escrow.settled = true;
+        uint256 refund = escrow.amount;
+        escrow.amount = 0;
+        emit EscrowCancelled(escrowId, escrow.sender, refund);
 
-        settled = true;
-        uint256 refund = amount;
-        amount = 0;
-        emit Cancelled(sender, refund);
-        payable(sender).sendValue(refund);
+        (bool success, ) = payable(escrow.sender).call{value: refund}("");
+        if (!success) revert TransferFailed();
+    }
+
+    /// @notice Retrieve an existing escrow's data
+    /// @param escrowId Identifier of the escrow
+    /// @return The `EscrowDB` struct for that ID
+    function getEscrow(
+        uint256 escrowId
+    ) external view returns (EscrowDB memory) {
+        EscrowDB storage escrow = _escrows[escrowId];
+        if (escrow.sender == address(0)) revert EscrowNotExists();
+        return escrow;
     }
 }

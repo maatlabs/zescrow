@@ -4,19 +4,19 @@ import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers"
 import type { Signer } from "ethers";
 
 import {
-    type EscrowFactory,
-    EscrowFactory__factory,
+    type Escrow,
+    Escrow__factory,
 } from "../typechain-types";
 
 describe("Escrow", () => {
     let deployer: SignerWithAddress;
     let recipient: SignerWithAddress;
-    let factory: EscrowFactory;
+    let escrow: Escrow;
 
     beforeEach(async () => {
         [deployer, recipient] = await ethers.getSigners();
-        factory = await new EscrowFactory__factory(deployer as unknown as Signer).deploy();
-        await factory.waitForDeployment();
+        escrow = await new Escrow__factory(deployer as unknown as Signer).deploy();
+        await escrow.waitForDeployment();
     });
 
     it("fails to finish before finishAfter, then succeeds", async () => {
@@ -25,7 +25,7 @@ describe("Escrow", () => {
         const cancelAfter = startBlock + 4;
         const value = ethers.parseEther("1");
 
-        const tx = await factory.createEscrow(
+        const tx = await escrow.createEscrow(
             recipient.address,
             finishAfter,
             cancelAfter,
@@ -34,29 +34,27 @@ describe("Escrow", () => {
         const receipt = await tx.wait();
         if (!receipt) throw new Error("Transaction failed to be mined");
 
-        const filter = factory.filters.EscrowCreated(
-            deployer.address,
+        const filter = escrow.filters.EscrowCreated(
             undefined,
+            deployer.address,
             recipient.address,
             undefined,
             undefined,
             undefined
         );
-        const events = await factory.queryFilter(filter, receipt.blockNumber);
+        const events = await escrow.queryFilter(filter, receipt.blockNumber);
         if (events.length === 0) throw new Error("EscrowCreated event not found");
-        const escrowAddr = events[0].args.escrowAddress;
+        const escrowId = events[0].args.escrowId;
 
-        // Attempt to finish via factory (msg.sender = factory); should revert as too early
-        const escrow = await ethers.getContractAt("Escrow", escrowAddr);
-        await expect(factory.finishEscrow(escrowAddr)).to.be.revertedWithCustomError(escrow, "TooEarlyToFinish");
+        // Attempt to finish; should revert as too early
+        await expect(escrow.connect(recipient).finishEscrow(escrowId)).to.be.revertedWithCustomError(escrow, "TooEarlyToFinish");
 
         // Mine two blocks to reach finishAfter
         await network.provider.send("evm_mine");
         await network.provider.send("evm_mine");
 
         const balBefore = await ethers.provider.getBalance(recipient.address);
-        // Finish via factory (no sender restriction)
-        await (await factory.finishEscrow(escrowAddr)).wait();
+        await (await escrow.connect(recipient).finishEscrow(escrowId)).wait();
         const balAfter = await ethers.provider.getBalance(recipient.address);
         expect(balAfter).to.be.gt(balBefore);
     });
@@ -67,7 +65,7 @@ describe("Escrow", () => {
         const cancelAfter = startBlock + 4;
         const value = ethers.parseEther("1");
 
-        const tx = await factory.createEscrow(
+        const tx = await escrow.createEscrow(
             recipient.address,
             finishAfter,
             cancelAfter,
@@ -76,21 +74,20 @@ describe("Escrow", () => {
         const receipt = await tx.wait();
         if (!receipt) throw new Error("Transaction failed to be mined");
 
-        const filter = factory.filters.EscrowCreated(
-            deployer.address,
+        const filter = escrow.filters.EscrowCreated(
             undefined,
+            deployer.address,
             recipient.address,
             undefined,
             undefined,
             undefined
         );
-        const events = await factory.queryFilter(filter, receipt.blockNumber);
+        const events = await escrow.queryFilter(filter, receipt.blockNumber);
         if (events.length === 0) throw new Error("EscrowCreated event not found");
-        const escrowAddr = events[0].args.escrowAddress;
+        const escrowId = events[0].args.escrowId;
 
-        // Attempt to cancel before cancelAfter (msg.sender = factory); should revert as too early
-        const escrow = await ethers.getContractAt("Escrow", escrowAddr);
-        await expect(factory.cancelEscrow(escrowAddr)).to.be.revertedWithCustomError(escrow, "TooEarlyToCancel");
+        // Attempt to cancel before cancelAfter; should revert as too early
+        await expect(escrow.cancelEscrow(escrowId)).to.be.revertedWithCustomError(escrow, "TooEarlyToCancel");
 
         // Mine three blocks to reach cancelAfter
         await network.provider.send("evm_mine");
@@ -98,8 +95,8 @@ describe("Escrow", () => {
         await network.provider.send("evm_mine");
 
         const balBefore = await ethers.provider.getBalance(deployer.address);
-        // Cancel via factory (now allowed)
-        await (await factory.cancelEscrow(escrowAddr)).wait();
+        // Cancel (now allowed)
+        await (await escrow.cancelEscrow(escrowId)).wait();
         const balAfter = await ethers.provider.getBalance(deployer.address);
         expect(balAfter).to.be.gt(balBefore);
     });

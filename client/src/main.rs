@@ -222,7 +222,8 @@ fn handle_generate_cmd(opts: GenerateOpts) -> anyhow::Result<()> {
                 .with_context(|| format!("reading preimage file {preimage:?}"))?;
             let hash = Sha256::digest(preimage.as_bytes());
             let cond = Condition::hashlock(hash.into(), preimage.into_bytes());
-            save_escrow_data(output, &cond)?;
+            save_escrow_data(&output, &cond)?;
+            info!("Saved hashlock condition file to: {output:?}");
         }
 
         GenerateCmd::Ed25519 {
@@ -238,7 +239,8 @@ fn handle_generate_cmd(opts: GenerateOpts) -> anyhow::Result<()> {
             let message = hex::decode(msg)?;
             let signature = hex::decode(sig)?;
             let cond = Condition::ed25519(pk, message, signature);
-            save_escrow_data(output, &cond)?;
+            save_escrow_data(&output, &cond)?;
+            info!("Saved Ed25519 condition file to: {output:?}");
         }
 
         GenerateCmd::Secp256k1 {
@@ -251,7 +253,8 @@ fn handle_generate_cmd(opts: GenerateOpts) -> anyhow::Result<()> {
             let message = hex::decode(msg)?;
             let signature = hex::decode(sig)?;
             let cond = Condition::secp256k1(pk, message, signature);
-            save_escrow_data(output, &cond)?;
+            save_escrow_data(&output, &cond)?;
+            info!("Saved Secp256k1 condition file to: {output:?}");
         }
 
         GenerateCmd::Threshold {
@@ -265,7 +268,8 @@ fn handle_generate_cmd(opts: GenerateOpts) -> anyhow::Result<()> {
                 subs.push(c);
             }
             let cond = Condition::threshold(threshold, subs);
-            save_escrow_data(output, &cond)?;
+            save_escrow_data(&output, &cond)?;
+            info!("Saved threshold condition file to: {output:?}");
         }
     }
     Ok(())

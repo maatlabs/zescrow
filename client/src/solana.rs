@@ -129,6 +129,7 @@ impl Agent for SolanaAgent {
         Ok(EscrowMetadata {
             params: params.clone(),
             state: ExecutionState::Funded,
+            escrow_id: None,
         })
     }
 

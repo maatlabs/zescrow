@@ -1,6 +1,9 @@
 //! Escrow program with XRPL-style time-lock semantics.
 
+// TODO (kobby-pentangeli):
+// remove once future `Anchor` versions fix warnings
 #![allow(unexpected_cfgs)]
+#![allow(deprecated)]
 
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;

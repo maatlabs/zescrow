@@ -9,6 +9,8 @@ const config: HardhatUserConfig = {
     },
     networks: {
         hardhat: {
+            loggingEnabled: true,
+            allowUnlimitedContractSize: true,
             chainId: 31337
         }
     }

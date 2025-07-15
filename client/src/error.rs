@@ -41,7 +41,7 @@ pub enum ClientError {
     #[error("Asset amount overflow")]
     AssetOverflow,
 
-    #[error("Missing on-chain escrow event")]
+    #[error("{0}")]
     MissingEvent(String),
 
     #[error("Zescrow core: {0}")]

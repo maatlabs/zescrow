@@ -126,6 +126,8 @@ pub struct EscrowMetadata {
     pub params: EscrowParams,
     /// State of escrow execution in the `client`.
     pub state: ExecutionState,
+    /// Unique identifier for the created escrow.
+    pub escrow_id: Option<u64>,
 }
 
 /// Parameters required to create an escrow on-chain.

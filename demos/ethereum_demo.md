@@ -9,6 +9,7 @@
     * Install Hardhat:
 
     ```sh
+    nvm use --lts
     npm install --global hardhat
     ```
 
@@ -28,7 +29,7 @@
 
     Hardhat will print a list of pre-funded accounts and their WIF private keys. You may use any of these public/private keypairs for the `sender` and `recipient` of your escrow transactions in this demo. Just make sure to remember which ones you used for what purpose. **Note**, however, that unless you specify a different `from` address in your transactions, Hardhat uses the first account (`Account # 0`) by default. Thus, you can use any of the remaining accounts as the `to` (recipient) address.
 
-4. Compile & deploy the `EscrowFactory` and `Verifier` contracts. In a second terminal:
+4. Compile & deploy the `EscrowFactory` contract. In a second terminal:
 
     ```sh
     cd agent/ethereum
@@ -36,7 +37,7 @@
     npx hardhat run --network localhost scripts/deploy.ts
     ```
 
-    After deployment completes, note the printed `EscrowFactory` and `Verifier` addresses.
+    After deployment, note the printed `EscrowFactory` contract address.
 
 5. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected. Here's an example of what your escrow parameters might look like:
 
@@ -45,17 +46,15 @@
         "chain_config": {
             "chain": "ethereum",
             "rpc_url": "http://localhost:8545",
-            "sender_private_id": "SENDER_ETHEREUM_PRIVATE_KEY (WIF)",
+            "sender_private_id": "SENDER_ETHEREUM_PRIVATE_KEY (WIF)", // Copy-paste `Account #0` private key
             "agent_id": "0xFactoryContractAddress",
         },
         "asset": {
-            "kind": "token",
-            "id": {
-                "hex": "0xTokenContractAddress"
-            },
+            "kind": "native",
+            "id": null,
             "agent_id": null,
             "amount": "1000000000000000000", // (1 ETH == 1_000_000_000_000_000_000 wei)
-            "decimals": 18,
+            "decimals": null,
             "total_supply": null
         },
         "sender": {
