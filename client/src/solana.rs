@@ -27,7 +27,7 @@ pub struct SolanaAgent {
     sender_keypair: Keypair,
     // Escrow beneficiary keypair
     recipient_keypair: Option<Keypair>,
-    // On-chain escrow program ID
+    // Escrow program ID
     escrow_program_id: Pubkey,
 }
 

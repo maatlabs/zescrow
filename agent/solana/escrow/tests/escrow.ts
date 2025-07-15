@@ -36,7 +36,7 @@ describe("escrow", () => {
             .createEscrow({
                 amount: AMOUNT,
                 finishAfter: null,
-                cancelAfter: null,
+                cancelAfter: new BN(0),
             })
             .accounts({
                 sender: sender.publicKey,
