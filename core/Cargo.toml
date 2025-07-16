@@ -8,7 +8,7 @@ homepage = "https://github.com/maatlabs/zescrow"
 documentation = "https://docs.rs/zescrow-core"
 readme = "README.md"
 keywords = ["zk", "zero-knowledge", "escrow", "risc-zero", "zkvm"]
-categories = ["cryptography", "zero-knowledge-proofs"]
+categories = ["cryptography"]
 edition = "2021"
 
 [features]
