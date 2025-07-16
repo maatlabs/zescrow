@@ -219,7 +219,7 @@ impl Asset {
             .map(|(asset, _)| asset)
     }
 
-    /// Format raw [BigNumber] with fixed‐point decimals.
+    /// Format raw `BigNumber` with fixed‐point decimals.
     pub fn format_amount(&self) -> Result<String> {
         let decimals = self.decimals.unwrap_or(0);
         let factor = BigUint::from(10u8).pow(decimals as u32);

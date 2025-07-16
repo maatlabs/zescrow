@@ -1,10 +1,10 @@
-/// Serde helper to (de)serialize [BigUint] as strings.
+/// Serde helper to (de)serialize `BigUint` as strings.
 #[cfg(feature = "json")]
 pub mod biguint_serde {
     use num_bigint::BigUint;
     use serde::{de, Deserialize, Deserializer, Serializer};
 
-    /// Serialize a [BigUint] as a &str.
+    /// Serialize a `BigUint` as a &str.
     pub fn serialize<S>(value: &BigUint, s: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -12,7 +12,7 @@ pub mod biguint_serde {
         s.serialize_str(&value.to_str_radix(10))
     }
 
-    /// Deserialize into a [BigUint].
+    /// Deserialize into a `BigUint`.
     pub fn deserialize<'de, D>(d: D) -> Result<BigUint, D::Error>
     where
         D: Deserializer<'de>,

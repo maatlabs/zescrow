@@ -25,7 +25,7 @@ pub struct Escrow {
 }
 
 impl Escrow {
-    /// Creates a new [Escrow].
+    /// Creates a new `Escrow`.
     pub fn new(
         sender: Party,
         recipient: Party,

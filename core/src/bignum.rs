@@ -9,7 +9,7 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-/// A wrapper around [BigUint] so we can implement [bincode] traits without violating
+/// A wrapper around `BigUint` so we can implement `bincode` traits without violating
 /// orphan rules, and still support Serde/JSON via `#[cfg(feature="json")]`.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "json", serde(transparent))]
@@ -17,7 +17,7 @@ use {
 pub struct BigNumber(#[cfg_attr(feature = "json", serde(with = "biguint_serde"))] pub BigUint);
 
 impl BigNumber {
-    /// [BigNumber] from 0.
+    /// `BigNumber` from 0.
     pub fn zero() -> BigNumber {
         BigUint::from(0u64).into()
     }
@@ -57,7 +57,7 @@ impl<'de, Context> BorrowDecode<'de, Context> for BigNumber {
 }
 
 impl std::fmt::Display for BigNumber {
-    /// Print the inner [BigUint] as a decimal string.
+    /// Print the inner `BigUint` as a decimal string.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0.to_str_radix(10))
     }

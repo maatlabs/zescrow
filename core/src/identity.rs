@@ -13,10 +13,10 @@ use crate::{EscrowError, Result};
 /// Prevents arbitrarily‐long Base58/hex/base64 blobs.
 const MAX_ID_LEN: usize = 256;
 
-/// A participant in the escrow protocol, wrapping a chain-agnostic [`ID`].
+/// A participant in the escrow protocol, wrapping a chain-agnostic `ID`.
 ///
 /// A `Party` represents an on-chain account or public-key identity.  
-/// Internally it holds an [`ID`], which may have been encoded as hex, Base58, Base64,
+/// Internally it holds an `ID`, which may have been encoded as hex, Base58, Base64,
 /// or raw bytes.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq, Hash)]

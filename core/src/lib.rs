@@ -6,7 +6,7 @@
 /// Chain-agnostic asset representations and utilities.
 pub mod asset;
 
-/// Wrapper around [BigUint] so we can implement [bincode] traits.
+/// Wrapper around BigUint so we can implement bincode traits.
 pub mod bignum;
 
 /// Deterministic cryptographic conditions and fulfillment logic.
@@ -24,7 +24,7 @@ pub mod identity;
 /// Types for JSON (de)serialization, parameter/metadata schemas, and chain configurations.
 pub mod interface;
 
-/// Helpers for (de)serializing with [serde].
+/// Helpers for (de)serializing with serde.
 #[cfg(feature = "json")]
 pub mod serde;
 
