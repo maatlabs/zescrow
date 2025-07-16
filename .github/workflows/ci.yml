@@ -109,6 +109,6 @@ jobs:
       - name: Install cargo-deny
         run: cargo install --locked cargo-deny
       - name: cargo deny check (core)
-        run: cargo deny --manifest-path=core/Cargo.toml check --deny advisories
+        run: cargo deny --manifest-path=core/Cargo.toml check advisories
       - name: cargo deny check (escrow program)
-        run: cargo deny --manifest-path=agent/solana/escrow/programs/escrow/Cargo.toml check --deny advisories
+        run: cargo deny --manifest-path=agent/solana/escrow/programs/escrow/Cargo.toml check advisories
