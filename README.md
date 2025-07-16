@@ -4,13 +4,13 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 
 > [!WARNING]
 
-**This project is not audited, and it's currently under active development. Until `v1.0`, please do not deploy in production**.
+**_This project is not audited, and it's currently under active development. Until `v1.0`, please do not deploy in production_**.
 
 ## Goals
 
-1. **Privacy-Preserving**: reveal only necessary transaction details to counterparties  
-2. **Chain-Agnostic**: deploy same escrow logic across L1s/L2s via lightweight agents  
-3. **Dispute Minimization**: cryptographic proof of condition fulfillment preempts conflicts  
+1. _Privacy-Preserving_: reveal only necessary transaction details to counterparties  
+2. _Chain-Agnostic_: deploy same escrow logic across L1s/L2s via lightweight agents  
+3. _Dispute Minimization_: cryptographic proof of condition fulfillment preempts conflicts  
 
 ## Core Features  
 
