@@ -1,5 +1,10 @@
 # Zescrow
 
+[![Crates.io](https://img.shields.io/crates/v/zescrow-core.svg)](https://crates.io/crates/zescrow-core)
+[![Documentation](https://docs.rs/zescrow-core/badge.svg)](https://docs.rs/zescrow-core)
+[![CI](https://github.com/maatlabs/zescrow/workflows/CI/badge.svg)](https://github.com/maatlabs/zescrow/actions)
+[![License](https://img.shields.io/crates/l/zescrow.svg)](https://github.com/maatlabs/zescrow#license)
+
 Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic implementation of an escrow program using the RISC Zero zkVM as the zero-knowledge prover/verifier.
 
 > [!WARNING]
