@@ -1,90 +1,147 @@
+//! Error types for the Zescrow client.
+//!
+//! Provides [`ClientError`] for all client-side operations including
+//! blockchain interactions, key management, and ZK proof generation.
+
 use thiserror::Error;
 
+/// Errors arising from client operations.
 #[derive(Error, Debug)]
+#[non_exhaustive]
 pub enum ClientError {
-    #[error("Unsupported chain: {0}")]
+    /// The specified blockchain is not supported.
+    #[error("unsupported chain: {0}")]
     UnsupportedChain(String),
 
-    #[error("Chain configuration mismatch")]
-    ConfigMismatch,
+    /// Chain configuration does not match the expected network.
+    #[error("chain configuration mismatch: expected {expected}, got {actual}")]
+    ConfigMismatch {
+        /// Expected chain identifier.
+        expected: String,
+        /// Actual chain identifier.
+        actual: String,
+    },
 
-    #[error("Solana keypair: {0}")]
+    /// Error loading or parsing a keypair file.
+    #[error("keypair error: {0}")]
     Keypair(String),
 
-    #[error("Blockchain error: {0}")]
-    BlockchainError(String),
+    /// Generic blockchain interaction error.
+    #[error("blockchain error: {0}")]
+    Blockchain(String),
 
-    #[error("Serialization error: {0}")]
+    /// Ethereum-specific agent error.
+    #[error("ethereum agent: {context} - {message}")]
+    Ethereum {
+        /// Operation context (e.g., "createEscrow", "finishEscrow").
+        context: &'static str,
+        /// Underlying error message.
+        message: String,
+    },
+
+    /// Solana-specific agent error.
+    #[error("solana agent: {context} - {message}")]
+    Solana {
+        /// Operation context (e.g., "create_escrow", "finish_escrow").
+        context: &'static str,
+        /// Underlying error message.
+        message: String,
+    },
+
+    /// Error serializing or deserializing data.
+    #[error("serialization error: {0}")]
     Serialization(String),
 
-    #[error("URL parse error")]
+    /// Error parsing a URL.
+    #[error("URL parse error: {0}")]
     UrlParse(#[from] url::ParseError),
 
-    #[error("Address parse error")]
+    /// Error parsing a hex address.
+    #[error("address parse error: {0}")]
     AddressParse(#[from] rustc_hex::FromHexError),
 
-    #[error("Invalid chain operation")]
-    InvalidChainOperation,
+    /// Invalid operation for the current chain context.
+    #[error("invalid chain operation: {0}")]
+    InvalidChainOperation(String),
 
-    #[error("Solana RPC client error")]
-    SolanaRpcClient(#[from] Box<solana_client::client_error::ClientError>),
+    /// Solana RPC client error.
+    #[error("Solana RPC error: {0}")]
+    SolanaRpc(#[from] Box<solana_client::client_error::ClientError>),
 
-    #[error("Anchor program error")]
-    Anchorlang(#[from] anchor_lang::prelude::ProgramError),
+    /// Solana Anchor program error.
+    #[error("Anchor program error: {0}")]
+    AnchorProgram(#[from] anchor_lang::prelude::ProgramError),
 
-    #[error("Chain agent error: {0}")]
-    AgentError(#[from] AgentError),
+    /// Transaction was dropped or not confirmed.
+    #[error("transaction dropped: {0}")]
+    TransactionDropped(String),
 
-    #[error("Transaction dropped")]
-    TxDropped,
-
-    #[error("Asset amount overflow")]
+    /// Asset amount exceeds representable range.
+    #[error("asset amount overflow: value exceeds u64 range")]
     AssetOverflow,
 
-    #[error("{0}")]
+    /// Expected event not found in transaction receipt.
+    #[error("missing event: {0}")]
     MissingEvent(String),
 
-    #[error("Zescrow core: {0}")]
-    ZescrowCore(String),
+    /// Error from zescrow-core library.
+    #[error("core library error: {0}")]
+    Core(String),
 
-    #[error("RISC Zero prover/verifier: {0}")]
+    /// RISC Zero prover or verifier error.
+    #[error("ZK prover error: {0}")]
     ZkProver(String),
 }
 
-#[derive(Error, Debug)]
-pub enum AgentError {
-    #[error("Ethereum agent: {0}")]
-    Ethereum(String),
-    #[error("Solana agent: {0}")]
-    Solana(String),
+impl ClientError {
+    /// Creates an Ethereum agent error with context.
+    pub fn ethereum(context: &'static str, msg: impl ToString) -> Self {
+        Self::Ethereum {
+            context,
+            message: msg.to_string(),
+        }
+    }
+
+    /// Creates a Solana agent error with context.
+    pub fn solana(context: &'static str, msg: impl ToString) -> Self {
+        Self::Solana {
+            context,
+            message: msg.to_string(),
+        }
+    }
+
+    /// Creates a transaction dropped error with details.
+    pub fn tx_dropped(details: impl ToString) -> Self {
+        Self::TransactionDropped(details.to_string())
+    }
 }
 
 impl From<solana_client::client_error::ClientError> for ClientError {
     fn from(value: solana_client::client_error::ClientError) -> Self {
-        Self::SolanaRpcClient(Box::new(value))
+        Self::SolanaRpc(Box::new(value))
     }
 }
 
 impl From<ethers::providers::ProviderError> for ClientError {
     fn from(value: ethers::providers::ProviderError) -> Self {
-        Self::BlockchainError(value.to_string())
+        Self::Blockchain(value.to_string())
     }
 }
 
 impl From<ethers::signers::WalletError> for ClientError {
     fn from(value: ethers::signers::WalletError) -> Self {
-        Self::BlockchainError(value.to_string())
+        Self::Keypair(value.to_string())
     }
 }
 
 impl From<solana_sdk::pubkey::ParsePubkeyError> for ClientError {
     fn from(value: solana_sdk::pubkey::ParsePubkeyError) -> Self {
-        Self::BlockchainError(value.to_string())
+        Self::Blockchain(value.to_string())
     }
 }
 
 impl From<zescrow_core::error::EscrowError> for ClientError {
     fn from(value: zescrow_core::error::EscrowError) -> Self {
-        Self::ZescrowCore(value.to_string())
+        Self::Core(value.to_string())
     }
 }
