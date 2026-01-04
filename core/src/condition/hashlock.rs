@@ -9,10 +9,22 @@ use subtle::ConstantTimeEq;
 #[cfg(feature = "json")]
 use crate::serde::utf8_serde;
 
-/// A hashlock condition.
+/// A hashlock condition requiring SHA-256 preimage verification.
 ///
-/// A `preimage` must be provided such that
-/// `SHA256(preimage) == hash`.
+/// The condition is satisfied when `SHA-256(preimage) == hash`.
+///
+/// # Example
+///
+/// ```
+/// use sha2::{Digest, Sha256};
+/// use zescrow_core::Condition;
+///
+/// let preimage = b"my-secret-preimage".to_vec();
+/// let hash: [u8; 32] = Sha256::digest(&preimage).into();
+///
+/// let condition = Condition::hashlock(hash, preimage);
+/// assert!(condition.verify().is_ok());
+/// ```
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub struct Hashlock {
@@ -26,14 +38,20 @@ pub struct Hashlock {
 }
 
 impl Hashlock {
-    /// Compute SHA256(preimage) and compare to `hash`.
+    /// Verifies that `SHA-256(preimage) == hash` using constant-time comparison.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Mismatch`] if the computed hash does not match.
     pub fn verify(&self) -> Result<(), Error> {
         let computed = Sha256::digest(&self.preimage);
-        if computed.as_slice().ct_eq(&self.hash).unwrap_u8() == 1 {
-            Ok(())
-        } else {
-            Err(Error::Mismatch)
-        }
+        computed
+            .as_slice()
+            .ct_eq(&self.hash)
+            .unwrap_u8()
+            .eq(&1)
+            .then_some(())
+            .ok_or(Error::Mismatch)
     }
 }
 

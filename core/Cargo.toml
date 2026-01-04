@@ -17,22 +17,22 @@ bincode = []
 json = ["serde", "serde_json", "serde_bytes", "serde_with"]
 
 [dependencies]
-anyhow = "1.0.98"
-base64 = "0.22.1"
-bs58 = "0.5.1"
-ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
+anyhow = "1"
+base64 = "0.22"
+bs58 = "0.5"
+ed25519-dalek = { version = "2.1", features = ["rand_core"] }
 hex = { version = "0.4", features = ["serde"] }
-k256 = { version = "0.13.4", features = ["ecdsa"] }
-num-bigint = "0.4.6"
-num-integer = "0.1.46"
-num-traits = "0.2.19"
-sha2 = "0.10.9"
-subtle = "2.6.1"
-thiserror = "2.0.12"
+k256 = { version = "0.13", features = ["ecdsa"] }
+num-bigint = "0.4"
+num-integer = "0.1"
+num-traits = "0.2"
+sha2 = "0.10"
+subtle = "2.6"
+thiserror = "2"
 
 bincode = { version = "2", features = ["derive"] }
 
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_bytes = { version = "0.11.17", optional = true }
-serde_json = { version = "1.0.140", optional = true }
-serde_with = { version = "3.12.0", features = ["hex"], optional = true }
+serde = { version = "1", features = ["derive"], optional = true }
+serde_bytes = { version = "0.11", optional = true }
+serde_json = { version = "1", optional = true }
+serde_with = { version = "3.12", features = ["hex"], optional = true }

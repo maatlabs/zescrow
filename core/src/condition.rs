@@ -1,3 +1,13 @@
+//! Deterministic cryptographic conditions and fulfillment verification.
+//!
+//! This module defines the [`Condition`] enum and its variants for
+//! verifying cryptographic proofs within the zkVM:
+//!
+//! - **Hashlock**: SHA-256 preimage verification
+//! - **Ed25519**: EdDSA signature verification
+//! - **Secp256k1**: ECDSA signature verification
+//! - **Threshold**: N-of-M multi-condition logic
+
 use bincode::{Decode, Encode};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
@@ -38,14 +48,15 @@ pub enum Condition {
 }
 
 impl Condition {
-    /// Validate the provided witness data.
+    /// Validates the provided witness data against this cryptographic condition.
     ///
     /// # Errors
     ///
     /// Returns `EscrowError::Condition` under any of the following circumstances:
-    /// - **Preimage**: SHA-256(preimage) does not match.
-    /// - **Ed25519/Secp256k1**: public key parsing or signature parsing/verification fails.
-    /// - **Threshold**: fewer than `threshold` subconditions succeed.
+    /// - **Hashlock**: `SHA-256(preimage)` does not match the expected hash.
+    /// - **Ed25519**: Public key parsing or signature verification fails.
+    /// - **Secp256k1**: Public key parsing or signature verification fails.
+    /// - **Threshold**: Fewer than `threshold` subconditions were satisfied.
     #[inline]
     pub fn verify(&self) -> Result<()> {
         match self {

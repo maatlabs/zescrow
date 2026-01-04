@@ -1,3 +1,8 @@
+//! Arbitrary-precision integer wrapper for cross-platform serialization.
+//!
+//! Provides a [`BigNumber`] type that wraps `num_bigint::BigUint` with
+//! implementations for `bincode` serialization (and optionally `serde`).
+
 use bincode::de::{BorrowDecoder, Decoder};
 use bincode::enc::Encoder;
 use bincode::error::{DecodeError, EncodeError};

@@ -1,3 +1,9 @@
+//! Off-chain escrow context for zero-knowledge condition verification.
+//!
+//! This module implements the [`Escrow`] struct which represents the complete escrow context that is
+//! passed to the zkVM guest for verification. It contains the asset,
+//! parties, conditions, and execution state.
+
 use bincode::{Decode, Encode};
 #[cfg(feature = "json")]
 use {
@@ -55,20 +61,33 @@ impl Escrow {
     /// Returns `EscrowError::InvalidState` if not in `Funded` state, or
     /// propagates identity, asset, or condition errors.
     pub fn execute(&mut self) -> Result<ExecutionState> {
-        if self.state != ExecutionState::Funded {
-            return Err(EscrowError::InvalidState);
-        }
+        self.validate_state()
+            .and_then(|_| self.validate_parties())
+            .and_then(|_| self.asset.validate())
+            .and_then(|_| self.verify_conditions())
+            .map(|_| {
+                self.state = ExecutionState::ConditionsMet;
+                self.state
+            })
+    }
 
-        self.sender.verify_identity()?;
-        self.recipient.verify_identity()?;
-        self.asset.validate()?;
+    /// Verifies that the escrow is in the `Funded` state.
+    fn validate_state(&self) -> Result<()> {
+        (self.state == ExecutionState::Funded)
+            .then_some(())
+            .ok_or(EscrowError::InvalidState)
+    }
 
-        if let Some(condition) = &self.condition {
-            condition.verify()?;
-        }
+    /// Verifies both sender and recipient identities.
+    fn validate_parties(&self) -> Result<()> {
+        self.sender
+            .verify_identity()
+            .and_then(|_| self.recipient.verify_identity())
+    }
 
-        self.state = ExecutionState::ConditionsMet;
-        Ok(self.state)
+    /// Verifies cryptographic conditions if present.
+    fn verify_conditions(&self) -> Result<()> {
+        self.condition.as_ref().map_or(Ok(()), |cond| cond.verify())
     }
 
     /// Constructs an `Escrow` from on-chain metadata and, if required,

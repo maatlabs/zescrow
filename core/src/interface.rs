@@ -1,3 +1,5 @@
+//! JSON schemas, I/O utilities, and chain configuration types.
+
 #[cfg(feature = "json")]
 use std::fs::File;
 #[cfg(feature = "json")]
