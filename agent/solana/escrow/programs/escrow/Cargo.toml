@@ -1,7 +1,9 @@
 [package]
 name = "escrow"
 version = "0.1.0"
-description = "Created with Anchor"
+description = "Zescrow Solana program with XRPL-style time-lock semantics"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/maatlabs/zescrow"
 edition = "2021"
 
 [lib]
@@ -16,6 +18,9 @@ no-idl = []
 no-log-ix-name = []
 idl-build = ["anchor-lang/idl-build"]
 
-
 [dependencies]
-anchor-lang = "0.31.1"
+anchor-lang = "0.32.1"
+
+# Suppress cfg warnings from Anchor/Solana macro expansions (upstream issue)
+[lints.rust]
+unexpected_cfgs = "allow"

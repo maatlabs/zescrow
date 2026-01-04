@@ -1,9 +1,9 @@
 //! Escrow program with XRPL-style time-lock semantics.
-
-// TODO (kobby-pentangeli):
-// remove once future `Anchor` versions fix warnings
-#![allow(unexpected_cfgs)]
-#![allow(deprecated)]
+//!
+//! This program implements an escrow system with configurable time-locks
+//! for releasing or canceling escrowed funds. It follows XRPL-style semantics
+//! where at least one resolution path (`finish_after` or `cancel_after`) must
+//! be specified.
 
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;

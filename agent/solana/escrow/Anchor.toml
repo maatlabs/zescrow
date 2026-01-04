@@ -8,6 +8,12 @@ skip-lint = false
 [programs.localnet]
 escrow = "8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ"
 
+[programs.devnet]
+escrow = "8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ"
+
+[programs.mainnet]
+escrow = "8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ"
+
 [registry]
 url = "https://api.apr.dev"
 

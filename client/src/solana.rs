@@ -6,12 +6,11 @@
 use core::str::FromStr;
 use std::path::{Path, PathBuf};
 
-use anchor_client::solana_sdk::instruction::Instruction;
-use anchor_lang::prelude::AccountMeta;
 use anchor_lang::{system_program, InstructionData};
 use escrow::{instruction as escrow_instruction, CreateEscrowArgs, ESCROW};
 use num_traits::ToPrimitive;
 use solana_client::rpc_client::RpcClient;
+use solana_sdk::instruction::{AccountMeta, Instruction};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::signature::{read_keypair_file, Keypair};
 use solana_sdk::signer::Signer;
