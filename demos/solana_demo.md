@@ -1,171 +1,155 @@
 # Solana Demo
 
-## End-to-End Flow for Solana Escrows
+## End-to-End Flow for Solana Escrows (Local Development)
 
-1. Set up your local environment for Solana development by installing the [Solana CLI](https://solana.com/docs/intro/installation).
+This guide walks through creating and completing an escrow on a **local Solana test validator**. For devnet deployment, see the [Deployment Guide](/deploy/README.md).
 
-2. In a terminal instance, run the Solana test validator:
+### Prerequisites
 
-    ```sh
-    # project root
-    cd zescrow
+- [Solana CLI](https://solana.com/docs/intro/installation) installed
+- [Anchor CLI](https://www.anchor-lang.com/docs/installation) (v0.32.1+)
 
-    solana config set --url localhost
-    solana-test-validator -r
-    ```
+### 1. Start the Test Validator
 
-3. In a separate terminal, build and deploy the escrow program:
+In a terminal, run the Solana test validator:
 
-    ```sh
-    # Go to the Solana escrow program to deploy it locally
-    cd agent/solana/escrow
+```sh
+solana config set --url localhost
+solana-test-validator -r
+```
 
-    # Sync keys for local deploy
-    anchor keys sync
+### 2. Deploy the Escrow Program
 
-    # Build the program
-    anchor build
+In a separate terminal, build and deploy the escrow program:
 
-    # Deploy the program locally
-    anchor deploy
-    ```
+```sh
+cd agent/solana/escrow
 
-4. With the programs deployed, you are ready to interact with them via the `client`. First, create a test Solana account that you can use as the `recipient` (or beneficiary) of the escrow. The following command creates and funds an account with 2 SOL using the [create_sol_account.sh](/templates/create_sol_account.sh) file:
+# Sync keys for local deploy
+anchor keys sync
 
-    ```sh
-    cd templates
-    ./create_sol_account.sh
-    ```
+# Build and deploy
+anchor build
+anchor deploy
+```
 
-5. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected.
+Note the printed Program ID.
 
-    An example of how your `escrow_params.json` might look like:
+### 3. Create a Test Recipient Account
 
-    ```json
-    {
-        "chain_config": {
-            "chain": "solana",
-            "rpc_url": "http://localhost:8899",
-            "sender_private_id": "absolute/path/to/user/.config/solana/id.json",
-            "agent_id": "EscrowProgramID"
-        },
-        "asset": {
-            "kind": "native",
-            "id": null,
-            "agent_id": null,
-            "amount": "1000000000", // (1 SOL == 1_000_000_000 lamports)
-            "decimals": null,
-            "total_supply": null
-        },
-        "sender": {
-            "identity": {
-                "base58": "SenderSolanaPublicKey"
-            }
-        },
-        "recipient": {
-            "identity": {
-                "base58": "RecipientSolanaPublicKey"
-            }
-        },
-        "finish_after": 1000, // release escrow after this slot
-        "cancel_after": 1200, // cancel escrow after this slot
-        "has_conditions": false
-    }
-    ```
+Use the helper script to create and fund a test account:
 
-    If `has_conditions == true` as specified in your `escrow_params.json`, then ensure the conditions and their fulfillment (i.e., the witness data) are specified in the [escrow_conditions.json](/templates/escrow_conditions.json) file. Here's an example of how your conditions file might look like:
+```sh
+./demos/create_sol_account.sh
+```
 
-    ```json
-    {
-        "condition": "hashlock",
-        "fulfillment": {
-            "hash": "<hex-encoded SHA-256 digest of the preimage>",
-            "preimage": "<the actual preimage value, as a UTF-8 string>"
+This creates `demos/test_keypair.json` and funds it with 2 SOL.
+
+### 4. Configure Escrow Parameters
+
+Create an `escrow_params.json` file in the `deploy/` directory. You can start by copying the devnet template and modifying it for localhost:
+
+```sh
+cp deploy/solana/escrow_params.json deploy/escrow_params.json
+```
+
+Then edit `deploy/escrow_params.json`:
+
+```json
+{
+    "chain_config": {
+        "chain": "solana",
+        "rpc_url": "http://localhost:8899",
+        "sender_private_id": "/absolute/path/to/.config/solana/id.json",
+        "agent_id": "YOUR_PROGRAM_ID_FROM_STEP_2"
+    },
+    "asset": {
+        "kind": "native",
+        "id": null,
+        "agent_id": null,
+        "amount": "1000000000",
+        "decimals": null,
+        "total_supply": null
+    },
+    "sender": {
+        "identity": {
+            "base58": "YOUR_SENDER_PUBKEY"
         }
-    }
-    ```
-
-    There's a `client` command (`generate`) to help with creating the conditions file... The default `--output` path is always `./templates/escrow_conditions.json`.
-
-    ```sh
-    cd client
-
-    # Generate a hashlock condition JSON
-
-    cargo run -- generate hashlock --preimage <PATH> [--output <PATH>]
-
-    # Generate an Ed25519 signature condition JSON
-
-    cargo run -- generate ed25519 --pubkey <PUBKEY> --msg <MSG> --sig <SIG> [--output <PATH>]
-
-    # Generate a Secp256k1 signature condition JSON
-
-    cargo run -- generate secp256k1 --pubkey <PUBKEY> --msg <MSG> --sig <SIG> [--output <PATH>]
-
-    # Generate a threshold condition JSON
-
-    cargo run -- generate threshold --subconditions file1.json file2.json file3.json --threshold <N> [--output <PATH>]
-    ```
-
-    As an example, if you run the `hashlock` subcommand with the `rustfmt.toml` file (at project root) as the `preimage` file:
-
-    ```sh
-    cargo run -- generate hashlock --preimage ../rustfmt.toml
-    ```
-
-    The output of the above command will be a `/templates/escrow_conditions.json` file with the following content:
-
-    ```json
-    {
-        "condition": "hashlock",
-        "fulfillment": {
-            "hash": "485b6baec8c0d6304648c3b924399835fdd09c8df9be1b65d169b07ded2237f9",
-            "preimage": "# Run with `cargo +nightly fmt`\n\nimports_granularity = \"Module\"\ngroup_imports = \"StdExternalCrate\"\n"
+    },
+    "recipient": {
+        "identity": {
+            "base58": "RECIPIENT_PUBKEY_FROM_STEP_3"
         }
-    }
-    ```
+    },
+    "finish_after": 1000,
+    "cancel_after": 1200,
+    "has_conditions": false
+}
+```
 
-6. Create an escrow transaction:
+Notes:
 
-    ```sh
-    RUST_LOG=info cargo run -- create
-    ```
+- `amount`: 1 SOL = 1,000,000,000 lamports
+- `finish_after`/`cancel_after`: slot numbers
+- Get your sender pubkey with `solana address`
 
-7. To release an escrow, execute:
+### 5. (Optional) Configure Cryptographic Conditions
 
-    ```sh
-    RUST_LOG=info cargo run -- finish --recipient <KEYPAIR_FILE_PATH>
-    ```
+If `has_conditions` is `true`, create a conditions file using the `generate` command:
 
-    For example, using the `test_keypair.json` created earlier, the above command will be:
+```sh
+# Hashlock condition
+cargo run -p zescrow-client -- generate hashlock --preimage ./secret.txt
 
-    ```sh
-    RUST_LOG=info cargo run -- finish --recipient ../templates/test_keypair.json
-    ```
+# Ed25519 signature condition
+cargo run -p zescrow-client -- generate ed25519 \
+  --pubkey <PUBKEY_HEX> --msg <MSG_HEX> --sig <SIG_HEX>
 
-    To verify that the `recipient` received the funds, you can query the balance on the corresponding address/pubkey:
+# Threshold condition (M-of-N)
+cargo run -p zescrow-client -- generate threshold \
+  --subconditions cond1.json cond2.json cond3.json \
+  --threshold 2
+```
 
-    ```sh
-    # In any terminal instance
-    solana balance <RECIPIENT_PUBKEY>
-    ```
+The output is written to `deploy/escrow_conditions.json` by default.
 
-8. To cancel an escrow, execute:
+### 6. Create an Escrow
 
-    ```sh
-    RUST_LOG=info cargo run -- cancel
-    ```
+```sh
+RUST_LOG=info cargo run -p zescrow-client -- create
+```
 
-## Testing
+### 7. Complete the Escrow
 
-To test the escrow program (while the test validator is running in the background):
+**To release funds to recipient:**
+
+```sh
+RUST_LOG=info cargo run -p zescrow-client -- finish \
+  --recipient ./demos/test_keypair.json
+```
+
+Verify the recipient received funds:
+
+```sh
+solana balance <RECIPIENT_PUBKEY>
+```
+
+**To cancel and refund:**
+
+```sh
+RUST_LOG=info cargo run -p zescrow-client -- cancel
+```
+
+## Testing the Anchor Program
+
+With the test validator running:
 
 ```sh
 cd agent/solana/escrow
 anchor test --skip-local-validator
 ```
 
-If the Solana test validator is **not** running, you can simply do:
+Without a running validator (Anchor starts one automatically):
 
 ```sh
 cd agent/solana/escrow

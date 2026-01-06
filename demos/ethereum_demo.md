@@ -1,184 +1,168 @@
 # Ethereum Demo
 
-## End-to-End Flow for Ethereum Escrows
+## End-to-End Flow for Ethereum Escrows (Local Development)
 
-1. Set up your local environment for Ethereum development:
+This guide walks through creating and completing an escrow on a **local Hardhat node**. For Sepolia testnet deployment, see the [Deployment Guide](/deploy/README.md).
 
-    * Install [Node.js & npm](https://nodejs.org/) (or [Yarn](https://classic.yarnpkg.com/lang/en/docs/install/)). This demo uses NodeJS and NPM.
+### Prerequisites
 
-    * Install Hardhat:
+- [Node.js](https://nodejs.org/) (v18+)
+- npm or yarn
 
-    ```sh
-    nvm use --lts
-    npm install --global hardhat
-    ```
+### 1. Install Dependencies
 
-2. Install dependencies in the Ethereum agent
+```sh
+cd agent/ethereum
+npm install
+```
 
-    ```sh
-    cd agent/ethereum
-    npm install
-    ```
+### 2. Start the Local Network
 
-3. Start the local Ethereum network. In one terminal, launch Hardhat’s built-in node:
+In one terminal, launch Hardhat's built-in node:
 
-    ```sh
-    # in `agent/ethereum`
-    npx hardhat node
-    ```
+```sh
+cd agent/ethereum
+npx hardhat node
+```
 
-    Hardhat will print a list of pre-funded accounts and their WIF private keys. You may use any of these public/private keypairs for the `sender` and `recipient` of your escrow transactions in this demo. Just make sure to remember which ones you used for what purpose. **Note**, however, that unless you specify a different `from` address in your transactions, Hardhat uses the first account (`Account # 0`) by default. Thus, you can use any of the remaining accounts as the `to` (recipient) address.
+Hardhat prints a list of pre-funded accounts with their private keys. Use any of these for testing. By default, Hardhat uses Account #0 for transactions.
 
-4. Compile & deploy the `EscrowFactory` contract. In a second terminal:
+### 3. Deploy the Contract
 
-    ```sh
-    cd agent/ethereum
-    npx hardhat compile
-    npx hardhat run --network localhost scripts/deploy.ts
-    ```
+In a second terminal:
 
-    After deployment, note the printed `EscrowFactory` contract address.
+```sh
+cd agent/ethereum
+npx hardhat compile
+npx hardhat run --network localhost scripts/deploy.ts
+```
 
-5. Edit the [escrow_params.json](/templates/escrow_params.json) file to specify the parameters of your escrow. When in doubt, please check the definition of `EscrowParams` in the [`core` interface](/core/src/interface.rs), which provides the full context for what's expected. Here's an example of what your escrow parameters might look like:
+Note the printed `EscrowFactory` contract address.
 
-    ```json
-    {
-        "chain_config": {
-            "chain": "ethereum",
-            "rpc_url": "http://localhost:8545",
-            "sender_private_id": "SENDER_ETHEREUM_PRIVATE_KEY (WIF)", // Copy-paste `Account #0` private key
-            "agent_id": "0xFactoryContractAddress",
-        },
-        "asset": {
-            "kind": "native",
-            "id": null,
-            "agent_id": null,
-            "amount": "1000000000000000000", // (1 ETH == 1_000_000_000_000_000_000 wei)
-            "decimals": null,
-            "total_supply": null
-        },
-        "sender": {
-            "identity": {
-                "hex": "0xSenderEthereumAddress"
-            }
-        },
-        "recipient": {
-            "identity": {
-                "hex": "0xRecipientEthereumAddress"
-            }
-        },
-        "finish_after": 4, // finish escrow after this block
-        "cancel_after": 12, // cancel escrow after this block
-        "has_conditions": false
-    }
-    ```
+### 4. Configure Escrow Parameters
 
-    If `has_conditions == true` as specified in your `escrow_params.json`, then ensure the conditions and their fulfillment (i.e., the witness data) are specified in the [escrow_conditions.json](/templates/escrow_conditions.json) file. Here's an example of how your conditions file might look like:
+Create an `escrow_params.json` file in the `deploy/` directory. You can start by copying the Sepolia template and modifying it for localhost:
 
-    ```json
-    {
-    "condition": "hashlock",
-    "fulfillment": {
-        "hash": "<hex-encoded SHA-256 digest of the preimage>",
-        "preimage": "<the actual preimage value, as a UTF-8 string>"
-    }
-    }
-    ```
+```sh
+cp deploy/ethereum/escrow_params.json deploy/escrow_params.json
+```
 
-    There's a `client` command (`generate`) to help with creating the conditions file... The default `--output` path is always `./templates/escrow_conditions.json`.
+Then edit `deploy/escrow_params.json`:
 
-    ```sh
-    cd client
-
-    # Generate a hashlock condition JSON
-
-    cargo run -- generate hashlock --preimage <PATH> [--output <PATH>]
-
-    # Generate an Ed25519 signature condition JSON
-
-    cargo run -- generate ed25519 --pubkey <PUBKEY> --msg <MSG> --sig <SIG> [--output <PATH>]
-
-    # Generate a Secp256k1 signature condition JSON
-
-    cargo run -- generate secp256k1 --pubkey <PUBKEY> --msg <MSG> --sig <SIG> [--output <PATH>]
-
-    # Generate a threshold condition JSON
-
-    cargo run -- generate threshold --subconditions file1.json file2.json file3.json --threshold <N> [--output <PATH>]
-    ```
-
-    As an example, if you run the `hashlock` subcommand with the `rustfmt.toml` file (at project root) as the `preimage` file:
-
-    ```sh
-    cargo run -- generate hashlock --preimage ../rustfmt.toml
-    ```
-
-    The output of the above command will be a `/templates/escrow_conditions.json` file with the following content:
-
-    ```json
-    {
-        "condition": "hashlock",
-        "fulfillment": {
-            "hash": "485b6baec8c0d6304648c3b924399835fdd09c8df9be1b65d169b07ded2237f9",
-            "preimage": "# Run with `cargo +nightly fmt`\n\nimports_granularity = \"Module\"\ngroup_imports = \"StdExternalCrate\"\n"
+```json
+{
+    "chain_config": {
+        "chain": "ethereum",
+        "rpc_url": "http://localhost:8545",
+        "sender_private_id": "ACCOUNT_0_PRIVATE_KEY",
+        "agent_id": "0xCONTRACT_ADDRESS_FROM_STEP_3"
+    },
+    "asset": {
+        "kind": "native",
+        "id": null,
+        "agent_id": null,
+        "amount": "1000000000000000000",
+        "decimals": null,
+        "total_supply": null
+    },
+    "sender": {
+        "identity": {
+            "hex": "0xSENDER_ADDRESS"
         }
-    }
-    ```
+    },
+    "recipient": {
+        "identity": {
+            "hex": "0xRECIPIENT_ADDRESS"
+        }
+    },
+    "finish_after": 4,
+    "cancel_after": 12,
+    "has_conditions": false
+}
+```
 
-6. Create an escrow transaction:
+Notes:
 
-    ```sh
-    # From the `client` directory:
-    RUST_LOG=info cargo run -- create
-    ```
+- `amount`: 1 ETH = 1,000,000,000,000,000,000 wei
+- `finish_after`/`cancel_after`: block numbers
+- Use different Hardhat accounts for sender and recipient
 
-7. After sending the escrow transaction, the logs from the Hardhat node will most likely show that your transaction was mined in `Block #2`. Before you can finish/release an escrow, `finish_after` must be `>=` current block. For example, if you specified `"finish_after": 4`, then you need to use the JSON-RPC method `evm_mine` to force Hardhat to mine some empty blocks. Each call bumps the block number by one:
+### 5. (Optional) Configure Cryptographic Conditions
 
-    ```sh
-    # Connect to the node
-    cd agent/ethereum
-    npx hardhat console --network localhost
+If `has_conditions` is `true`, create a conditions file using the `generate` command:
 
-    # While in the console, mine as many blocks as you need
-    # to reach `finish_after`
-    await ethers.provider.send("evm_mine", []);
-    ```
+```sh
+# Hashlock condition
+cargo run -p zescrow-client -- generate hashlock --preimage ./secret.txt
 
-8. To finish (release) an escrow:
+# Ed25519 signature condition
+cargo run -p zescrow-client -- generate ed25519 \
+  --pubkey <PUBKEY_HEX> --msg <MSG_HEX> --sig <SIG_HEX>
 
-    ```sh
-    # From the `client` directory:
-    RUST_LOG=info cargo run -- finish --recipient <RECIPIENT_PRIVATE_KEY>
-    ```
+# Threshold condition (M-of-N)
+cargo run -p zescrow-client -- generate threshold \
+  --subconditions cond1.json cond2.json cond3.json \
+  --threshold 2
+```
 
-    To verify that the `recipient` received the funds, you can query the balance inside the Hardhat console you instantiated earlier:
+The output is written to `deploy/escrow_conditions.json` by default.
 
-    ```js
-    const balance = await ethers.provider.getBalance("0xRECIPIENT_ADDRESS")
-    ethers.formatEther(balance)
-    ```
+### 6. Create an Escrow
 
-9. To cancel an escrow:
+```sh
+RUST_LOG=info cargo run -p zescrow-client -- create
+```
 
-    ```sh
-    # From the `client` directory:
-    RUST_LOG=info cargo run -- cancel
-    ```
+### 7. Mine Blocks (if needed)
 
-## Testing
+The escrow transaction is typically mined in Block #2. Before releasing, the current block must be >= `finish_after`. Use the Hardhat console to mine blocks:
 
-1. If you have a local Hardhat node already running (e.g. via `npx hardhat node`), skip spinning up a new one:
+```sh
+cd agent/ethereum
+npx hardhat console --network localhost
+```
 
-    ```sh
-    cd agent/ethereum
-    npx hardhat test --network localhost
-    ```
+In the console:
 
-2. If you do **not** have a node running, let Hardhat start its in-process network automatically:
+```js
+// Mine blocks until finish_after is reached
+await ethers.provider.send("evm_mine", []);
+```
 
-    ```sh
-    cd agent/ethereum
-    npx hardhat test
-    ```
+### 8. Complete the Escrow
 
-    In both cases, Hardhat will compile, deploy your contracts to the test network, run the full Mocha suite, and then tear down the sandbox node when finished.
+**To release funds to recipient:**
+
+```sh
+RUST_LOG=info cargo run -p zescrow-client -- finish \
+  --recipient <RECIPIENT_PRIVATE_KEY>
+```
+
+Verify the recipient received funds in the Hardhat console:
+
+```js
+const balance = await ethers.provider.getBalance("0xRECIPIENT_ADDRESS")
+ethers.formatEther(balance)
+```
+
+**To cancel and refund:**
+
+```sh
+RUST_LOG=info cargo run -p zescrow-client -- cancel
+```
+
+## Testing the Solidity Contract
+
+With a local Hardhat node running:
+
+```sh
+cd agent/ethereum
+npx hardhat test --network localhost
+```
+
+Without a running node (Hardhat starts one automatically):
+
+```sh
+cd agent/ethereum
+npx hardhat test
+```

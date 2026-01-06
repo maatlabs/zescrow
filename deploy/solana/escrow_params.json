@@ -1,0 +1,29 @@
+{
+    "chain_config": {
+        "chain": "solana",
+        "rpc_url": "https://api.devnet.solana.com",
+        "sender_private_id": "${SOLANA_SENDER_KEYPAIR_PATH}",
+        "agent_id": "8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ"
+    },
+    "asset": {
+        "kind": "native",
+        "id": null,
+        "agent_id": null,
+        "amount": "1000000000",
+        "decimals": null,
+        "total_supply": null
+    },
+    "sender": {
+        "identity": {
+            "base58": "${SOLANA_SENDER_PUBKEY}"
+        }
+    },
+    "recipient": {
+        "identity": {
+            "base58": "${SOLANA_RECIPIENT_PUBKEY}"
+        }
+    },
+    "finish_after": 1200,
+    "cancel_after": 2200,
+    "has_conditions": false
+}
