@@ -146,6 +146,12 @@ enum GenerateCmd {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Load environment variables from .env file if present.
+    // This is optional; missing .env is not an error.
+    if dotenvy::dotenv().is_ok() {
+        eprintln!("Loaded environment from .env file");
+    }
+
     // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
