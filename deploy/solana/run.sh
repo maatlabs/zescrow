@@ -34,6 +34,10 @@ echo "Balance: $BALANCE"
 cd "$PROGRAM_DIR"
 
 echo ""
+echo "Syncing program keys..."
+anchor keys sync
+
+echo ""
 echo "Building program..."
 anchor build
 

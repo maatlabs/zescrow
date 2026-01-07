@@ -56,7 +56,6 @@ deploy/
 │   └── run.sh                # Contract deployment script
 ├── escrow_conditions.json    # ZK conditions template
 ├── .env.template             # Environment variables template
-├── verify.sh                 # Deployment verification
 └── README.md                 # This file
 
 # Generated at runtime (git-ignored):
@@ -99,12 +98,6 @@ ESCROW_CONTRACT_ADDRESS=0xDeployedContract
 
 This builds and deploys the Anchor program to devnet. Note the Program ID.
 
-### Verify Deployment
-
-```bash
-./deploy/verify.sh solana <PROGRAM_ID>
-```
-
 ### Create Escrow
 
 ```bash
@@ -138,12 +131,6 @@ Note the deployed contract address and add it to your `.env`:
 
 ```bash
 ESCROW_CONTRACT_ADDRESS=0x...
-```
-
-### Verify Deployment
-
-```bash
-./deploy/verify.sh ethereum <CONTRACT_ADDRESS>
 ```
 
 ### Create Escrow
