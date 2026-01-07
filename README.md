@@ -78,6 +78,27 @@ For local testing with test validators, see the [demos](demos/README.md):
 
 ![Zescrow architecture diagram](/assets/zescrow-arch.png)
 
+## Development
+
+```bash
+# Format (requires nightly)
+cargo +nightly fmt
+
+# Lint
+RISC0_SKIP_BUILD=1 cargo clippy --all-features
+
+# Build
+RISC0_SKIP_BUILD=1 cargo build --release --all-features
+
+# Test
+RISC0_SKIP_BUILD=1 cargo test --all-features
+
+# Documentation
+RISC0_SKIP_BUILD=1 cargo doc --all-features --no-deps
+```
+
+> **Note**: `RISC0_SKIP_BUILD=1` skips compiling the zkVM guest code, which requires the RISC Zero toolchain. If you have it installed (`rzup install`), you can omit this prefix.
+
 ## Contributing
 
 Thank you for considering contributing to this project! All contributions large and small are actively accepted.
