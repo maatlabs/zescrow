@@ -21,7 +21,8 @@ Zescrow (for zero-knowledge escrow) is a trust-minimized, chain-agnostic impleme
 ```sh
 zescrow/
 ├── core/       # Chain-agnostic types, escrow logic, conditions
-├── client/     # CLI, RISC Zero prover, blockchain agents
+├── prover/     # RISC Zero zkVM prover/verifier (optional)
+├── client/     # CLI and blockchain agents
 ├── agent/      # On-chain programs (Solana Anchor, Ethereum Solidity)
 └── deploy/     # Deployment scripts and configuration templates
 ```
@@ -31,7 +32,7 @@ zescrow/
 ### Prerequisites
 
 1. Install [Rust](https://rustup.rs/) (the `rust-toolchain.toml` will auto-select the correct version)
-2. Install the [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain)
+2. (Optional) Install the [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain) - only required for ZK conditions
 
 ### Deploy to Testnet
 
@@ -52,6 +53,12 @@ cp deploy/.env.template .env
 cp deploy/solana/escrow_params.json deploy/
 cargo run --release -p zescrow-client -- create
 ```
+
+> **Note**: For escrows with cryptographic conditions (ZK proofs), build with `--features prover`:
+>
+> ```bash
+> cargo run --release -p zescrow-client --features prover -- create
+> ```
 
 See the [Deployment Guide](deploy/README.md) for detailed instructions.
 

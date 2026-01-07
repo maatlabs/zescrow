@@ -4,7 +4,9 @@ use anyhow::{anyhow, Context};
 use clap::{value_parser, Parser, Subcommand};
 use sha2::{Digest, Sha256};
 use tracing::info;
-use zescrow_client::{prover, Recipient, ZescrowClient};
+#[cfg(feature = "prover")]
+use zescrow_client::prover;
+use zescrow_client::{Recipient, ZescrowClient};
 use zescrow_core::interface::{
     load_escrow_data, save_escrow_data, ESCROW_CONDITIONS_PATH, ESCROW_METADATA_PATH,
     ESCROW_PARAMS_PATH,
@@ -191,7 +193,14 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
 
             // Invoke the prover if escrow has cryptographic conditions
             if metadata.params.has_conditions {
+                #[cfg(feature = "prover")]
                 prover::run()?;
+
+                #[cfg(not(feature = "prover"))]
+                return Err(anyhow!(
+                    "escrow has conditions but the 'prover' feature is disabled; \
+                     rebuild with `--features prover` to enable ZK proof generation"
+                ));
             }
 
             info!("Finishing escrow");

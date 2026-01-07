@@ -87,10 +87,6 @@ pub enum ClientError {
     /// Error from zescrow-core library.
     #[error("core library error: {0}")]
     Core(String),
-
-    /// RISC Zero prover or verifier error.
-    #[error("ZK prover error: {0}")]
-    ZkProver(String),
 }
 
 impl ClientError {

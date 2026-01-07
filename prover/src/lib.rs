@@ -1,7 +1,23 @@
-//! RISC Zero zkVM host integration.
+//! RISC Zero zkVM prover for Zescrow.
 //!
-//! This module provides the [`run`] function for executing zero-knowledge
-//! proof generation and verification of escrow conditions using RISC Zero.
+//! This crate provides zero-knowledge proof generation and verification
+//! for escrow conditions using RISC Zero.
+//!
+//! # Overview
+//!
+//! The prover executes escrow condition verification inside a zkVM guest
+//! program, producing a cryptographic proof that can be verified on-chain
+//! without revealing the underlying condition data.
+//!
+//! # Usage
+//!
+//! ```ignore
+//! use zescrow_prover::run;
+//!
+//! // Reads escrow metadata from deploy/escrow_metadata.json
+//! // and generates a proof if conditions are met
+//! run()?;
+//! ```
 //!
 //! # Workflow
 //!
@@ -14,12 +30,28 @@
 use anyhow::Context;
 use bincode::config::standard;
 use risc0_zkvm::{default_prover, ExecutorEnv, Receipt};
+use thiserror::Error;
 use tracing::{info, info_span};
 use zescrow_core::interface::{load_escrow_data, ExecutionResult, ESCROW_METADATA_PATH};
 use zescrow_core::{Escrow, EscrowMetadata, ExecutionState};
 use zescrow_methods::{ZESCROW_GUEST_ELF, ZESCROW_GUEST_ID};
 
-use crate::ClientError;
+/// Errors that can occur during proof generation and verification.
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum ProverError {
+    /// Receipt verification failed.
+    #[error("receipt verification failed: {0}")]
+    VerifyReceipt(String),
+
+    /// Escrow execution produced an unexpected state.
+    #[error("unexpected escrow state: expected ConditionsMet, got {0:?}")]
+    UnexpectedState(ExecutionState),
+
+    /// Escrow condition verification failed inside the zkVM.
+    #[error("condition verification failed: {0}")]
+    ConditionFailed(String),
+}
 
 /// Executes the zero-knowledge proof workflow for an escrow transaction.
 ///
@@ -60,7 +92,15 @@ fn load_escrow_from_metadata() -> anyhow::Result<Escrow> {
 }
 
 /// Generates a zero-knowledge proof for the escrow.
-fn generate_proof(escrow: &Escrow) -> anyhow::Result<risc0_zkvm::Receipt> {
+///
+/// # Arguments
+///
+/// * `escrow` - The escrow to generate a proof for
+///
+/// # Returns
+///
+/// The RISC Zero receipt containing the proof.
+pub fn generate_proof(escrow: &Escrow) -> anyhow::Result<Receipt> {
     let escrow_bytes =
         bincode::encode_to_vec(escrow, standard()).with_context(|| "failed to encode escrow")?;
 
@@ -87,13 +127,19 @@ fn generate_proof(escrow: &Escrow) -> anyhow::Result<risc0_zkvm::Receipt> {
 }
 
 /// Verifies the proof receipt against the guest program ID.
-fn verify_receipt(receipt: &Receipt) -> anyhow::Result<()> {
+///
+/// # Arguments
+///
+/// * `receipt` - The receipt to verify
+///
+/// # Errors
+///
+/// Returns [`ProverError::VerifyReceipt`] if verification fails.
+pub fn verify_receipt(receipt: &Receipt) -> anyhow::Result<()> {
     info!("Verifying receipt");
-
     receipt
         .verify(ZESCROW_GUEST_ID)
-        .map_err(|e| ClientError::ZkProver(format!("receipt verification failed: {}", e)))?;
-
+        .map_err(|e| ProverError::VerifyReceipt(e.to_string()))?;
     info!("Receipt verified successfully");
     Ok(())
 }
@@ -109,15 +155,7 @@ fn validate_execution_result(receipt: &Receipt) -> anyhow::Result<()> {
             info!("Escrow conditions fulfilled");
             Ok(())
         }
-        ExecutionResult::Ok(state) => Err(ClientError::ZkProver(format!(
-            "unexpected escrow state: expected ConditionsMet, got {:?}",
-            state
-        ))
-        .into()),
-        ExecutionResult::Err(err) => Err(ClientError::ZkProver(format!(
-            "escrow condition verification failed: {}",
-            err
-        ))
-        .into()),
+        ExecutionResult::Ok(state) => Err(ProverError::UnexpectedState(state).into()),
+        ExecutionResult::Err(err) => Err(ProverError::ConditionFailed(err).into()),
     }
 }

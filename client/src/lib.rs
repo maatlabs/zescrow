@@ -1,13 +1,16 @@
 //! Zescrow client library for cross-chain escrow operations.
 //!
 //! This crate provides the [`ZescrowClient`] for creating, finishing, and
-//! canceling escrows across multiple blockchains, along with RISC Zero
-//! zkVM integration for zero-knowledge proof generation.
+//! canceling escrows across multiple blockchains.
 //!
 //! # Supported Chains
 //!
 //! - **Ethereum**: Via [`EthereumAgent`]
 //! - **Solana**: Via [`SolanaAgent`]
+//!
+//! # Features
+//!
+//! - `prover`: Enables RISC Zero zkVM proof generation via `zescrow-prover` (opt-in)
 //!
 //! # Example
 //!
@@ -34,8 +37,11 @@ use zescrow_core::{Chain, EscrowMetadata, EscrowParams};
 
 pub mod error;
 pub mod ethereum;
-pub mod prover;
 pub mod solana;
+
+/// Re-export of the prover crate when the `prover` feature is enabled.
+#[cfg(feature = "prover")]
+pub use zescrow_prover as prover;
 
 /// Result type alias using [`ClientError`].
 pub type Result<T> = std::result::Result<T, ClientError>;

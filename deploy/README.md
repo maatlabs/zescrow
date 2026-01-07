@@ -155,7 +155,9 @@ cargo run --release -p zescrow-client -- cancel
 
 ## Cryptographic Conditions
 
-For escrows with ZK conditions, use the `generate` command:
+For escrows with ZK conditions, you need the `prover` feature and the [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain).
+
+Use the `generate` command to create condition files:
 
 ```bash
 # Hashlock (SHA-256 preimage)
@@ -171,7 +173,12 @@ cargo run -p zescrow-client -- generate threshold \
   --threshold 2
 ```
 
-Set `"has_conditions": true` in your escrow_params.json when using conditions.
+Set `"has_conditions": true` in your escrow_params.json, then build and run with the `prover` feature:
+
+```bash
+cargo run --release -p zescrow-client --features prover -- create
+cargo run --release -p zescrow-client --features prover -- finish --recipient <KEY>
+```
 
 ## Configuration Reference
 

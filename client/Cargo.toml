@@ -1,12 +1,16 @@
 [package]
 name = "zescrow-client"
 version = "0.1.0"
-description = "The Zescrow client CLI and RISC Zero zkVM (prover)"
+description = "The Zescrow client CLI for cross-chain escrow operations"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/maatlabs/zescrow"
 homepage = "https://github.com/maatlabs/zescrow"
 readme = "README.md"
 edition = "2021"
+
+[features]
+default = []
+prover = ["dep:zescrow-prover"]
 
 [dependencies]
 anyhow = "1.0"
@@ -19,7 +23,6 @@ dotenvy = "0.15"
 ethers = { version = "2", features = ["rustls"] }
 hex = { version = "0.4", features = ["serde"] }
 num-traits = "0.2"
-risc0-zkvm = { version = "3", features = ["unstable"] }
 rustc-hex = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -37,8 +40,9 @@ path = "../core"
 default-features = false
 features = ["bincode", "json"]
 
-[dependencies.zescrow-methods]
-path = "methods"
+[dependencies.zescrow-prover]
+path = "../prover"
+optional = true
 
 [dependencies.escrow]
 path = "../agent/solana/escrow/programs/escrow"

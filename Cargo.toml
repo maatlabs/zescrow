@@ -1,5 +1,5 @@
 [workspace]
-members = ["client", "core", "agent/solana/escrow/programs/escrow"]
+members = ["client", "core", "prover", "agent/solana/escrow/programs/escrow"]
 
 resolver = "2"
 

@@ -8,6 +8,7 @@ This guide walks through creating and completing an escrow on a **local Solana t
 
 - [Solana CLI](https://solana.com/docs/intro/installation) installed
 - [Anchor CLI](https://www.anchor-lang.com/docs/installation) (v0.32.1+)
+- (Optional) [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain) - only required for ZK conditions
 
 ### 1. Start the Test Validator
 
@@ -95,7 +96,7 @@ Notes:
 
 ### 5. (Optional) Configure Cryptographic Conditions
 
-If `has_conditions` is `true`, create a conditions file using the `generate` command:
+If `has_conditions` is `true`, you need the RISC Zero toolchain installed. Create a conditions file using the `generate` command:
 
 ```sh
 # Hashlock condition
@@ -116,7 +117,11 @@ The output is written to `deploy/escrow_conditions.json` by default.
 ### 6. Create an Escrow
 
 ```sh
+# Without conditions (default)
 RUST_LOG=info cargo run -p zescrow-client -- create
+
+# With conditions (requires --features prover)
+RUST_LOG=info cargo run -p zescrow-client --features prover -- create
 ```
 
 ### 7. Complete the Escrow
@@ -124,7 +129,12 @@ RUST_LOG=info cargo run -p zescrow-client -- create
 **To release funds to recipient:**
 
 ```sh
+# Without conditions
 RUST_LOG=info cargo run -p zescrow-client -- finish \
+  --recipient ./demos/test_keypair.json
+
+# With conditions (requires --features prover for ZK proof generation)
+RUST_LOG=info cargo run -p zescrow-client --features prover -- finish \
   --recipient ./demos/test_keypair.json
 ```
 
