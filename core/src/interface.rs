@@ -272,3 +272,84 @@ impl std::str::FromStr for Chain {
         }
     }
 }
+
+#[cfg(all(test, feature = "json"))]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn chain_from_str_ethereum() {
+        assert!(matches!(Chain::from_str("ethereum"), Ok(Chain::Ethereum)));
+        assert!(matches!(Chain::from_str("ETHEREUM"), Ok(Chain::Ethereum)));
+        assert!(matches!(Chain::from_str("eth"), Ok(Chain::Ethereum)));
+        assert!(matches!(Chain::from_str("ETH"), Ok(Chain::Ethereum)));
+    }
+
+    #[test]
+    fn chain_from_str_solana() {
+        assert!(matches!(Chain::from_str("solana"), Ok(Chain::Solana)));
+        assert!(matches!(Chain::from_str("SOLANA"), Ok(Chain::Solana)));
+        assert!(matches!(Chain::from_str("sol"), Ok(Chain::Solana)));
+        assert!(matches!(Chain::from_str("SOL"), Ok(Chain::Solana)));
+    }
+
+    #[test]
+    fn chain_from_str_unsupported() {
+        assert!(matches!(
+            Chain::from_str("bitcoin"),
+            Err(EscrowError::UnsupportedChain)
+        ));
+        assert!(matches!(
+            Chain::from_str(""),
+            Err(EscrowError::UnsupportedChain)
+        ));
+    }
+
+    #[test]
+    fn chain_as_ref() {
+        assert_eq!(Chain::Ethereum.as_ref(), "ethereum");
+        assert_eq!(Chain::Solana.as_ref(), "solana");
+    }
+
+    #[test]
+    fn expand_env_vars_no_vars() {
+        let input = "no variables here";
+        let result = expand_env_vars(input);
+        assert_eq!(result, "no variables here");
+        // Should return Borrowed when no expansion needed
+        assert!(matches!(result, std::borrow::Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn expand_env_vars_single_var() {
+        std::env::set_var("TEST_VAR_SINGLE", "hello");
+        let result = expand_env_vars("prefix-${TEST_VAR_SINGLE}-suffix");
+        assert_eq!(result, "prefix-hello-suffix");
+        std::env::remove_var("TEST_VAR_SINGLE");
+    }
+
+    #[test]
+    fn expand_env_vars_multiple_vars() {
+        std::env::set_var("TEST_VAR_A", "alpha");
+        std::env::set_var("TEST_VAR_B", "beta");
+        let result = expand_env_vars("${TEST_VAR_A} and ${TEST_VAR_B}");
+        assert_eq!(result, "alpha and beta");
+        std::env::remove_var("TEST_VAR_A");
+        std::env::remove_var("TEST_VAR_B");
+    }
+
+    #[test]
+    fn expand_env_vars_unset_becomes_empty() {
+        std::env::remove_var("TEST_VAR_UNSET_XYZ");
+        let result = expand_env_vars("before-${TEST_VAR_UNSET_XYZ}-after");
+        assert_eq!(result, "before--after");
+    }
+
+    #[test]
+    fn expand_env_vars_unclosed_brace() {
+        let result = expand_env_vars("prefix-${UNCLOSED");
+        assert_eq!(result, "prefix-${UNCLOSED");
+    }
+}

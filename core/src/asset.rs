@@ -396,4 +396,40 @@ mod tests {
         let too_many = Asset::pool_share(ID::from(vec![1]), to_bignum(150), to_bignum(100), 0);
         assert!(too_many.validate().is_err());
     }
+
+    #[test]
+    fn bincode_roundtrip_native() {
+        let original = Asset::native(to_bignum(1_000_000_000));
+        let bytes = original.to_bytes().unwrap();
+        let decoded = Asset::from_bytes(&bytes).unwrap();
+        assert!(matches!(decoded.kind, AssetKind::Native));
+        assert_eq!(decoded.amount, original.amount);
+    }
+
+    #[test]
+    fn bincode_roundtrip_token() {
+        let original = Asset::token(
+            ID::from(vec![0xde, 0xad, 0xbe, 0xef]),
+            to_bignum(1_000),
+            to_bignum(1_000_000),
+            18,
+        );
+        let bytes = original.to_bytes().unwrap();
+        let decoded = Asset::from_bytes(&bytes).unwrap();
+        assert!(matches!(decoded.kind, AssetKind::Token));
+        assert_eq!(decoded.amount, original.amount);
+        assert_eq!(decoded.decimals, Some(18));
+    }
+
+    #[test]
+    fn format_amount_with_decimals() {
+        let asset = Asset::token(ID::from(vec![1]), to_bignum(1_500_000_000), to_bignum(0), 9);
+        assert_eq!(asset.format_amount().unwrap(), "1.500000000");
+    }
+
+    #[test]
+    fn format_amount_without_decimals() {
+        let asset = Asset::native(to_bignum(12345));
+        assert_eq!(asset.format_amount().unwrap(), "12345");
+    }
 }

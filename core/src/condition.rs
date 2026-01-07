@@ -139,14 +139,12 @@ mod tests {
         let message = b"zkEscrow".to_vec();
         let signature = sk.sign(&message).to_bytes().to_vec();
         let public_key = sk.verifying_key().to_bytes();
-
-        let cond = Condition::ed25519(public_key.clone(), message.clone(), signature.clone());
+        let cond = Condition::ed25519(public_key, message.clone(), signature.clone());
         assert!(cond.verify().is_ok());
 
         // tampered sig
         let mut signature = signature;
         signature[0] ^= 0xFF;
-
         let cond = Condition::ed25519(public_key, message, signature);
         assert!(cond.verify().is_err());
     }
@@ -224,5 +222,28 @@ mod tests {
         let inner2 = Condition::threshold(1, vec![wrong_leaf]);
         let outer2 = Condition::threshold(1, vec![inner2]);
         assert!(outer2.verify().is_err());
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn json_roundtrip_hashlock() {
+        let preimage = b"secret".to_vec();
+        let hash = Sha256::digest(&preimage).into();
+        let cond = Condition::hashlock(hash, preimage);
+        let json = serde_json::to_string(&cond).unwrap();
+        let decoded: Condition = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, cond);
+    }
+
+    #[cfg(feature = "json")]
+    #[test]
+    fn json_roundtrip_threshold() {
+        let preimage = b"nested".to_vec();
+        let hash = Sha256::digest(&preimage).into();
+        let inner = Condition::hashlock(hash, preimage);
+        let cond = Condition::threshold(1, vec![inner]);
+        let json = serde_json::to_string(&cond).unwrap();
+        let decoded: Condition = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded, cond);
     }
 }
