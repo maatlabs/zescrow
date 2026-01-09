@@ -13,7 +13,7 @@ cp deploy/.env.template .env
 ./deploy/solana/run.sh      # For Solana devnet
 ./deploy/ethereum/run.sh    # For Ethereum Sepolia
 
-# 3. Copy the appropriate config template
+# 3. Copy the appropriate config template and edit accordingly
 cp deploy/solana/escrow_params.json deploy/escrow_params.json
 # Or for Ethereum:
 # cp deploy/ethereum/escrow_params.json deploy/escrow_params.json
@@ -32,10 +32,16 @@ cargo run --release -p zescrow-client -- create
 
 ```bash
 # Configure for devnet
+solana config set --keypair ~/.config/solana/id.json
 solana config set --url https://api.devnet.solana.com
 
-# Get devnet SOL
-solana airdrop 2
+# Retrieve your (sender) address and fund with devnet SOL
+solana address --keypair ~/.config/solana/id.json
+solana airdrop 5 <SENDER_ADDRESS>
+
+# Create a temporary key for the recipient
+solana-keygen new -o /tmp/recipient-keypair.json
+# Note the pubkey/address in the output (stdout)
 ```
 
 ### Ethereum
@@ -208,10 +214,3 @@ cargo run --release -p zescrow-client --features prover -- finish --recipient <K
 | `finish_after`                   | Slot/block after which release is allowed       |
 | `cancel_after`                   | Slot/block after which cancel is allowed        |
 | `has_conditions`                 | `true` if ZK conditions apply                   |
-
-## Deployed Addresses
-
-| Network          | Address                                        |
-| ---------------- | ---------------------------------------------- |
-| Solana Devnet    | `8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ` |
-| Ethereum Sepolia | TBD (deploy with `./deploy/ethereum/run.sh`)   |

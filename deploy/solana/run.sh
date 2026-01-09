@@ -31,6 +31,8 @@ BALANCE=$(solana balance --url "$RPC_URL" 2>/dev/null || echo "0 SOL")
 echo "Deployer: $WALLET"
 echo "Balance: $BALANCE"
 
+solana config set --url $RPC_URL
+
 cd "$PROGRAM_DIR"
 
 echo ""
