@@ -9,7 +9,7 @@ use anchor_lang::prelude::*;
 use anchor_lang::solana_program::clock::Clock;
 use anchor_lang::system_program;
 
-declare_id!("8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ");
+declare_id!("J4SfUoLAAsvmAWMQGa8dJHw8vsSvRfUUMXGTxcmSeS8s");
 
 /// Seed prefix for PDA derivation.
 pub const ESCROW: &[u8] = b"escrow";

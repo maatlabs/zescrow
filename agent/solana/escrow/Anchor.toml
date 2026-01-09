@@ -5,20 +5,14 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-escrow = "8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ"
-
 [programs.devnet]
-escrow = "8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ"
-
-[programs.mainnet]
-escrow = "8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ"
+escrow = "J4SfUoLAAsvmAWMQGa8dJHw8vsSvRfUUMXGTxcmSeS8s"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
