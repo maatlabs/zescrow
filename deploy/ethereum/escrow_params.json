@@ -1,7 +1,7 @@
 {
     "chain_config": {
         "chain": "ethereum",
-        "rpc_url": "${ETHEREUM_SEPOLIA_RPC_URL}",
+        "rpc_url": "${ETHEREUM_RPC_URL}",
         "sender_private_id": "${ETHEREUM_SENDER_PRIVATE_KEY}",
         "agent_id": "${ESCROW_CONTRACT_ADDRESS}"
     },
@@ -23,7 +23,7 @@
             "hex": "${ETHEREUM_RECIPIENT_ADDRESS}"
         }
     },
-    "finish_after": 100,
-    "cancel_after": 200,
+    "finish_after": 10,
+    "cancel_after": 20,
     "has_conditions": false
 }

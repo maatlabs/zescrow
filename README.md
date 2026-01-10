@@ -24,7 +24,7 @@ zescrow/
 ├── prover/     # RISC Zero zkVM prover/verifier (optional)
 ├── client/     # CLI and blockchain agents
 ├── agent/      # On-chain programs (Solana Anchor, Ethereum Solidity)
-└── deploy/     # Deployment scripts and configuration templates
+└── deploy/     # Deployment scripts, guides, and configuration templates
 ```
 
 ## Quick Start
@@ -34,7 +34,7 @@ zescrow/
 1. Install [Rust](https://rustup.rs/) (the `rust-toolchain.toml` will auto-select the correct version)
 2. (Optional) Install the [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain) - only required for ZK conditions
 
-### Deploy to Testnet
+### Deploy
 
 ```bash
 # Clone and enter the repository
@@ -43,11 +43,13 @@ cd zescrow
 
 # Set up environment
 cp deploy/.env.template .env
-# Edit .env with your keys
+# Edit .env with your configuration
 
-# Deploy (choose one)
-./deploy/solana/run.sh      # Solana devnet
-./deploy/ethereum/run.sh    # Ethereum Sepolia
+# Deploy (choose network)
+./deploy/solana/run.sh --network local      # Local test validator
+./deploy/solana/run.sh --network devnet     # Solana devnet
+./deploy/ethereum/run.sh --network local    # Local Hardhat node
+./deploy/ethereum/run.sh --network sepolia  # Ethereum Sepolia
 
 # Create an escrow
 cp deploy/solana/escrow_params.json deploy/
@@ -60,14 +62,7 @@ cargo run --release -p zescrow-client -- create
 > cargo run --release -p zescrow-client --features prover -- create
 > ```
 
-See the [Deployment Guide](deploy/README.md) for detailed instructions.
-
-### Local Development
-
-For local testing with test validators, see the [demos](demos/README.md):
-
-- [Solana Demo](demos/solana_demo.md)
-- [Ethereum Demo](demos/ethereum_demo.md)
+See the [Deployment Guide](deploy/README.md) for detailed instructions on local development and devnet/testnet deployment.
 
 ## How It Works
 

@@ -1,22 +1,25 @@
 # Zescrow Deployment Guide
 
-Deploy and interact with Zescrow escrows on Solana devnet and Ethereum Sepolia.
+Deploy and interact with Zescrow escrows on Solana and Ethereum networks.
+
+This guide covers both **local development** (test validators) and **devnet/testnet deployment** (devnet/Sepolia).
 
 ## Quick Start
 
 ```bash
 # 1. Set up environment
 cp deploy/.env.template .env
-# Edit .env with your keys
+# Edit .env with your configuration
 
-# 2. Deploy contracts
-./deploy/solana/run.sh      # For Solana devnet
-./deploy/ethereum/run.sh    # For Ethereum Sepolia
+# 2. Deploy (choose network)
+./deploy/solana/run.sh --network local          # Local test validator
+./deploy/solana/run.sh --network devnet         # Solana devnet
+./deploy/ethereum/run.sh --network local        # Local Hardhat node
+./deploy/ethereum/run.sh --network sepolia      # Ethereum Sepolia
 
-# 3. Copy the appropriate config template and edit accordingly
-cp deploy/solana/escrow_params.json deploy/escrow_params.json
-# Or for Ethereum:
-# cp deploy/ethereum/escrow_params.json deploy/escrow_params.json
+# 3. Copy the escrow parameters template and edit accordingly
+cp deploy/solana/escrow_params.json deploy/    # For Solana
+cp deploy/ethereum/escrow_params.json deploy/  # For Ethereum
 
 # 4. Create an escrow
 cargo run --release -p zescrow-client -- create
@@ -28,41 +31,28 @@ cargo run --release -p zescrow-client -- create
 
 - [Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools) (v1.18+)
 - [Anchor CLI](https://www.anchor-lang.com/docs/installation) (v0.32.1+)
-- Devnet SOL (~3 SOL for deployment)
-
-```bash
-# Configure for devnet
-solana config set --keypair ~/.config/solana/id.json
-solana config set --url https://api.devnet.solana.com
-
-# Retrieve your (sender) address and fund with devnet SOL
-solana address --keypair ~/.config/solana/id.json
-solana airdrop 5 <SENDER_ADDRESS>
-
-# Create a temporary key for the recipient
-solana-keygen new -o /tmp/recipient-keypair.json
-# Note the pubkey/address in the output (stdout)
-```
+- For devnet: ~3 SOL for deployment (use `solana airdrop`)
 
 ### Ethereum
 
 - [Node.js](https://nodejs.org/) (v18+)
-- Sepolia ETH (use a [faucet](https://sepoliafaucet.com/))
-- (Optional) [Etherscan API key](https://etherscan.io/apis) for verification
+- For Sepolia: ETH from a [faucet](https://sepoliafaucet.com/)
+- For Sepolia: RPC endpoint (Alchemy, Infura, etc.)
 
 ## Directory Structure
 
 ```sh
 deploy/
-├── solana/
-│   ├── escrow_params.json    # Devnet config template (copy to deploy/)
-│   └── run.sh                # Program deployment script
-├── ethereum/
-│   ├── escrow_params.json    # Sepolia config template (copy to deploy/)
-│   └── run.sh                # Contract deployment script
+├── .env.template             # Environment variables (copy to project root)
 ├── escrow_conditions.json    # ZK conditions template
-├── .env.template             # Environment variables template
-└── README.md                 # This file
+├── create_recipient_sol.sh   # Helper: create Solana recipient keypair
+├── README.md                 # This file
+├── solana/
+│   ├── escrow_params.json    # Solana config template
+│   └── run.sh                # Deployment script (--network local|devnet)
+└── ethereum/
+    ├── escrow_params.json    # Ethereum config template
+    └── run.sh                # Deployment script (--network local|sepolia)
 
 # Generated at runtime (git-ignored):
 # ├── escrow_params.json      # Active config (copied from solana/ or ethereum/)
@@ -78,92 +68,225 @@ deploy/
 cp deploy/.env.template .env
 ```
 
-1. Fill in your values:
+2. Edit `.env` with your values. The same file works for both local and devnet; just change the RPC URLs:
 
 ```bash
-# Solana
-SOLANA_SENDER_KEYPAIR_PATH=~/.config/solana/id.json
-SOLANA_SENDER_PUBKEY=YourPublicKey
-SOLANA_RECIPIENT_PUBKEY=RecipientPublicKey
+# For local development
+SOLANA_RPC_URL=http://localhost:8899
+ETHEREUM_RPC_URL=http://localhost:8545
 
-# Ethereum
-ETHEREUM_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
-ETHEREUM_SENDER_PRIVATE_KEY=your_private_key
-ETHEREUM_SENDER_ADDRESS=0xYourAddress
-ETHEREUM_RECIPIENT_ADDRESS=0xRecipientAddress
-ESCROW_CONTRACT_ADDRESS=0xDeployedContract
+# For devnet/Sepolia
+SOLANA_RPC_URL=https://api.devnet.solana.com
+ETHEREUM_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 ```
 
 ## Solana Deployment
 
-### Deploy Program
+### Localnet
+
+1. Start the test validator:
 
 ```bash
-./deploy/solana/run.sh
+solana config set --url localhost
+solana-test-validator -r
 ```
 
-This builds and deploys the Anchor program to devnet. Note the Program ID.
-
-### Create Escrow
+2. In a new terminal, deploy the program:
 
 ```bash
-# Copy config template
+./deploy/solana/run.sh --network local
+```
+
+3. Create a recipient keypair and fund it:
+
+```bash
+./deploy/create_recipient_sol.sh --network local
+```
+
+This creates `deploy/recipient_keypair.json` and outputs the public key. Add to your `.env`:
+
+```bash
+SOLANA_RECIPIENT_PUBKEY=<pubkey_from_output>
+```
+
+4. Copy and edit the escrow config template:
+
+```bash
 cp deploy/solana/escrow_params.json deploy/
-
-# Create escrow
-cargo run --release -p zescrow-client -- create
 ```
 
-### Complete Escrow
+5. Create and complete the escrow:
 
 ```bash
-# Release to recipient
-cargo run --release -p zescrow-client -- finish --recipient ~/.config/solana/recipient.json
+# Create escrow (funds are locked)
+cargo run --release -p zescrow-client -- create
 
-# Or cancel/refund
+# Release to recipient (after finish_after slot)
+cargo run --release -p zescrow-client -- finish \
+  --recipient deploy/recipient_keypair.json
+
+# Or cancel/refund (after cancel_after slot)
+cargo run --release -p zescrow-client -- cancel
+```
+
+### Devnet
+
+1. Configure for devnet and fund your deployer wallet:
+
+```bash
+solana config set --url https://api.devnet.solana.com
+solana airdrop 5 $(solana address)
+```
+
+2. Deploy the program:
+
+```bash
+./deploy/solana/run.sh --network devnet
+```
+
+3. Create a recipient keypair and fund it:
+
+```bash
+./deploy/create_recipient_sol.sh --network devnet
+```
+
+This creates `deploy/recipient_keypair.json` and airdrops 1 SOL. Add to your `.env`:
+
+```bash
+SOLANA_RECIPIENT_PUBKEY=<pubkey_from_output>
+```
+
+4. Copy and edit the escrow config template:
+
+```bash
+cp deploy/solana/escrow_params.json deploy/
+```
+
+5. Create and complete the escrow:
+
+```bash
+# Create escrow (funds are locked)
+cargo run --release -p zescrow-client -- create
+
+# Release to recipient (after finish_after slot)
+cargo run --release -p zescrow-client -- finish \
+  --recipient deploy/recipient_keypair.json
+
+# Or cancel/refund (after cancel_after slot)
 cargo run --release -p zescrow-client -- cancel
 ```
 
 ## Ethereum Deployment
 
-### Deploy Contract
+### Local (Hardhat node)
+
+1. Start Hardhat node:
 
 ```bash
-# Ensure ETHEREUM_SENDER_PRIVATE_KEY is set
-./deploy/ethereum/run.sh
+cd agent/ethereum
+npm install
+npx hardhat node
 ```
 
-Note the deployed contract address and add it to your `.env`:
+Note the pre-funded accounts printed to the console. Pick one for sender and one for recipient.
+
+2. In a new terminal, deploy the contract:
 
 ```bash
-ESCROW_CONTRACT_ADDRESS=0x...
+./deploy/ethereum/run.sh --network local
 ```
 
-### Create Escrow
+3. Configure sender and recipient in your `.env`:
 
 ```bash
-# Copy config template
+# Use accounts from Hardhat node output (without 0x prefix for private keys)
+ETHEREUM_SENDER_PRIVATE_KEY=<account_0_private_key>
+ETHEREUM_SENDER_ADDRESS=<account_0_address>
+ETHEREUM_RECIPIENT_ADDRESS=<account_1_address>
+```
+
+Keep the recipient's private key handy for step 6.
+
+4. Copy and edit the escrow config template:
+
+```bash
 cp deploy/ethereum/escrow_params.json deploy/
-
-# Create escrow
-cargo run --release -p zescrow-client -- create
 ```
 
-### Complete Escrow
+5. Create and complete the escrow:
 
 ```bash
-# Release to recipient (private key without 0x)
-cargo run --release -p zescrow-client -- finish --recipient <RECIPIENT_PRIVATE_KEY>
+# Create escrow (funds are locked)
+cargo run --release -p zescrow-client -- create
 
-# Or cancel/refund
+# Release to recipient (after finish_after block)
+# Use recipient's private key without 0x prefix
+cargo run --release -p zescrow-client -- finish \
+  --recipient <RECIPIENT_PRIVATE_KEY>
+
+# Or cancel/refund (after cancel_after block)
+cargo run --release -p zescrow-client -- cancel
+```
+
+6. (Optional) Mine blocks to advance past `finish_after`:
+
+```bash
+cd agent/ethereum
+npx hardhat console --network localhost
+> await ethers.provider.send("evm_mine", [])
+```
+
+### Sepolia (testnet)
+
+1. Set environment variables for deployment:
+
+```bash
+export ETHEREUM_SENDER_PRIVATE_KEY="your_private_key"
+export ETHERSCAN_API_KEY="your_api_key"  # Optional, for verification
+```
+
+2. Deploy the contract:
+
+```bash
+./deploy/ethereum/run.sh --network sepolia
+```
+
+3. Configure sender and recipient in your `.env`:
+
+```bash
+ETHEREUM_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+ESCROW_CONTRACT_ADDRESS=<from_deploy_output>
+ETHEREUM_SENDER_PRIVATE_KEY=<your_private_key>
+ETHEREUM_SENDER_ADDRESS=<your_address>
+ETHEREUM_RECIPIENT_ADDRESS=<recipient_address>
+```
+
+4. Copy and edit the escrow config template:
+
+```bash
+cp deploy/ethereum/escrow_params.json deploy/
+```
+
+5. Create and complete the escrow:
+
+```bash
+# Create escrow (funds are locked)
+cargo run --release -p zescrow-client -- create
+
+# Release to recipient (after finish_after block)
+# Use recipient's private key without 0x prefix
+cargo run --release -p zescrow-client -- finish \
+  --recipient <RECIPIENT_PRIVATE_KEY>
+
+# Or cancel/refund (after cancel_after block)
 cargo run --release -p zescrow-client -- cancel
 ```
 
 ## Cryptographic Conditions
 
-For escrows with ZK conditions, you need the `prover` feature and the [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain).
+For escrows with ZK conditions, install the [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain) and use the `--features prover` flag.
 
-Use the `generate` command to create condition files:
+### Generate Conditions
 
 ```bash
 # Hashlock (SHA-256 preimage)
@@ -179,7 +302,10 @@ cargo run -p zescrow-client -- generate threshold \
   --threshold 2
 ```
 
-Set `"has_conditions": true` in your escrow_params.json, then build and run with the `prover` feature:
+### Use Conditions
+
+1. Set `"has_conditions": true` in `escrow_params.json`
+2. Build and run with the `prover` feature:
 
 ```bash
 cargo run --release -p zescrow-client --features prover -- create
@@ -192,21 +318,23 @@ cargo run --release -p zescrow-client --features prover -- finish --recipient <K
 
 | Variable                      | Description                     |
 | ----------------------------- | ------------------------------- |
-| `SOLANA_SENDER_KEYPAIR_PATH`  | Path to sender's Solana keypair |
+| `SOLANA_RPC_URL`              | Solana RPC endpoint             |
+| `SOLANA_PROGRAM_ID`           | Deployed program ID             |
+| `SOLANA_SENDER_KEYPAIR_PATH`  | Path to sender's keypair file   |
 | `SOLANA_SENDER_PUBKEY`        | Sender's public key (base58)    |
 | `SOLANA_RECIPIENT_PUBKEY`     | Recipient's public key (base58) |
-| `ETHEREUM_SEPOLIA_RPC_URL`    | Sepolia JSON-RPC endpoint       |
+| `ETHEREUM_RPC_URL`            | Ethereum RPC endpoint           |
+| `ESCROW_CONTRACT_ADDRESS`     | Deployed contract address       |
 | `ETHEREUM_SENDER_PRIVATE_KEY` | Sender's private key (no 0x)    |
 | `ETHEREUM_SENDER_ADDRESS`     | Sender's address (0x...)        |
 | `ETHEREUM_RECIPIENT_ADDRESS`  | Recipient's address (0x...)     |
-| `ESCROW_CONTRACT_ADDRESS`     | Deployed contract address       |
 
 ### escrow_params.json Fields
 
 | Field                            | Description                                     |
 | -------------------------------- | ----------------------------------------------- |
 | `chain_config.chain`             | `"solana"` or `"ethereum"`                      |
-| `chain_config.rpc_url`           | Network RPC endpoint                            |
+| `chain_config.rpc_url`           | Network RPC endpoint (uses env var)             |
 | `chain_config.sender_private_id` | Keypair path (Solana) or private key (Ethereum) |
 | `chain_config.agent_id`          | Program ID or contract address                  |
 | `asset.kind`                     | `"native"` for SOL/ETH                          |
@@ -214,3 +342,21 @@ cargo run --release -p zescrow-client --features prover -- finish --recipient <K
 | `finish_after`                   | Slot/block after which release is allowed       |
 | `cancel_after`                   | Slot/block after which cancel is allowed        |
 | `has_conditions`                 | `true` if ZK conditions apply                   |
+
+## Running Tests
+
+### Solana (Anchor)
+
+```bash
+cd agent/solana/escrow
+anchor test                           # Starts its own validator
+anchor test --skip-local-validator    # Uses running validator
+```
+
+### Ethereum (Hardhat)
+
+```bash
+cd agent/ethereum
+npx hardhat test                      # Starts its own node
+npx hardhat test --network localhost  # Uses running node
+```

@@ -1,9 +1,9 @@
 {
     "chain_config": {
         "chain": "solana",
-        "rpc_url": "https://api.devnet.solana.com",
+        "rpc_url": "${SOLANA_RPC_URL}",
         "sender_private_id": "${SOLANA_SENDER_KEYPAIR_PATH}",
-        "agent_id": "8u5bT8xkx6X4qKuRnn7oeDdrE1v4jG1F749YzqP1Z7BQ"
+        "agent_id": "${SOLANA_PROGRAM_ID}"
     },
     "asset": {
         "kind": "native",
@@ -23,7 +23,7 @@
             "base58": "${SOLANA_RECIPIENT_PUBKEY}"
         }
     },
-    "finish_after": 1200,
-    "cancel_after": 2200,
+    "finish_after": 100,
+    "cancel_after": 200,
     "has_conditions": false
 }
