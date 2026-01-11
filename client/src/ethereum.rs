@@ -21,9 +21,8 @@ use zescrow_core::{ChainConfig, EscrowMetadata, EscrowParams, ExecutionState};
 use crate::error::ClientError;
 use crate::{Agent, Result};
 
-/// Escrow contract ABI embedded from build artifacts.
-const ESCROW_JSON: &str =
-    include_str!("../../agent/ethereum/artifacts/contracts/Escrow.sol/Escrow.json");
+/// Escrow contract ABI embedded at compile time.
+const ESCROW_JSON: &str = include_str!("../abi/Escrow.json");
 
 // Contract method names.
 const CREATE_ESCROW: &str = "createEscrow";

@@ -4,6 +4,7 @@
   "type": "commonjs",
   "scripts": {
     "compile": "hardhat compile",
+    "postcompile": "cp artifacts/contracts/Escrow.sol/Escrow.json ../../client/abi/",
     "test": "hardhat test"
   },
   "devDependencies": {

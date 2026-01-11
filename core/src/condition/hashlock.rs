@@ -45,8 +45,7 @@ impl Hashlock {
     /// Returns [`Error::Mismatch`] if the computed hash does not match.
     pub fn verify(&self) -> Result<(), Error> {
         let computed = Sha256::digest(&self.preimage);
-        computed
-            .as_slice()
+        computed[..]
             .ct_eq(&self.hash)
             .unwrap_u8()
             .eq(&1)

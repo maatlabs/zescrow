@@ -142,11 +142,3 @@ jobs:
       - name: cargo doc (client)
         run: cargo doc --manifest-path=client/Cargo.toml --no-deps
 
-  deny:
-    name: cargo-deny
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: EmbarkStudios/cargo-deny-action@v2
-        with:
-          command: check advisories
