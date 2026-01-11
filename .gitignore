@@ -22,6 +22,7 @@ test-ledger
 
 # Escrow workflow files (user copies from chain-specific templates)
 deploy/escrow_params.json
+deploy/escrow_conditions.json
 deploy/escrow_metadata.json
 deploy/proof_data.json
 

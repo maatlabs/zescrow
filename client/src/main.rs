@@ -31,8 +31,8 @@ enum Commands {
     /// Reads `templates/escrow_metadata.json`.
     Finish {
         /// `RECIPIENT` is either:
-        /// - a path to a keypair file (e.g., for Solana), or
-        /// - a WIF-encoded private key
+        /// - a path to a keypair file (for Solana), or
+        /// - a hex private key with 0x prefix (for Ethereum)
         #[arg(long, value_name = "RECIPIENT")]
         recipient: Recipient,
     },

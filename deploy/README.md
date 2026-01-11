@@ -44,7 +44,6 @@ cargo run --release -p zescrow-client -- create
 ```sh
 deploy/
 ├── .env.template             # Environment variables (copy to project root)
-├── escrow_conditions.json    # ZK conditions template
 ├── create_recipient_sol.sh   # Helper: create Solana recipient keypair
 ├── README.md                 # This file
 ├── solana/
@@ -56,6 +55,7 @@ deploy/
 
 # Generated at runtime (git-ignored):
 # ├── escrow_params.json      # Active config (copied from solana/ or ethereum/)
+# ├── escrow_conditions.json  # ZK conditions (output from the 'generate' command)
 # ├── escrow_metadata.json    # Output from 'create' command
 # └── proof_data.json         # ZK proof data
 ```
@@ -107,6 +107,7 @@ This creates `deploy/recipient_keypair.json` and outputs the public key. Add to 
 
 ```bash
 SOLANA_RECIPIENT_PUBKEY=<pubkey_from_output>
+SOLANA_RECIPIENT_KEYPAIR_PATH=/absolute/path/to/deploy/recipient_keypair.json
 ```
 
 4. Copy and edit the escrow config template:
@@ -199,7 +200,7 @@ Note the pre-funded accounts printed to the console. Pick one for sender and one
 3. Configure sender and recipient in your `.env`:
 
 ```bash
-# Use accounts from Hardhat node output (without 0x prefix for private keys)
+# Use accounts from Hardhat node output (0x prefix optional)
 ETHEREUM_SENDER_PRIVATE_KEY=<account_0_private_key>
 ETHEREUM_SENDER_ADDRESS=<account_0_address>
 ETHEREUM_RECIPIENT_ADDRESS=<account_1_address>
@@ -220,7 +221,7 @@ cp deploy/ethereum/escrow_params.json deploy/
 cargo run --release -p zescrow-client -- create
 
 # Release to recipient (after finish_after block)
-# Use recipient's private key without 0x prefix
+# Use recipient's private key (0x prefix required)
 cargo run --release -p zescrow-client -- finish \
   --recipient <RECIPIENT_PRIVATE_KEY>
 
@@ -274,7 +275,7 @@ cp deploy/ethereum/escrow_params.json deploy/
 cargo run --release -p zescrow-client -- create
 
 # Release to recipient (after finish_after block)
-# Use recipient's private key without 0x prefix
+# Use recipient's private key (0x prefix required)
 cargo run --release -p zescrow-client -- finish \
   --recipient <RECIPIENT_PRIVATE_KEY>
 

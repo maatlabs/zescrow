@@ -135,7 +135,10 @@ impl ID {
     /// An `IdentityError` corresponding to the failing ID type.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let decoded = match self {
-            Self::Hex(s) => hex::decode(s).map_err(IdentityError::Hex),
+            Self::Hex(s) => {
+                let stripped = s.strip_prefix("0x").unwrap_or(s);
+                hex::decode(stripped).map_err(IdentityError::Hex)
+            }
             Self::Base58(s) => bs58::decode(s).into_vec().map_err(IdentityError::Base58),
             Self::Base64(s) => BASE64_STANDARD.decode(s).map_err(IdentityError::Base64),
             Self::Bytes(b) => Ok(b.clone()),
@@ -235,8 +238,10 @@ impl ID {
     }
 
     /// Attempts to decode a hex string into an `ID::Hex`.
+    /// Handles optional `0x` prefix.
     fn try_decode_hex(s: &str) -> Option<Self> {
-        hex::decode(s)
+        let stripped = s.strip_prefix("0x").unwrap_or(s);
+        hex::decode(stripped)
             .ok()
             .map(|bytes| Self::Hex(hex::encode(bytes)))
     }

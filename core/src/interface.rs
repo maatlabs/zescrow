@@ -37,9 +37,6 @@ pub const ESCROW_CONDITIONS_PATH: &str = concat!(
     "/../deploy/escrow_conditions.json"
 );
 
-/// Default path to proof data.
-pub const PROOF_DATA_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../deploy/proof_data.json");
-
 /// Expands environment variable references in a string.
 ///
 /// Replaces all occurrences of `${VAR_NAME}` with the corresponding

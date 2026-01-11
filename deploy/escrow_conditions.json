@@ -1,7 +1,0 @@
-{
-    "condition": "hashlock",
-    "fulfillment": {
-        "hash": "SHA-256 digest of preimage (hex-encoded)",
-        "preimage": "Your secret string"
-    }
-}

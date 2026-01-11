@@ -256,7 +256,7 @@ impl std::str::FromStr for Recipient {
 
     /// Parses a recipient from a string.
     ///
-    /// - Strings starting with `0x` are parsed as Ethereum private keys
+    /// - Strings starting with `0x` are parsed as Ethereum private keys (prefix required)
     /// - Other strings are treated as paths to Solana keypair files
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
         s.strip_prefix("0x")
