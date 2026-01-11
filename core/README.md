@@ -26,7 +26,7 @@ Add the crate as a dependency in your `Cargo.toml` (enable the `json` feature if
 
 ```toml
 [dependencies]
-zescrow-core = { version = "0.1", features = ["json"] }
+zescrow-core = { version = "0.2", features = ["json"] }
 ```
 
 ```rust
