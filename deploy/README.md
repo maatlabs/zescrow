@@ -21,8 +21,9 @@ cp deploy/.env.template .env
 cp deploy/solana/escrow_params.json deploy/    # For Solana
 cp deploy/ethereum/escrow_params.json deploy/  # For Ethereum
 
-# 4. Create an escrow
-cargo run --release -p zescrow-client -- create
+# 4. Build and create an escrow
+cargo build -p zescrow-client
+./target/debug/zescrow-client create
 ```
 
 ## Prerequisites
@@ -119,15 +120,22 @@ cp deploy/solana/escrow_params.json deploy/
 5. Create and complete the escrow:
 
 ```bash
+# Build once (faster iteration)
+cargo build -p zescrow-client
+
 # Create escrow (funds are locked)
-cargo run --release -p zescrow-client -- create
+./target/debug/zescrow-client create
 
 # Release to recipient (after finish_after slot)
-cargo run --release -p zescrow-client -- finish \
+# For escrows WITHOUT conditions:
+./target/debug/zescrow-client finish --recipient deploy/recipient_keypair.json
+
+# For escrows WITH conditions (ZK proof generation):
+cargo run --release -p zescrow-client --features prover -- finish \
   --recipient deploy/recipient_keypair.json
 
 # Or cancel/refund (after cancel_after slot)
-cargo run --release -p zescrow-client -- cancel
+./target/debug/zescrow-client cancel
 ```
 
 ### Devnet
@@ -166,15 +174,22 @@ cp deploy/solana/escrow_params.json deploy/
 5. Create and complete the escrow:
 
 ```bash
+# Build once (faster iteration)
+cargo build -p zescrow-client
+
 # Create escrow (funds are locked)
-cargo run --release -p zescrow-client -- create
+./target/debug/zescrow-client create
 
 # Release to recipient (after finish_after slot)
-cargo run --release -p zescrow-client -- finish \
+# For escrows WITHOUT conditions:
+./target/debug/zescrow-client finish --recipient deploy/recipient_keypair.json
+
+# For escrows WITH conditions (ZK proof generation):
+cargo run --release -p zescrow-client --features prover -- finish \
   --recipient deploy/recipient_keypair.json
 
 # Or cancel/refund (after cancel_after slot)
-cargo run --release -p zescrow-client -- cancel
+./target/debug/zescrow-client cancel
 ```
 
 ## Ethereum Deployment
@@ -217,16 +232,22 @@ cp deploy/ethereum/escrow_params.json deploy/
 5. Create and complete the escrow:
 
 ```bash
+# Build once (faster iteration)
+cargo build -p zescrow-client
+
 # Create escrow (funds are locked)
-cargo run --release -p zescrow-client -- create
+./target/debug/zescrow-client create
 
 # Release to recipient (after finish_after block)
-# Use recipient's private key (0x prefix required)
-cargo run --release -p zescrow-client -- finish \
+# For escrows WITHOUT conditions (0x prefix required):
+./target/debug/zescrow-client finish --recipient <RECIPIENT_PRIVATE_KEY>
+
+# For escrows WITH conditions (ZK proof generation):
+cargo run --release -p zescrow-client --features prover -- finish \
   --recipient <RECIPIENT_PRIVATE_KEY>
 
 # Or cancel/refund (after cancel_after block)
-cargo run --release -p zescrow-client -- cancel
+./target/debug/zescrow-client cancel
 ```
 
 6. (Optional) Mine blocks to advance past `finish_after`:
@@ -271,34 +292,43 @@ cp deploy/ethereum/escrow_params.json deploy/
 5. Create and complete the escrow:
 
 ```bash
+# Build once (faster iteration)
+cargo build -p zescrow-client
+
 # Create escrow (funds are locked)
-cargo run --release -p zescrow-client -- create
+./target/debug/zescrow-client create
 
 # Release to recipient (after finish_after block)
-# Use recipient's private key (0x prefix required)
-cargo run --release -p zescrow-client -- finish \
+# For escrows WITHOUT conditions (0x prefix required):
+./target/debug/zescrow-client finish --recipient <RECIPIENT_PRIVATE_KEY>
+
+# For escrows WITH conditions (ZK proof generation):
+cargo run --release -p zescrow-client --features prover -- finish \
   --recipient <RECIPIENT_PRIVATE_KEY>
 
 # Or cancel/refund (after cancel_after block)
-cargo run --release -p zescrow-client -- cancel
+./target/debug/zescrow-client cancel
 ```
 
 ## Cryptographic Conditions
 
-For escrows with ZK conditions, install the [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain) and use the `--features prover` flag.
+For escrows with ZK conditions, install the [RISC Zero toolchain](https://dev.risczero.com/api/zkvm/quickstart#1-install-the-risc-zero-toolchain).
 
 ### Generate Conditions
 
 ```bash
+# Build once
+cargo build -p zescrow-client
+
 # Hashlock (SHA-256 preimage)
-cargo run -p zescrow-client -- generate hashlock --preimage ./secret.txt
+./target/debug/zescrow-client generate hashlock --preimage ./preimage.txt
 
 # Ed25519 signature
-cargo run -p zescrow-client -- generate ed25519 \
+./target/debug/zescrow-client generate ed25519 \
   --pubkey <hex> --msg <hex> --sig <hex>
 
 # Threshold (M-of-N)
-cargo run -p zescrow-client -- generate threshold \
+./target/debug/zescrow-client generate threshold \
   --subconditions cond1.json cond2.json cond3.json \
   --threshold 2
 ```
@@ -306,10 +336,15 @@ cargo run -p zescrow-client -- generate threshold \
 ### Use Conditions
 
 1. Set `"has_conditions": true` in `escrow_params.json`
-2. Build and run with the `prover` feature:
+2. Create escrow (debug build is fine):
 
 ```bash
-cargo run --release -p zescrow-client --features prover -- create
+./target/debug/zescrow-client create
+```
+
+3. Finish escrow (release build with prover for ZK proof generation):
+
+```bash
 cargo run --release -p zescrow-client --features prover -- finish --recipient <KEY>
 ```
 
