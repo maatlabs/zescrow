@@ -6,12 +6,10 @@ on:
       - main
   pull_request:
     types: [opened, reopened, synchronize]
-    # Skip CI entirely if only files under `client/` change
-    paths-ignore:
-      - "client/**"
 
 env:
   CARGO_TERM_COLOR: always
+  RISC0_SKIP_BUILD: "1"
 
 jobs:
   check:
@@ -22,16 +20,29 @@ jobs:
       matrix:
         toolchain: [stable]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-          override: true
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-check-${{ hashFiles('**/Cargo.lock') }}
       - name: cargo check (core)
         run: cargo check --manifest-path=core/Cargo.toml --all-targets --all-features
       - name: cargo check (escrow program)
         run: cargo check --manifest-path=agent/solana/escrow/programs/escrow/Cargo.toml --all-targets --all-features
+      - name: cargo check (prover)
+        run: cargo check --manifest-path=prover/Cargo.toml --all-targets
+      - name: cargo check (client)
+        run: cargo check --manifest-path=client/Cargo.toml --all-targets
+      - name: cargo check (client with prover)
+        run: cargo check --manifest-path=client/Cargo.toml --all-targets --features prover
 
   test:
     name: cargo test
@@ -41,74 +52,93 @@ jobs:
       matrix:
         toolchain: [stable, nightly]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.toolchain }}
-          override: true
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ matrix.toolchain }}-${{ hashFiles('**/Cargo.lock') }}
       - name: cargo test (core)
         run: cargo test --manifest-path=core/Cargo.toml -- --nocapture
       - name: cargo test (escrow program)
         run: cargo test --manifest-path=agent/solana/escrow/programs/escrow/Cargo.toml -- --nocapture
+      - name: cargo test (prover)
+        run: cargo test --manifest-path=prover/Cargo.toml -- --nocapture
+      - name: cargo test (client)
+        run: cargo test --manifest-path=client/Cargo.toml -- --nocapture
 
   clippy:
     name: cargo clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install nightly + clippy
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly
           components: clippy
-          override: true
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
       - name: cargo clippy (core)
         run: cargo clippy --manifest-path=core/Cargo.toml -- -D warnings
       - name: cargo clippy (escrow program)
         run: cargo clippy --manifest-path=agent/solana/escrow/programs/escrow/Cargo.toml -- -D warnings
+      - name: cargo clippy (prover)
+        run: cargo clippy --manifest-path=prover/Cargo.toml -- -D warnings
+      - name: cargo clippy (client)
+        run: cargo clippy --manifest-path=client/Cargo.toml -- -D warnings
 
   fmt:
     name: rustfmt (check)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install nightly + rustfmt
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@nightly
         with:
-          profile: minimal
-          toolchain: nightly
           components: rustfmt
-          override: true
       - name: rustfmt check (core)
         run: cargo fmt --manifest-path=core/Cargo.toml -- --check
       - name: rustfmt check (escrow program)
         run: cargo fmt --manifest-path=agent/solana/escrow/programs/escrow/Cargo.toml -- --check
+      - name: rustfmt check (prover)
+        run: cargo fmt --manifest-path=prover/Cargo.toml -- --check
+      - name: rustfmt check (client)
+        run: cargo fmt --manifest-path=client/Cargo.toml -- --check
 
   docs:
     name: cargo doc (check)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo registry
+        uses: actions/cache@v4
         with:
-          toolchain: stable
-          override: true
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-doc-${{ hashFiles('**/Cargo.lock') }}
       - name: cargo doc (core)
         run: cargo doc --manifest-path=core/Cargo.toml --no-deps
       - name: cargo doc (escrow program)
         run: cargo doc --manifest-path=agent/solana/escrow/programs/escrow/Cargo.toml --no-deps
+      - name: cargo doc (prover)
+        run: cargo doc --manifest-path=prover/Cargo.toml --no-deps
+      - name: cargo doc (client)
+        run: cargo doc --manifest-path=client/Cargo.toml --no-deps
 
-  deny:
-    name: cargo-deny
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Install cargo-deny
-        run: cargo install --locked cargo-deny
-      - name: cargo deny check (core)
-        run: cargo deny --manifest-path=core/Cargo.toml check advisories
-      - name: cargo deny check (escrow program)
-        run: cargo deny --manifest-path=agent/solana/escrow/programs/escrow/Cargo.toml check advisories

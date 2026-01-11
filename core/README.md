@@ -15,10 +15,10 @@ Core library for Zescrow: zero-knowledge escrows via the RISC Zero zkVM.
 
 ## Optional dependencies
 
-| Feature | Dependencies                                 |
-|---------|----------------------------------------------|
-| `bincode` (default) | `bincode` (derive)                  |
-| `json`      | `serde`, `serde_json`, `serde_bytes`, `serde_with` |
+| Feature             | Dependencies                                       |
+| ------------------- | -------------------------------------------------- |
+| `bincode` (default) | `bincode` (derive)                                 |
+| `json`              | `serde`, `serde_json`, `serde_bytes`, `serde_with` |
 
 ## Quickstart
 

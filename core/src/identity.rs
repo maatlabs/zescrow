@@ -1,3 +1,13 @@
+//! Chain-agnostic identity types for escrow participants.
+//!
+//! Supports multiple encoding formats:
+//! - Hexadecimal (with optional `0x` prefix)
+//! - Base58 (used by Solana)
+//! - Base64 (standard encoding)
+//! - Raw bytes
+//!
+//! Automatic format detection is performed during parsing.
+
 use std::str::FromStr;
 
 use base64::prelude::*;
@@ -78,7 +88,7 @@ impl Party {
     }
 }
 
-impl std::str::FromStr for Party {
+impl FromStr for Party {
     type Err = EscrowError;
 
     /// Parses an instance of `Self` from a string, alias for [`Self::new`].
@@ -125,7 +135,10 @@ impl ID {
     /// An `IdentityError` corresponding to the failing ID type.
     pub fn to_bytes(&self) -> Result<Vec<u8>> {
         let decoded = match self {
-            Self::Hex(s) => hex::decode(s).map_err(IdentityError::Hex),
+            Self::Hex(s) => {
+                let stripped = s.strip_prefix("0x").unwrap_or(s);
+                hex::decode(stripped).map_err(IdentityError::Hex)
+            }
             Self::Base58(s) => bs58::decode(s).into_vec().map_err(IdentityError::Base58),
             Self::Base64(s) => BASE64_STANDARD.decode(s).map_err(IdentityError::Base64),
             Self::Bytes(b) => Ok(b.clone()),
@@ -187,38 +200,66 @@ impl FromStr for ID {
     type Err = EscrowError;
 
     fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
-        // Enforce maximum input length
-        if s.len() > MAX_ID_LEN {
-            return Err(IdentityError::InputTooLong {
+        Self::validate_length(s)?;
+        let raw = Self::strip_hex_prefix(s.trim());
+        Self::ensure_non_empty(raw)?;
+
+        Self::try_decode_hex(raw)
+            .or_else(|| Self::try_decode_base58(raw))
+            .or_else(|| Self::try_decode_base64(raw))
+            .ok_or_else(|| IdentityError::UnsupportedFormat.into())
+    }
+}
+
+impl ID {
+    /// Validates that the input string does not exceed the maximum allowed length.
+    fn validate_length(s: &str) -> Result<()> {
+        (s.len() <= MAX_ID_LEN).then_some(()).ok_or_else(|| {
+            IdentityError::InputTooLong {
                 len: s.len(),
                 max: MAX_ID_LEN,
             }
-            .into());
-        }
+            .into()
+        })
+    }
 
-        let trimmed = s.trim();
-        if trimmed.is_empty() {
-            return Err(IdentityError::EmptyIdentity.into());
-        }
-        let raw = trimmed
-            .strip_prefix("0x")
-            .or_else(|| trimmed.strip_prefix("0X"))
-            .unwrap_or(trimmed);
+    /// Strips the `0x` or `0X` prefix from a hex string if present.
+    fn strip_hex_prefix(s: &str) -> &str {
+        s.strip_prefix("0x")
+            .or_else(|| s.strip_prefix("0X"))
+            .unwrap_or(s)
+    }
 
-        // try hex decoding
-        if let Ok(bytes) = hex::decode(raw) {
-            return Ok(ID::Hex(hex::encode(bytes)));
-        }
-        // try base58 decoding
-        if let Ok(bytes) = bs58::decode(raw).into_vec() {
-            return Ok(ID::Base58(bs58::encode(bytes).into_string()));
-        }
-        // try base64 decoding
-        if let Ok(bytes) = BASE64_STANDARD.decode(raw) {
-            return Ok(ID::Base64(BASE64_STANDARD.encode(bytes)));
-        }
+    /// Ensures the input string is not empty.
+    fn ensure_non_empty(s: &str) -> Result<()> {
+        (!s.is_empty())
+            .then_some(())
+            .ok_or_else(|| IdentityError::EmptyIdentity.into())
+    }
 
-        Err(IdentityError::UnsupportedFormat.into())
+    /// Attempts to decode a hex string into an `ID::Hex`.
+    /// Handles optional `0x` prefix.
+    fn try_decode_hex(s: &str) -> Option<Self> {
+        let stripped = s.strip_prefix("0x").unwrap_or(s);
+        hex::decode(stripped)
+            .ok()
+            .map(|bytes| Self::Hex(hex::encode(bytes)))
+    }
+
+    /// Attempts to decode a Base58 string into an `ID::Base58`.
+    fn try_decode_base58(s: &str) -> Option<Self> {
+        bs58::decode(s)
+            .into_vec()
+            .ok()
+            .map(|bytes| Self::Base58(bs58::encode(bytes).into_string()))
+    }
+
+    /// Attempts to decode a Base64 string into an `ID::Base64`.
+    fn try_decode_base64(s: &str) -> Option<Self> {
+        BASE64_STANDARD
+            .decode(s)
+            .ok()
+            .map(|bytes| Self::Base64(BASE64_STANDARD.encode(bytes)))
     }
 }
 

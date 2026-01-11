@@ -5,7 +5,25 @@ use hex::serde as hex_serde;
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-/// Ed25519 condition: signature over an arbitrary message.
+/// Ed25519 signature condition.
+///
+/// Verifies that `signature` is a valid Ed25519 signature of `message`
+/// under `public_key`.
+///
+/// # Example
+///
+/// ```ignore
+/// use ed25519_dalek::{Signer, SigningKey};
+/// use zescrow_core::Condition;
+///
+/// let signing_key = SigningKey::generate(&mut rand::rngs::OsRng);
+/// let message = b"escrow-release-auth".to_vec();
+/// let signature = signing_key.sign(&message).to_bytes().to_vec();
+/// let public_key = signing_key.verifying_key().to_bytes();
+///
+/// let condition = Condition::ed25519(public_key, message, signature);
+/// assert!(condition.verify().is_ok());
+/// ```
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub struct Ed25519 {

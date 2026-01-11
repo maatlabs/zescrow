@@ -4,7 +4,11 @@ use serde::{Deserialize, Serialize};
 
 use super::Condition;
 
-/// Threshold condition: at least `threshold` subconditions must hold.
+/// N-of-M threshold condition.
+///
+/// Satisfied when at least `threshold` of the `subconditions` verify
+/// successfully. Subconditions can be any [`Condition`] variant,
+/// including nested thresholds.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub struct Threshold {
@@ -16,27 +20,37 @@ pub struct Threshold {
 }
 
 impl Threshold {
-    /// Verify subconditions
+    /// Verifies that at least `threshold` subconditions are satisfied.
+    ///
+    /// Returns `Ok(())` if the threshold is met, or `Err` with details
+    /// about how many conditions passed versus required.
+    ///
+    /// A threshold of zero is always satisfied, regardless of subconditions.
     pub fn verify(&self) -> Result<(), Error> {
-        // zero threshold always satisfied
-        if self.threshold == 0 {
-            return Ok(());
-        }
+        (self.threshold == 0)
+            .then_some(())
+            .map(Ok)
+            .unwrap_or_else(|| self.verify_threshold())
+    }
 
-        let satisfied = self
-            .subconditions
-            .iter()
-            .filter(|c| c.verify().is_ok())
-            .count();
+    /// Counts satisfied subconditions and checks against threshold.
+    fn verify_threshold(&self) -> Result<(), Error> {
+        let satisfied = self.count_satisfied();
 
-        if satisfied >= self.threshold {
-            Ok(())
-        } else {
-            Err(Error::ThresholdNotMet {
+        (satisfied >= self.threshold)
+            .then_some(())
+            .ok_or(Error::ThresholdNotMet {
                 required: self.threshold,
                 satisfied,
             })
-        }
+    }
+
+    /// Counts the number of subconditions that verify successfully.
+    fn count_satisfied(&self) -> usize {
+        self.subconditions
+            .iter()
+            .filter_map(|c| c.verify().ok())
+            .count()
     }
 }
 

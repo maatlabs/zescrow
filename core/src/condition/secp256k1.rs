@@ -1,12 +1,15 @@
 use bincode::{Decode, Encode};
-use ed25519_dalek::Verifier;
 #[cfg(feature = "json")]
 use hex::serde as hex_serde;
+use k256::ecdsa::signature::Verifier;
 use k256::ecdsa::{Signature, VerifyingKey};
 #[cfg(feature = "json")]
 use serde::{Deserialize, Serialize};
 
-/// Secp256k1 ECDSA signature over an arbitrary message.
+/// Secp256k1 ECDSA signature condition.
+///
+/// Verifies that `signature` is a valid ECDSA signature of `message`
+/// under `public_key`.
 #[cfg_attr(feature = "json", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Encode, Decode, PartialEq, Eq)]
 pub struct Secp256k1 {

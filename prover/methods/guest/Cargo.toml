@@ -6,8 +6,8 @@ edition = "2021"
 [workspace]
 
 [dependencies]
-bincode = { version = "2.0.1", default-features = false, features = ["alloc"] }
-risc0-zkvm = { version = "2.1.0", default-features = false, features = [
+bincode = { version = "2", default-features = false, features = ["alloc"] }
+risc0-zkvm = { version = "3", default-features = false, features = [
     'std',
     "unstable",
 ] }

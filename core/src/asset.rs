@@ -1,3 +1,5 @@
+//! Chain-agnostic asset representations and utilities.
+
 #[cfg(feature = "json")]
 use std::str::FromStr;
 
@@ -129,50 +131,77 @@ impl Asset {
     /// - **Nft**: `contract` must be valid `ID`, `token_id` cannot be empty.
     /// - **PoolShare**: `share` must be > 0, `total_supply` must be > 0, and `share` <= `total_supply`.
     pub fn validate(&self) -> Result<()> {
-        if self.amount == BigNumber::zero() {
-            return Err(AssetError::ZeroAmount.into());
-        }
+        self.validate_non_zero_amount()
+            .and_then(|_| self.validate_by_kind())
+    }
 
+    /// Validates that the amount is non-zero.
+    fn validate_non_zero_amount(&self) -> Result<()> {
+        (self.amount != BigNumber::zero())
+            .then_some(())
+            .ok_or_else(|| AssetError::ZeroAmount.into())
+    }
+
+    /// Validates asset-specific requirements based on kind.
+    fn validate_by_kind(&self) -> Result<()> {
         match self.kind {
             AssetKind::Native => Ok(()),
-
-            AssetKind::Token => self
-                .agent_id
-                .as_ref()
-                .ok_or(AssetError::MissingId)?
-                .validate(),
-
-            AssetKind::Nft | AssetKind::MultiToken => {
-                self.agent_id
-                    .as_ref()
-                    .ok_or(AssetError::MissingId)?
-                    .validate()?;
-
-                self.id.as_ref().ok_or(AssetError::MissingId)?.validate()
-            }
-
-            AssetKind::LpShare => {
-                let pool = self.id.as_ref().ok_or(AssetError::MissingId)?;
-                pool.validate()?;
-
-                let total_supply = self
-                    .total_supply
-                    .as_ref()
-                    .ok_or(AssetError::MissingTotalSupply)?;
-                if *total_supply == BigNumber::zero() {
-                    return Err(AssetError::ZeroAmount.into());
-                }
-                if self.amount > *total_supply {
-                    return Err(AssetError::InvalidShare(
-                        self.amount.clone(),
-                        total_supply.clone(),
-                    )
-                    .into());
-                }
-
-                Ok(())
-            }
+            AssetKind::Token => self.validate_agent_id(),
+            AssetKind::Nft | AssetKind::MultiToken => self.validate_agent_and_token_id(),
+            AssetKind::LpShare => self.validate_pool_share(),
         }
+    }
+
+    /// Validates that the agent ID is present and valid.
+    fn validate_agent_id(&self) -> Result<()> {
+        self.agent_id
+            .as_ref()
+            .ok_or_else(|| AssetError::MissingId.into())
+            .and_then(ID::validate)
+    }
+
+    /// Validates both agent ID and token ID are present and valid.
+    fn validate_agent_and_token_id(&self) -> Result<()> {
+        self.validate_agent_id().and_then(|_| {
+            self.id
+                .as_ref()
+                .ok_or_else(|| AssetError::MissingId.into())
+                .and_then(ID::validate)
+        })
+    }
+
+    /// Validates pool share constraints: pool ID, total supply, and share ratio.
+    fn validate_pool_share(&self) -> Result<()> {
+        self.validate_pool_id()
+            .and_then(|_| self.validate_total_supply())
+            .and_then(|total| self.validate_share_ratio(total))
+    }
+
+    /// Validates the pool ID is present and valid.
+    fn validate_pool_id(&self) -> Result<()> {
+        self.id
+            .as_ref()
+            .ok_or_else(|| AssetError::MissingId.into())
+            .and_then(ID::validate)
+    }
+
+    /// Validates total supply is present and non-zero.
+    fn validate_total_supply(&self) -> Result<&BigNumber> {
+        self.total_supply
+            .as_ref()
+            .ok_or_else(|| AssetError::MissingTotalSupply.into())
+            .and_then(|total| {
+                (*total != BigNumber::zero())
+                    .then_some(total)
+                    .ok_or_else(|| AssetError::ZeroAmount.into())
+            })
+    }
+
+    /// Validates that share does not exceed total supply.
+    fn validate_share_ratio(&self, total_supply: &BigNumber) -> Result<()> {
+        (self.amount <= *total_supply).then_some(()).ok_or_else(|| {
+            AssetError::InvalidShare(self.amount.clone(), total_supply.clone()).into()
+        })
     }
 
     /// Attempt to serialize self into a Bincode‐encoded byte vector.
@@ -366,5 +395,41 @@ mod tests {
         // share exceeds total supply
         let too_many = Asset::pool_share(ID::from(vec![1]), to_bignum(150), to_bignum(100), 0);
         assert!(too_many.validate().is_err());
+    }
+
+    #[test]
+    fn bincode_roundtrip_native() {
+        let original = Asset::native(to_bignum(1_000_000_000));
+        let bytes = original.to_bytes().unwrap();
+        let decoded = Asset::from_bytes(&bytes).unwrap();
+        assert!(matches!(decoded.kind, AssetKind::Native));
+        assert_eq!(decoded.amount, original.amount);
+    }
+
+    #[test]
+    fn bincode_roundtrip_token() {
+        let original = Asset::token(
+            ID::from(vec![0xde, 0xad, 0xbe, 0xef]),
+            to_bignum(1_000),
+            to_bignum(1_000_000),
+            18,
+        );
+        let bytes = original.to_bytes().unwrap();
+        let decoded = Asset::from_bytes(&bytes).unwrap();
+        assert!(matches!(decoded.kind, AssetKind::Token));
+        assert_eq!(decoded.amount, original.amount);
+        assert_eq!(decoded.decimals, Some(18));
+    }
+
+    #[test]
+    fn format_amount_with_decimals() {
+        let asset = Asset::token(ID::from(vec![1]), to_bignum(1_500_000_000), to_bignum(0), 9);
+        assert_eq!(asset.format_amount().unwrap(), "1.500000000");
+    }
+
+    #[test]
+    fn format_amount_without_decimals() {
+        let asset = Asset::native(to_bignum(12345));
+        assert_eq!(asset.format_amount().unwrap(), "12345");
     }
 }

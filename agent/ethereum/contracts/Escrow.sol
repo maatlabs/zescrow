@@ -141,4 +141,17 @@ contract Escrow is ReentrancyGuard {
         if (escrow.sender == address(0)) revert EscrowNotExists();
         return escrow;
     }
+
+    /// @notice Returns the next escrow ID that will be assigned
+    /// @dev Useful for testing and off-chain tracking
+    /// @return The next escrow ID (current count + 1)
+    function nextEscrowId() external view returns (uint256) {
+        return _nextEscrowId + 1;
+    }
+
+    /// @notice Returns the total number of escrows created
+    /// @return The total count of escrows
+    function escrowCount() external view returns (uint256) {
+        return _nextEscrowId;
+    }
 }

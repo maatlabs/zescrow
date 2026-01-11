@@ -1,3 +1,9 @@
+//! Off-chain escrow context for zero-knowledge condition verification.
+//!
+//! This module implements the [`Escrow`] struct which represents the complete escrow context that is
+//! passed to the zkVM guest for verification. It contains the asset,
+//! parties, conditions, and execution state.
+
 use bincode::{Decode, Encode};
 #[cfg(feature = "json")]
 use {
@@ -55,20 +61,33 @@ impl Escrow {
     /// Returns `EscrowError::InvalidState` if not in `Funded` state, or
     /// propagates identity, asset, or condition errors.
     pub fn execute(&mut self) -> Result<ExecutionState> {
-        if self.state != ExecutionState::Funded {
-            return Err(EscrowError::InvalidState);
-        }
+        self.validate_state()
+            .and_then(|_| self.validate_parties())
+            .and_then(|_| self.asset.validate())
+            .and_then(|_| self.verify_conditions())
+            .map(|_| {
+                self.state = ExecutionState::ConditionsMet;
+                self.state
+            })
+    }
 
-        self.sender.verify_identity()?;
-        self.recipient.verify_identity()?;
-        self.asset.validate()?;
+    /// Verifies that the escrow is in the `Funded` state.
+    fn validate_state(&self) -> Result<()> {
+        (self.state == ExecutionState::Funded)
+            .then_some(())
+            .ok_or(EscrowError::InvalidState)
+    }
 
-        if let Some(condition) = &self.condition {
-            condition.verify()?;
-        }
+    /// Verifies both sender and recipient identities.
+    fn validate_parties(&self) -> Result<()> {
+        self.sender
+            .verify_identity()
+            .and_then(|_| self.recipient.verify_identity())
+    }
 
-        self.state = ExecutionState::ConditionsMet;
-        Ok(self.state)
+    /// Verifies cryptographic conditions if present.
+    fn verify_conditions(&self) -> Result<()> {
+        self.condition.as_ref().map_or(Ok(()), |cond| cond.verify())
     }
 
     /// Constructs an `Escrow` from on-chain metadata and, if required,
@@ -117,38 +136,97 @@ mod tests {
     use super::*;
     use crate::{BigNumber, ID};
 
-    #[test]
-    fn execute_escrow() {
-        let sender = Party::new("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045").unwrap();
-        let recipient = Party::new("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8").unwrap();
+    fn valid_sender() -> Party {
+        Party::new("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045").unwrap()
+    }
 
-        let asset = Asset::token(
+    fn valid_recipient() -> Party {
+        Party::new("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8").unwrap()
+    }
+
+    fn valid_asset() -> Asset {
+        Asset::token(
             ID::from("0xdeadbeef".as_bytes()),
             BigNumber::from(1_000u64),
             BigNumber::from(2_000u64),
             18,
-        );
+        )
+    }
 
+    fn valid_condition() -> Condition {
         let preimage = b"secret".to_vec();
         let hash = Sha256::digest(&preimage);
-        let condition = Condition::hashlock(hash.into(), preimage);
+        Condition::hashlock(hash.into(), preimage)
+    }
 
-        let mut escrow = Escrow::new(sender.clone(), recipient.clone(), asset, Some(condition));
+    #[test]
+    fn execute_escrow() {
+        let mut escrow = Escrow::new(
+            valid_sender(),
+            valid_recipient(),
+            valid_asset(),
+            Some(valid_condition()),
+        );
         escrow.state = ExecutionState::Funded;
         assert_eq!(escrow.execute().unwrap(), ExecutionState::ConditionsMet);
         assert_eq!(escrow.state, ExecutionState::ConditionsMet);
-        // Ensure re-execution is not allowed
+        // Re-execution is not allowed
         assert!(escrow.execute().is_err());
+    }
 
+    #[test]
+    fn execute_without_conditions() {
+        let mut escrow = Escrow::new(valid_sender(), valid_recipient(), valid_asset(), None);
+        escrow.state = ExecutionState::Funded;
+        assert_eq!(escrow.execute().unwrap(), ExecutionState::ConditionsMet);
+    }
+
+    #[test]
+    fn execute_fails_when_not_funded() {
+        let mut escrow = Escrow::new(
+            valid_sender(),
+            valid_recipient(),
+            valid_asset(),
+            Some(valid_condition()),
+        );
+        // State is Initialized (not Funded)
+        assert_eq!(escrow.state, ExecutionState::Initialized);
+        let err = escrow.execute().unwrap_err();
+        assert!(matches!(err, EscrowError::InvalidState));
+    }
+
+    #[test]
+    fn execute_fails_with_invalid_asset() {
         let invalid_asset = Asset::token(
             ID::from("0xdeadbeef".as_bytes()),
             BigNumber::from(0u64), // zero amount
             BigNumber::from(2_000u64),
             18,
         );
+        let mut escrow = Escrow::new(valid_sender(), valid_recipient(), invalid_asset, None);
+        escrow.state = ExecutionState::Funded;
+        assert!(escrow.execute().is_err());
+    }
 
-        let mut invalid_escrow = Escrow::new(sender, recipient, invalid_asset, None);
-        invalid_escrow.state = ExecutionState::Funded;
-        assert!(invalid_escrow.execute().is_err(),);
+    #[test]
+    fn execute_fails_with_wrong_preimage() {
+        let preimage = b"secret".to_vec();
+        let hash = Sha256::digest(&preimage);
+        let wrong_condition = Condition::hashlock(hash.into(), b"wrong".to_vec());
+
+        let mut escrow = Escrow::new(
+            valid_sender(),
+            valid_recipient(),
+            valid_asset(),
+            Some(wrong_condition),
+        );
+        escrow.state = ExecutionState::Funded;
+        assert!(escrow.execute().is_err());
+    }
+
+    #[test]
+    fn new_initializes_state() {
+        let escrow = Escrow::new(valid_sender(), valid_recipient(), valid_asset(), None);
+        assert_eq!(escrow.state, ExecutionState::Initialized);
     }
 }

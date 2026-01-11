@@ -1,9 +1,9 @@
 {
     "chain_config": {
         "chain": "solana",
-        "rpc_url": "http://localhost:8899",
-        "sender_private_id": "absolute/path/to/user/.config/solana/id.json",
-        "agent_id": "EscrowProgramID"
+        "rpc_url": "${SOLANA_RPC_URL}",
+        "sender_private_id": "${SOLANA_SENDER_KEYPAIR_PATH}",
+        "agent_id": "${SOLANA_PROGRAM_ID}"
     },
     "asset": {
         "kind": "native",
@@ -15,15 +15,15 @@
     },
     "sender": {
         "identity": {
-            "base58": "SenderSolanaPublicKey"
+            "base58": "${SOLANA_SENDER_PUBKEY}"
         }
     },
     "recipient": {
         "identity": {
-            "base58": "RecipientSolanaPublicKey"
+            "base58": "${SOLANA_RECIPIENT_PUBKEY}"
         }
     },
-    "finish_after": 1200,
-    "cancel_after": 2200,
+    "finish_after": 100,
+    "cancel_after": 200,
     "has_conditions": false
 }

@@ -1,0 +1,29 @@
+{
+    "chain_config": {
+        "chain": "ethereum",
+        "rpc_url": "${ETHEREUM_RPC_URL}",
+        "sender_private_id": "${ETHEREUM_SENDER_PRIVATE_KEY}",
+        "agent_id": "${ESCROW_CONTRACT_ADDRESS}"
+    },
+    "asset": {
+        "kind": "native",
+        "id": null,
+        "agent_id": null,
+        "amount": "1000000000000000000",
+        "decimals": null,
+        "total_supply": null
+    },
+    "sender": {
+        "identity": {
+            "hex": "${ETHEREUM_SENDER_ADDRESS}"
+        }
+    },
+    "recipient": {
+        "identity": {
+            "hex": "${ETHEREUM_RECIPIENT_ADDRESS}"
+        }
+    },
+    "finish_after": 10,
+    "cancel_after": 20,
+    "has_conditions": false
+}

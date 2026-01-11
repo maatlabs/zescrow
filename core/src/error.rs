@@ -1,9 +1,18 @@
+//! Error types for `zescrow_core`.
+//!
+//! Provides the following error types:
+//! - [`EscrowError`]: Top-level error for escrow operations
+//! - [`ConditionError`]: Cryptographic condition verification failures
+//! - [`IdentityError`]: Identity parsing and validation errors
+//! - [`AssetError`]: Asset validation and serialization errors
+
 use thiserror::Error;
 
 use crate::BigNumber;
 
 /// Errors arising from on-chain `Escrow` operations and parameter validation.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum EscrowError {
     /// A cryptographic condition failed to verify.
     #[error("condition error: {0}")]
@@ -42,6 +51,7 @@ pub enum EscrowError {
 
 /// Errors related to cryptographic condition verification.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum ConditionError {
     /// Hashlock error
     #[error("preimage (hashlock) failed: {0}")]
@@ -62,6 +72,7 @@ pub enum ConditionError {
 
 /// Errors related to identity parsing and validation.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum IdentityError {
     /// The provided identity string was empty.
     #[error("empty identity string")]
@@ -95,6 +106,7 @@ pub enum IdentityError {
 
 /// Errors related to asset parsing, validation, or formatting.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum AssetError {
     /// Failed to parse an asset from a string or JSON.
     #[error("could not serialize asset: {0}")]
@@ -117,7 +129,7 @@ pub enum AssetError {
     MissingTotalSupply,
 
     /// Invalid ID for asset, program, or contract.
-    #[error("inalid ID for asset, program, or contract")]
+    #[error("invalid ID for asset, program, or contract")]
     InvalidId,
 
     /// A liquidity pool share was invalid;

@@ -4,7 +4,9 @@ use anyhow::{anyhow, Context};
 use clap::{value_parser, Parser, Subcommand};
 use sha2::{Digest, Sha256};
 use tracing::info;
-use zescrow_client::{prover, Recipient, ZescrowClient};
+#[cfg(feature = "prover")]
+use zescrow_client::prover;
+use zescrow_client::{Recipient, ZescrowClient};
 use zescrow_core::interface::{
     load_escrow_data, save_escrow_data, ESCROW_CONDITIONS_PATH, ESCROW_METADATA_PATH,
     ESCROW_PARAMS_PATH,
@@ -29,8 +31,8 @@ enum Commands {
     /// Reads `templates/escrow_metadata.json`.
     Finish {
         /// `RECIPIENT` is either:
-        /// - a path to a keypair file (e.g., for Solana), or
-        /// - a WIF-encoded private key
+        /// - a path to a keypair file (for Solana), or
+        /// - a hex private key with 0x prefix (for Ethereum)
         #[arg(long, value_name = "RECIPIENT")]
         recipient: Recipient,
     },
@@ -146,6 +148,12 @@ enum GenerateCmd {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Load environment variables from .env file if present.
+    // This is optional; missing .env is not an error.
+    if dotenvy::dotenv().is_ok() {
+        eprintln!("Loaded environment from .env file");
+    }
+
     // Initialize tracing. In order to view logs, run `RUST_LOG=info cargo run`
     tracing_subscriber::fmt()
         .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
@@ -185,7 +193,14 @@ async fn execute(command: Commands) -> anyhow::Result<()> {
 
             // Invoke the prover if escrow has cryptographic conditions
             if metadata.params.has_conditions {
+                #[cfg(feature = "prover")]
                 prover::run()?;
+
+                #[cfg(not(feature = "prover"))]
+                return Err(anyhow!(
+                    "escrow has conditions but the 'prover' feature is disabled; \
+                     rebuild with `--features prover` to enable ZK proof generation"
+                ));
             }
 
             info!("Finishing escrow");

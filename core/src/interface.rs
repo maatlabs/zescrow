@@ -1,3 +1,11 @@
+//! JSON schemas, I/O utilities, and chain configuration types.
+//!
+//! This module provides configuration loading with environment variable expansion.
+//! JSON templates can reference environment variables using `${VAR_NAME}` syntax,
+//! which are expanded at load time.
+
+#[cfg(feature = "json")]
+use std::borrow::Cow;
 #[cfg(feature = "json")]
 use std::fs::File;
 #[cfg(feature = "json")]
@@ -13,29 +21,77 @@ use serde::{Deserialize, Serialize};
 
 use crate::{Asset, EscrowError, Party};
 
-/// Default path to escrow params template.
-pub const ESCROW_PARAMS_PATH: &str = concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../templates/escrow_params.json"
-);
+/// Default path to escrow parameters configuration.
+pub const ESCROW_PARAMS_PATH: &str =
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../deploy/escrow_params.json");
 
-/// Default path to on-chain escrow metadata.
+/// Default path to on-chain escrow metadata (output from create command).
 pub const ESCROW_METADATA_PATH: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../templates/escrow_metadata.json"
+    "/../deploy/escrow_metadata.json"
 );
 
-/// Default path to escrow conditions template.
+/// Default path to escrow conditions.
 pub const ESCROW_CONDITIONS_PATH: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../templates/escrow_conditions.json"
+    "/../deploy/escrow_conditions.json"
 );
 
-/// Default path to proof data.
-pub const PROOF_DATA_PATH: &str =
-    concat!(env!("CARGO_MANIFEST_DIR"), "/../templates/proof_data.json");
+/// Expands environment variable references in a string.
+///
+/// Replaces all occurrences of `${VAR_NAME}` with the corresponding
+/// environment variable value. If the variable is not set, it is
+/// replaced with an empty string.
+///
+/// # Examples
+///
+/// ```
+/// # use zescrow_core::interface::expand_env_vars;
+/// std::env::set_var("MY_VAR", "hello");
+/// assert_eq!(expand_env_vars("prefix-${MY_VAR}-suffix"), "prefix-hello-suffix");
+///
+/// // Unset variables become empty strings
+/// std::env::remove_var("UNSET_VAR");
+/// assert_eq!(expand_env_vars("${UNSET_VAR}"), "");
+/// ```
+#[cfg(feature = "json")]
+#[must_use]
+pub fn expand_env_vars(input: &str) -> Cow<'_, str> {
+    if !input.contains("${") {
+        return Cow::Borrowed(input);
+    }
+
+    let mut result = String::with_capacity(input.len());
+    let mut remaining = input;
+
+    while let Some(start) = remaining.find("${") {
+        result.push_str(&remaining[..start]);
+
+        let after_start = &remaining[start + 2..];
+        match after_start.find('}') {
+            Some(end) => {
+                let var_name = &after_start[..end];
+                if let Ok(value) = std::env::var(var_name) {
+                    result.push_str(&value);
+                }
+                remaining = &after_start[end + 1..];
+            }
+            None => {
+                result.push_str(&remaining[start..]);
+                remaining = "";
+            }
+        }
+    }
+
+    result.push_str(remaining);
+    Cow::Owned(result)
+}
 
 /// Reads a JSON-encoded file from the given `path` and deserializes into type `T`.
+///
+/// Environment variable references in the format `${VAR_NAME}` are expanded
+/// before parsing. This allows configuration templates to reference secrets
+/// stored in environment variables or `.env` files.
 ///
 /// # Errors
 ///
@@ -49,7 +105,8 @@ pub const PROOF_DATA_PATH: &str =
 /// #[derive(Deserialize)]
 /// struct MyParams { /* fields matching JSON */ }
 ///
-/// let _params: MyParams = load_escrow_data(./my_params.json).unwrap();
+/// // JSON file can contain: { "key": "${MY_SECRET}" }
+/// let _params: MyParams = load_escrow_data("./my_params.json").unwrap();
 /// ```
 #[cfg(feature = "json")]
 pub fn load_escrow_data<P, T>(path: P) -> anyhow::Result<T>
@@ -60,7 +117,8 @@ where
     let path = path.as_ref();
     let content =
         std::fs::read_to_string(path).with_context(|| format!("loading escrow data: {path:?}"))?;
-    serde_json::from_str(&content).with_context(|| format!("parsing JSON from {path:?}"))
+    let expanded = expand_env_vars(&content);
+    serde_json::from_str(&expanded).with_context(|| format!("parsing JSON from {path:?}"))
 }
 
 /// Writes `data` (serializable) as pretty-printed JSON to the given `path`.
@@ -209,5 +267,86 @@ impl std::str::FromStr for Chain {
             "solana" | "sol" => Ok(Self::Solana),
             _ => Err(EscrowError::UnsupportedChain),
         }
+    }
+}
+
+#[cfg(all(test, feature = "json"))]
+mod tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn chain_from_str_ethereum() {
+        assert!(matches!(Chain::from_str("ethereum"), Ok(Chain::Ethereum)));
+        assert!(matches!(Chain::from_str("ETHEREUM"), Ok(Chain::Ethereum)));
+        assert!(matches!(Chain::from_str("eth"), Ok(Chain::Ethereum)));
+        assert!(matches!(Chain::from_str("ETH"), Ok(Chain::Ethereum)));
+    }
+
+    #[test]
+    fn chain_from_str_solana() {
+        assert!(matches!(Chain::from_str("solana"), Ok(Chain::Solana)));
+        assert!(matches!(Chain::from_str("SOLANA"), Ok(Chain::Solana)));
+        assert!(matches!(Chain::from_str("sol"), Ok(Chain::Solana)));
+        assert!(matches!(Chain::from_str("SOL"), Ok(Chain::Solana)));
+    }
+
+    #[test]
+    fn chain_from_str_unsupported() {
+        assert!(matches!(
+            Chain::from_str("bitcoin"),
+            Err(EscrowError::UnsupportedChain)
+        ));
+        assert!(matches!(
+            Chain::from_str(""),
+            Err(EscrowError::UnsupportedChain)
+        ));
+    }
+
+    #[test]
+    fn chain_as_ref() {
+        assert_eq!(Chain::Ethereum.as_ref(), "ethereum");
+        assert_eq!(Chain::Solana.as_ref(), "solana");
+    }
+
+    #[test]
+    fn expand_env_vars_no_vars() {
+        let input = "no variables here";
+        let result = expand_env_vars(input);
+        assert_eq!(result, "no variables here");
+        // Should return Borrowed when no expansion needed
+        assert!(matches!(result, std::borrow::Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn expand_env_vars_single_var() {
+        std::env::set_var("TEST_VAR_SINGLE", "hello");
+        let result = expand_env_vars("prefix-${TEST_VAR_SINGLE}-suffix");
+        assert_eq!(result, "prefix-hello-suffix");
+        std::env::remove_var("TEST_VAR_SINGLE");
+    }
+
+    #[test]
+    fn expand_env_vars_multiple_vars() {
+        std::env::set_var("TEST_VAR_A", "alpha");
+        std::env::set_var("TEST_VAR_B", "beta");
+        let result = expand_env_vars("${TEST_VAR_A} and ${TEST_VAR_B}");
+        assert_eq!(result, "alpha and beta");
+        std::env::remove_var("TEST_VAR_A");
+        std::env::remove_var("TEST_VAR_B");
+    }
+
+    #[test]
+    fn expand_env_vars_unset_becomes_empty() {
+        std::env::remove_var("TEST_VAR_UNSET_XYZ");
+        let result = expand_env_vars("before-${TEST_VAR_UNSET_XYZ}-after");
+        assert_eq!(result, "before--after");
+    }
+
+    #[test]
+    fn expand_env_vars_unclosed_brace() {
+        let result = expand_env_vars("prefix-${UNCLOSED");
+        assert_eq!(result, "prefix-${UNCLOSED");
     }
 }

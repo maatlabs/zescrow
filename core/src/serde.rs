@@ -1,3 +1,5 @@
+//! Serde helpers for custom (de)serialization.
+
 /// Serde helper to (de)serialize `BigUint` as strings.
 #[cfg(feature = "json")]
 pub mod biguint_serde {
@@ -23,7 +25,7 @@ pub mod biguint_serde {
     }
 }
 
-/// Serde helper to (de)serialize Vec<u8> as UTF-8 strings.
+/// Serde helper to (de)serialize `Vec<u8>` as UTF-8 strings.
 #[cfg(feature = "json")]
 pub mod utf8_serde {
     use std::str;

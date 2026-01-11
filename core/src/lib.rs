@@ -3,28 +3,16 @@
 #![deny(rustdoc::invalid_html_tags, rustdoc::broken_intra_doc_links)]
 #![doc = include_str!("../README.md")]
 
-/// Chain-agnostic asset representations and utilities.
 pub mod asset;
-
-/// Wrapper around BigUint so we can implement bincode traits.
 pub mod bignum;
-
-/// Deterministic cryptographic conditions and fulfillment logic.
 pub mod condition;
-
-/// Error types used throughout the `zescrow_core` crate.
 pub mod error;
-
-/// Off-chain escrow context for executing/verifying cryptographic conditions in zero-knowledge.
 pub mod escrow;
-
-/// Chain-agnostic identity types (hex/Base58/Base64/raw bytes) for escrow parties.
 pub mod identity;
-
-/// Types for JSON (de)serialization, parameter/metadata schemas, and chain configurations.
+#[cfg(feature = "json")]
 pub mod interface;
-
-/// Helpers for (de)serializing with serde.
+#[cfg(not(feature = "json"))]
+pub mod interface;
 #[cfg(feature = "json")]
 pub mod serde;
 
